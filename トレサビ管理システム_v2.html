@@ -1,0 +1,3221 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>トレサビ管理システム</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --success: #10b981;
+            --accent: #38bdf8;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --purple: #8b5cf6;
+            --orange: #f97316;
+            --pink: #ec4899;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, blinkmacsystemfont, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            scroll-behavior: smooth;
+        }
+
+        .container {
+            max-width: 950px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        header { text-align: center; margin-bottom: 2rem; }
+        header h1 {
+            font-size: 2.5rem; margin: 0;
+            background: -webkit-linear-gradient(45deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .subtitle { color: var(--text-muted); font-size: 1rem; margin-top: 0.5rem; }
+
+        /* Voice Assistant UI */
+        .voice-assistant-card {
+            background: rgba(56, 189, 248, 0.05);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            border-radius: 12px; padding: 1.2rem; margin-bottom: 2rem;
+            display: flex; align-items: center; gap: 1.5rem;
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.1);
+        }
+
+        .global-mic-btn {
+            background: var(--primary-color);
+            color: white; border: none; width: 70px; height: 70px; border-radius: 50%;
+            cursor: pointer; font-size: 2.5rem; display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+        .global-mic-btn:hover { transform: scale(1.05); background: var(--primary-hover); }
+        .global-mic-btn.recording {
+            background: #ef4444; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            animation: pulse-ring 1.5s infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 20px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .voice-status-container { flex: 1; }
+        #voiceStatus { font-size: 1.15rem; font-weight: 600; color: white; display: block; margin-bottom: 8px; }
+        .voice-help { color: var(--text-muted); font-size: 0.85rem; line-height: 1.4; }
+
+        .card {
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border-radius: 16px; padding: 1.5rem; margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2); transition: all 0.5s ease-in-out; opacity: 1;
+        }
+
+        .step-hidden { display: none !important; opacity: 0; transform: translateY(20px); }
+        .step-visible { display: block; opacity: 1; transform: translateY(0); animation: fadeIn 0.4s ease-out forwards; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        h2 {
+            font-size: 1.25rem; margin-top: 0; margin-bottom: 1.25rem; color: #e2e8f0;
+            border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; display: flex; align-items: center; gap: 10px;
+        }
+
+        /* ----- Button Grids ----- */
+        .house-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+        .dest-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; margin-bottom: 0.5rem; }
+        .spec-grid { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 1.5rem; }
+
+        .btn-select {
+            background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); color: var(--text-main);
+            padding: 12px 10px; border-radius: 10px; cursor: pointer; transition: all 0.2s ease;
+            font-size: 0.95rem; font-weight: 500; text-align: center;
+        }
+        .btn-select:hover { background: rgba(255, 255, 255, 0.1); transform: translateY(-2px); }
+
+        .btn-select.selected.producer-btn, button.producer-btn.selected { background: #ec4899 !important; border-color: #db2777 !important; color: #ffffff !important; box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4); }
+        .btn-select.selected.house-btn, button.house-btn.selected { background: #6366f1 !important; border-color: #4f46e5 !important; color: #ffffff !important; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4); }
+        .dest-btn { padding: 12px 8px; font-size: 0.9rem; }
+        .btn-select.selected.dest-btn { background: #8b5cf6 !important; border-color: #7c3aed !important; color: #ffffff !important; box-shadow: 0 4px 10px rgba(139, 92, 246, 0.4); }
+        .spec-btn { padding: 12px 25px; font-size: 1.1rem; }
+        .btn-select.selected.spec-btn { background: #f97316 !important; border-color: #ea580c !important; color: #ffffff !important; box-shadow: 0 4px 10px rgba(249, 115, 22, 0.4); }
+
+        .selected-houses-display { font-size: 0.95rem; color: var(--text-muted); background: rgba(0,0,0,0.2); padding: 10px 15px; border-radius: 8px; }
+        .highlight { color: var(--accent); font-weight: 600; }
+
+        /* Calendar */
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .month-controls { display: flex; align-items: center; gap: 1rem; background: rgba(0,0,0,0.2); padding: 5px 15px; border-radius: 20px; }
+        .month-controls h3 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+        .btn-icon { background: transparent; border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; font-weight: bold; font-size: 1.2rem; }
+        .btn-icon:hover { background: rgba(255, 255, 255, 0.2); }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; text-align: center; }
+        .calendar-days { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+        .day-name { font-size: 0.85rem; color: var(--text-muted); font-weight: 500; padding-bottom: 8px; border-bottom: 1px solid var(--border-color); margin-bottom: 5px; }
+        .calendar-day { background: rgba(255, 255, 255, 0.03); border: 1px solid transparent; border-radius: 10px; padding: 12px 5px; cursor: pointer; position: relative; transition: 0.2s; }
+        .calendar-day:hover:not(.empty) { background: rgba(255, 255, 255, 0.1); transform: translateY(-2px); }
+        .calendar-day.selected { background: rgba(56, 189, 248, 0.15); border-color: var(--accent); box-shadow: 0 0 15px rgba(56, 189, 248, 0.2); }
+        .calendar-day .date-num { font-size: 1.2rem; font-weight: 600; margin-bottom: 4px; }
+        .calendar-day .week-info { font-size: 0.75rem; color: var(--accent); background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px; display: inline-block; }
+        .calendar-day.empty { cursor: default; background: transparent; }
+        .calendar-day.today { border: 2px solid var(--warning); }
+        .calendar-day.today .date-num { color: var(--warning); }
+
+        /* Two-tone unified badge */
+        .cal-unified-badge {
+            display: inline-flex; align-items: stretch;
+            border-radius: 6px; overflow: hidden;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+            font-size: 0.78rem; line-height: 1;
+        }
+        .cal-unified-badge .badge-alpha { background: #2563eb; color: #fff; padding: 3px 6px; font-weight: 900; }
+        .cal-unified-badge .badge-sep { background: rgba(0,0,0,0.25); padding: 3px 2px; color: rgba(255,255,255,0.5); font-size: 0.6rem; }
+        .cal-unified-badge .badge-num { background: #f59e0b; color: #fff; padding: 3px 6px; font-weight: 800; }
+        .calendar-day.today .badge-alpha { background: #ef4444; }
+        .calendar-day.today .badge-num   { background: #ef4444; }
+
+        /* Result Section */
+        .code-display {
+            background: rgba(0, 0, 0, 0.4); padding: 1.5rem; border-radius: 12px; text-align: center;
+            font-size: 2.2rem; font-family: 'Courier New', monospace; letter-spacing: 3px; color: var(--success);
+            margin-bottom: 1rem; border: 1px dashed rgba(16, 185, 129, 0.5); min-height: 40px;
+            display: flex; align-items: center; justify-content: center;
+            word-break: break-all;
+        }
+
+        .memo-container { display: flex; gap: 10px; margin-bottom: 1.5rem; }
+        .memo-container input {
+            flex: 1; padding: 12px 15px; border-radius: 8px; border: 1px solid var(--border-color);
+            background: rgba(0,0,0,0.2); color: white; font-size: 1rem; font-family: inherit;
+        }
+        .memo-container input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 8px rgba(56, 189, 248, 0.3); }
+
+        .btn-primary {
+            width: 100%; background: var(--primary-color); color: white; border: none; padding: 16px; border-radius: 10px;
+            font-size: 1.2rem; font-weight: bold; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+        .btn-primary:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-2px); }
+        .btn-primary:disabled { background: rgba(255, 255, 255, 0.05); color: var(--text-muted); box-shadow: none; cursor: not-allowed; border: 1px solid rgba(255,255,255,0.05); }
+
+        /* Summary Section */
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-top: 15px; }
+        .summary-card { background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; text-align: center; box-shadow: inset 0 2px 5px rgba(0,0,0,0.2); }
+        .summary-dest { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px; }
+        .summary-count { font-size: 1.8rem; font-weight: bold; color: var(--accent); }
+
+        /* Table */
+        .table-responsive { overflow-x: auto; margin-top: 1rem; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid var(--border-color); font-size: 0.95rem; }
+        th { color: var(--text-muted); font-weight: 500; background: rgba(0,0,0,0.2); white-space: nowrap; }
+        tbody tr { transition: background 0.2s; }
+        tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
+        td.code-cell { font-family: monospace; font-size: 1.05rem; color: var(--success); font-weight: bold; }
+
+        .status-badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; }
+        .status-nyuko { background: rgba(59, 130, 246, 0.2); color: var(--info); border: 1px solid rgba(59, 130, 246, 0.4); }
+        .status-shukko { background: rgba(16, 185, 129, 0.2); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.4); }
+
+        .btn-action { border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 0.85rem; font-weight: 500; }
+
+        /* Spec Colors */
+        .color-spec-m    { color: #ef5350 !important; border-color: #ef5350 !important; }
+        .color-spec-l    { color: #42a5f5 !important; border-color: #42a5f5 !important; }
+        .color-spec-3p   { color: #66bb6a !important; border-color: #66bb6a !important; }
+        .color-spec-5p   { color: #26c6da !important; border-color: #26c6da !important; }
+        .color-spec-reg  { color: #ab47bc !important; border-color: #ab47bc !important; }
+        .color-spec-maru { color: #ffa726 !important; border-color: #ffa726 !important; }
+
+        .btn-select.color-spec-m.selected    { background: #ef5350 !important; color: white !important; }
+        .btn-select.color-spec-l.selected    { background: #42a5f5 !important; color: white !important; }
+        .btn-select.color-spec-3p.selected   { background: #66bb6a !important; color: white !important; }
+        .btn-select.color-spec-5p.selected   { background: #26c6da !important; color: white !important; }
+        .btn-select.color-spec-reg.selected  { background: #ab47bc !important; color: white !important; }
+        .btn-select.color-spec-maru.selected { background: #ffa726 !important; color: white !important; }
+        .btn-shukko { background: var(--primary-color); color: white; box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3); }
+        .btn-shukko:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        .btn-cancel { background: rgba(245, 158, 11, 0.2); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.4); }
+        .btn-cancel:hover { background: rgba(245, 158, 11, 0.4); }
+        .delete-btn { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); padding: 5px 10px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 0.85rem; }
+        .delete-btn:hover { background: rgba(239, 68, 68, 0.4); color: white; }
+
+        /* Checkbox styling */
+        input[type="checkbox"] { transform: scale(1.2); cursor: pointer; accent-color: var(--primary-color); }
+
+        .step-mic-btn {
+            background: rgba(99, 102, 241, 0.15); color: white; border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 50%; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: 0.2s; font-size: 1.1rem; flex-shrink: 0;
+        }
+        .step-mic-btn:hover { background: rgba(99, 102, 241, 0.3); transform: scale(1.1); }
+        .step-mic-btn.recording {
+            background: #ef4444; border-color: #ef4444; animation: pulse-mini 1.5s infinite;
+        }
+        @keyframes pulse-mini {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        @media (max-width: 600px) {
+            .voice-assistant-card { flex-direction: column; text-align: center; }
+            .calendar-day .date-num { font-size: 1rem; }
+            .calendar-day .week-info { font-size: 0.65rem; padding: 2px; }
+            .cal-unified-badge { font-size: 0.68rem; }
+            .cal-unified-badge .badge-alpha, .cal-unified-badge .badge-num { padding: 2px 4px; }
+            .code-display { font-size: 1.8rem; }
+            .agg-day { min-height: 42px; padding: 4px 1px; }
+            .agg-date-num { font-size: 0.78rem; }
+            .agg-count-badge { font-size: 0.62rem; padding: 1px 4px; }
+        }
+        
+        .swipe-tabs { display: flex; position: sticky; top: 0; background: rgba(15,23,42,0.95); backdrop-filter: blur(8px); z-index: 10; border-bottom: 2px solid var(--border-color); margin-top: 5px; margin-bottom: 10px; border-radius: 8px 8px 0 0; }
+        .swipe-tab { flex: 1; padding: 12px 0; text-align: center; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 0.95rem; border-bottom: 3px solid transparent; }
+        .tab-active-nyuko { color: var(--success); border-bottom-color: var(--success); }
+        .tab-active-shukko { color: var(--accent); border-bottom-color: var(--accent); }
+        .tab-inactive { color: var(--text-muted); border-bottom-color: transparent; }
+        .swipe-wrapper { position: relative; width: 100%; min-height: 200px; }
+        .swipe-pane { width: 100%; padding-bottom: 10px; }
+        .pane-hidden { display: none !important; }
+        .pane-nyuko-active { display: block !important; opacity: 1; }
+        .pane-shukko-active { display: block !important; opacity: 1; }
+        .swipe-row-container::-webkit-scrollbar { display: none; }
+
+        /* ===== 日付別集計カレンダー ===== */
+        .agg-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .agg-month-controls { display: flex; align-items: center; gap: 0.8rem; background: rgba(0,0,0,0.2); padding: 5px 14px; border-radius: 20px; }
+        .agg-month-controls h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+        .agg-calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+        .agg-day-name { font-size: 0.78rem; color: var(--text-muted); font-weight: 500; text-align: center; padding-bottom: 6px; }
+        .agg-day { border-radius: 8px; padding: 6px 2px; cursor: pointer; text-align: center; border: 1px solid transparent; transition: 0.2s; min-height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; background: rgba(255,255,255,0.02); }
+        .agg-day:hover:not(.agg-empty) { background: rgba(255,255,255,0.08); transform: translateY(-1px); }
+        .agg-day.agg-empty { cursor: default; background: transparent; border-color: transparent; }
+        .agg-date-num { font-size: 0.9rem; font-weight: 600; }
+        .agg-count-badge { font-size: 0.7rem; font-weight: bold; color: white; background: var(--primary-color); border-radius: 10px; padding: 1px 6px; line-height: 1.4; }
+        .agg-day[data-intensity="1"] { background: rgba(99,102,241,0.1); border-color: rgba(99,102,241,0.25); }
+        .agg-day[data-intensity="2"] { background: rgba(99,102,241,0.22); border-color: rgba(99,102,241,0.45); }
+        .agg-day[data-intensity="3"] { background: rgba(99,102,241,0.38); border-color: rgba(99,102,241,0.7); }
+        .agg-day.agg-today { border-color: var(--warning) !important; }
+        .agg-day.agg-today .agg-date-num { color: var(--warning); }
+        .agg-day.agg-selected { background: rgba(56,189,248,0.2) !important; border-color: var(--accent) !important; box-shadow: 0 0 12px rgba(56,189,248,0.3); }
+        .agg-detail-panel { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color); animation: fadeIn 0.3s ease-out; }
+        .agg-spec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin-top: 8px; }
+        .agg-spec-card { background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 8px; text-align: center; }
+        .agg-spec-name { font-size: 0.9rem; font-weight: bold; margin-bottom: 2px; }
+        .agg-spec-total { font-size: 1.9rem; font-weight: bold; color: var(--accent); line-height: 1.1; }
+        .agg-spec-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 3px; }
+        .agg-total-label { font-size: 0.88rem; color: var(--text-muted); margin-top: 8px; text-align: right; }
+
+        /* ── Left Panel ── */
+        .main-layout { display: flex; gap: 16px; align-items: flex-start; }
+        .left-panel {
+            width: 200px; flex-shrink: 0;
+            position: sticky; top: 16px;
+            max-height: calc(100vh - 32px);
+            overflow-y: auto; scrollbar-width: thin;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        @media (max-width: 800px) {
+            .main-layout { flex-direction: column; }
+            .left-panel { width: 100%; position: static; max-height: none; flex-direction: row; flex-wrap: wrap; }
+        }
+        .lp-block {
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 12px; overflow: hidden;
+            backdrop-filter: blur(8px);
+        }
+        .lp-title {
+            font-size: 0.78rem; font-weight: 700; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 0.08em;
+            padding: 10px 12px 6px; border-bottom: 1px solid var(--border-color);
+        }
+        /* Step nav items */
+        .snav-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 9px 12px; cursor: pointer; transition: 0.15s;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            font-size: 0.85rem; font-weight: 500; color: var(--text-muted);
+            user-select: none;
+        }
+        .snav-item:last-child { border-bottom: none; }
+        .snav-item:hover { background: rgba(255,255,255,0.06); }
+        .snav-item.snav-active { color: var(--accent); background: rgba(56,189,248,0.08); }
+        .snav-item.snav-done  { color: var(--success); }
+        .snav-item.snav-locked { color: rgba(255,255,255,0.2); cursor: default; }
+        .snav-icon { font-size: 1rem; flex-shrink: 0; }
+        .snav-label { flex: 1; }
+        .snav-st { font-size: 0.75rem; font-weight: 700; flex-shrink: 0; }
+        /* Accordion blocks */
+        .lp-acc-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 12px; cursor: pointer; font-size: 0.85rem; font-weight: 600;
+            color: var(--text-main); transition: 0.15s; gap: 6px;
+        }
+        .lp-acc-header:hover { background: rgba(255,255,255,0.06); }
+        .lp-acc-arrow { font-size: 0.7rem; transition: transform 0.2s; flex-shrink: 0; }
+        .lp-acc-body { display: none; padding: 10px 12px; border-top: 1px solid var(--border-color); font-size: 0.82rem; }
+        .lp-acc-body.open { display: block; }
+        .lp-btn {
+            display: block; width: 100%; text-align: center; padding: 8px 6px;
+            border-radius: 7px; border: none; cursor: pointer; font-size: 0.82rem;
+            font-weight: 700; transition: 0.18s; margin-bottom: 6px;
+        }
+        .lp-btn:last-child { margin-bottom: 0; }
+        .lp-btn-green  { background: rgba(16,185,129,0.2); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.4); }
+        .lp-btn-green:hover  { background: rgba(16,185,129,0.35); }
+        .lp-btn-blue   { background: rgba(56,189,248,0.2); color: #7dd3fc; border: 1px solid rgba(56,189,248,0.4); }
+        .lp-btn-blue:hover   { background: rgba(56,189,248,0.35); }
+        .lp-btn-purple { background: rgba(139,92,246,0.2); color: #c4b5fd; border: 1px solid rgba(139,92,246,0.4); }
+        .lp-btn-purple:hover { background: rgba(139,92,246,0.35); }
+        .lp-btn-orange { background: rgba(249,115,22,0.2); color: #fdba74; border: 1px solid rgba(249,115,22,0.4); }
+        .lp-btn-orange:hover { background: rgba(249,115,22,0.35); }
+
+        /* ダークテーマ強制（ライトモードOS でも常にダーク表示） */
+        html { color-scheme: dark; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>トレサビ管理システム</h1>
+            <p class="subtitle">ステップに沿って選ぶだけで簡単作成</p>
+        </header>
+
+        <!-- 音声アシスタント -->
+        <div class="voice-assistant-card">
+            <button id="globalMicBtn" class="global-mic-btn" title="音声で操作する">🎤</button>
+            <div class="voice-status-container">
+                <span id="voiceStatus">マイクを押して音声で一連の登録が可能！</span>
+                <div class="voice-help">
+                    <small>例：「今日、99、1号ハウス、M、入力」と話すだけで一瞬で登録完了</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-layout">
+        <!-- ── 左パネル ── -->
+        <aside class="left-panel" id="leftPanel">
+            <!-- ステップナビ -->
+            <div class="lp-block">
+                <div class="lp-title">📋 ステップナビ</div>
+                <div class="snav-item snav-active" id="snav1" onclick="navToStep(1)">
+                    <span class="snav-icon">①</span><span class="snav-label">日付選択</span><span class="snav-st" id="snavSt1">○</span>
+                </div>
+                <div class="snav-item snav-locked" id="snav2" onclick="navToStep(2)">
+                    <span class="snav-icon">②</span><span class="snav-label">生産者</span><span class="snav-st" id="snavSt2">🔒</span>
+                </div>
+                <div class="snav-item snav-locked" id="snav3" onclick="navToStep(3)">
+                    <span class="snav-icon">③</span><span class="snav-label">ハウス</span><span class="snav-st" id="snavSt3">🔒</span>
+                </div>
+                <div class="snav-item snav-locked" id="snav4" onclick="navToStep(4)">
+                    <span class="snav-icon">④</span><span class="snav-label">規格サイズ</span><span class="snav-st" id="snavSt4">🔒</span>
+                </div>
+                <div class="snav-item snav-locked" id="snav5" onclick="navToStep(5)">
+                    <span class="snav-icon">⑤</span><span class="snav-label">確認・登録</span><span class="snav-st" id="snavSt5">🔒</span>
+                </div>
+                <div class="snav-item snav-active" id="snav6" onclick="navToStep(6)">
+                    <span class="snav-icon">⑥</span><span class="snav-label">履歴一覧</span><span class="snav-st" id="snavSt6">↓</span>
+                </div>
+            </div>
+
+            <!-- 高度検索 -->
+            <div class="lp-block">
+                <div class="lp-acc-header" onclick="toggleLpAcc('lpSearch')">
+                    <span>🔍 高度検索</span><span class="lp-acc-arrow" id="lpSearch-arrow">▶</span>
+                </div>
+                <div class="lp-acc-body" id="lpSearch">
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:5px;">コード・生産者・ハウスなど</div>
+                    <div style="position:relative;">
+                        <input type="text" id="lpSearchInput" placeholder="フリー検索…"
+                            style="width:100%; box-sizing:border-box; padding:6px 28px 6px 8px; border-radius:6px; background:rgba(255,255,255,0.1); color:white; border:1px solid var(--border-color); font-size:0.82rem; outline:none;"
+                            oninput="applyLpSearch(this.value)">
+                        <span onclick="document.getElementById('lpSearchInput').value=''; applyLpSearch('')"
+                            style="position:absolute; right:6px; top:50%; transform:translateY(-50%); color:var(--text-muted); cursor:pointer; font-size:0.9rem; line-height:1; user-select:none;">✕</span>
+                    </div>
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin:8px 0 4px;">規格で絞り込み</div>
+                    <select id="lpSpecFilter" style="width:100%; box-sizing:border-box; padding:5px 6px; border-radius:6px; background:rgba(255,255,255,0.1); color:white; border:1px solid var(--border-color); font-size:0.82rem; cursor:pointer;"
+                        onchange="syncLpSpec(this.value)">
+                        <option value="ALL">すべて</option>
+                        <option value="M">M</option>
+                        <option value="L">L</option>
+                        <option value="3P">3P</option>
+                        <option value="5P">5P</option>
+                        <option value="レギュラー">レギュラー</option>
+                        <option value="○品">○品</option>
+                        <option value="なし">なし</option>
+                    </select>
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin:8px 0 4px;">ステータス絞り込み</div>
+                    <select id="lpStatusFilter" style="width:100%; box-sizing:border-box; padding:5px 6px; border-radius:6px; background:rgba(255,255,255,0.1); color:white; border:1px solid var(--border-color); font-size:0.82rem; cursor:pointer;"
+                        onchange="syncLpStatus(this.value)">
+                        <option value="ALL">すべて</option>
+                        <option value="入庫">入庫のみ</option>
+                        <option value="出庫">出庫済のみ</option>
+                    </select>
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin:8px 0 4px;">規格別一括チェック</div>
+                    <select id="lpBulkSpec" style="width:100%; box-sizing:border-box; padding:5px 6px; border-radius:6px; background:rgba(171,71,188,0.4); color:white; border:1px solid rgba(171,71,188,0.7); font-size:0.82rem; font-weight:bold; cursor:pointer;"
+                        onchange="applyLpBulkSpec(this.value)">
+                        <option value="">▼ 規格別一括選択</option>
+                        <option value="3P">3P のみ</option>
+                        <option value="5P">5P のみ</option>
+                        <option value="レギュラー">レギュラー のみ</option>
+                        <option value="○品">○品 のみ</option>
+                        <option value="L">L のみ</option>
+                        <option value="M">M のみ</option>
+                        <option value="なし">規格なし のみ</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- カメラ読み取り -->
+            <div class="lp-block">
+                <div class="lp-acc-header" onclick="toggleLpAcc('lpCamera')">
+                    <span>📷 カメラ読取</span><span class="lp-acc-arrow" id="lpCamera-arrow">▶</span>
+                </div>
+                <div class="lp-acc-body" id="lpCamera">
+                    <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:8px; line-height:1.4;">コードラベルを撮影してOCRで自動認識します</div>
+                    <button class="lp-btn lp-btn-blue" onclick="startOcrScanner()">📸 カメラ起動</button>
+                </div>
+            </div>
+
+            <!-- Drive保存 -->
+            <div class="lp-block">
+                <div class="lp-acc-header" onclick="toggleLpAcc('lpDrive')">
+                    <span>📁 Drive保存</span><span class="lp-acc-arrow" id="lpDrive-arrow">▶</span>
+                </div>
+                <div class="lp-acc-body" id="lpDrive">
+                    <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:8px; line-height:1.4;">Google Driveと同期・バックアップします</div>
+                    <button class="lp-btn lp-btn-green" onclick="syncCloud()">🔄 クラウド同期</button>
+                    <button class="lp-btn lp-btn-purple" onclick="exportXLSX()">📊 XLSX出力</button>
+                </div>
+            </div>
+
+            <!-- 印刷ビュー -->
+            <div class="lp-block">
+                <div class="lp-acc-header" onclick="toggleLpAcc('lpPrint')">
+                    <span>🖨️ 印刷ビュー</span><span class="lp-acc-arrow" id="lpPrint-arrow">▶</span>
+                </div>
+                <div class="lp-acc-body" id="lpPrint">
+                    <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:8px; line-height:1.4;">現在表示中の履歴データを印刷します</div>
+                    <button class="lp-btn lp-btn-orange" onclick="openPrintView()">🖨️ 印刷プレビュー</button>
+                    <button class="lp-btn lp-btn-blue" onclick="window.print()">📄 このページを印刷</button>
+                </div>
+            </div>
+        </aside>
+
+        <main>
+            <!-- ⚡️ ステップ1: カレンダーエリア -->
+            <section class="card" id="step1">
+                <div class="calendar-header">
+                    <h2><button class="step-mic-btn" onclick="toggleMic()" title="音声入力">🎤</button>ステップ①：対象の日付を選ぶ</h2>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <button id="todayBtn" style="background:rgba(245,158,11,0.2); color:var(--warning); border:1px solid rgba(245,158,11,0.5); padding:5px 12px; border-radius:16px; cursor:pointer; font-size:0.85rem; font-weight:bold;" title="今日の日付を選択">今日</button>
+                        <div class="month-controls">
+                            <button id="prevMonthBtn" class="btn-icon" title="先月へ">&lt;</button>
+                            <h3 id="currentMonthLabel">2026年 3月</h3>
+                            <button id="nextMonthBtn" class="btn-icon" title="翌月へ（更新）">&gt;</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="calendar-grid">
+                    <div class="day-name">日(1)</div><div class="day-name">月(2)</div><div class="day-name">火(3)</div>
+                    <div class="day-name">水(4)</div><div class="day-name">木(5)</div><div class="day-name">金(6)</div>
+                    <div class="day-name">土(7)</div>
+                    <div id="calendarDays" class="calendar-days"></div>
+                </div>
+            </section>
+
+            <!-- ⚡️ ステップ2: 生産者コードエリア (初期非表示) -->
+            <section class="card step-hidden" id="step2">
+                <h2><button class="step-mic-btn" onclick="toggleMic()" title="音声入力">🎤</button>ステップ②：生産者コードを選ぶ</h2>
+                <div class="dest-grid" id="producerGrid"></div>
+            </section>
+
+            <!-- ⚡️ ステップ3: ハウス選択エリア (初期非表示) -->
+            <section class="card step-hidden" id="step3">
+                <h2><button class="step-mic-btn" onclick="toggleMic()" title="音声入力">🎤</button>ステップ③：ハウスを選ぶ</h2>
+                <div style="font-size: 0.95rem; color: #ffeb3b; text-align: center; margin-top: -10px; margin-bottom: 20px; font-weight: bold; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px;">
+                    ※音声入力時は「ハウスコード〇」とお話しください
+                </div>
+                <div class="house-grid" id="houseGrid"></div>
+                <div class="selected-houses-display">
+                    現在選択中: <span id="selectedHousesLabel" class="highlight">なし</span>
+                </div>
+            </section>
+
+            <!-- ⚡️ ステップ4: 規格エリア (初期非表示) -->
+            <section class="card step-hidden" id="step4">
+                <h2><button class="step-mic-btn" onclick="toggleMic()" title="音声入力">🎤</button>ステップ④：規格（サイズ）を選ぶ</h2>
+                <div class="spec-grid" id="specGrid"></div>
+            </section>
+
+            <!-- ⚡️ ステップ5: 生成と登録 (初期非表示) -->
+            <section class="card step-hidden" id="step5">
+                <h2><button class="step-mic-btn" onclick="toggleMic()" title="音声入力">🎤</button>ステップ⑤：確認して登録する</h2>
+                <div style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 20px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;">
+                    <div>📅 対象日: <span class="highlight" id="confirmTargetDate">未設定</span></div>
+                    <div style="margin-top:5px;">👩‍🌾 生産者: <span class="highlight" id="confirmProducer">未設定</span></div>
+                    <div style="margin-top:5px;">🏠 ハウス: <span class="highlight" id="confirmHouse">未設定</span></div>
+                    <div style="margin-top:5px;">📏 規格等: <span class="highlight" id="confirmSpec">未設定</span></div>
+                </div>
+
+                <div class="code-display" id="generatedCodeDisplay">
+                    <span id="generatedCode">--</span>
+                </div>
+
+                <div class="memo-container">
+                    <input type="text" id="memoInput" placeholder="ログ・メモがあれば入力" />
+                </div>
+
+                <button id="saveCodeBtn" class="btn-primary" disabled>この内容で登録する（入力）</button>
+            </section>
+
+            <!-- 履歴一覧 ＆ 本日サマリー -->
+            <section class="card history-section" id="historySection">
+                <h2>本日作成数量の規格別一覧</h2>
+                <div id="todaySummaryLabel" style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 5px;"></div>
+                <div class="summary-grid" id="todaySummaryGrid">
+                    <!-- サマリー自動生成 -->
+                </div>
+                
+                <!-- ★ 日付別集計カレンダー -->
+                <div style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+                    <div class="agg-section-header">
+                        <h2 style="margin:0; border:none; padding:0;">📅 日付別集計カレンダー</h2>
+                        <div class="agg-month-controls">
+                            <button id="aggPrevBtn" class="btn-icon">&lt;</button>
+                            <h3 id="aggMonthLabel"></h3>
+                            <button id="aggNextBtn" class="btn-icon">&gt;</button>
+                        </div>
+                    </div>
+                    <div class="agg-calendar-grid" id="aggCalendarGrid">
+                        <div class="agg-day-name">日</div><div class="agg-day-name">月</div><div class="agg-day-name">火</div>
+                        <div class="agg-day-name">水</div><div class="agg-day-name">木</div><div class="agg-day-name">金</div>
+                        <div class="agg-day-name">土</div>
+                        <div id="aggCalendarDays" style="display:contents;"></div>
+                    </div>
+                    <div style="margin-top:8px; font-size:0.78rem; color:var(--text-muted); display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <span>■ 件数:</span>
+                        <span style="display:inline-flex;align-items:center;gap:3px;"><span style="width:12px;height:12px;border-radius:3px;display:inline-block;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);"></span>1〜3件</span>
+                        <span style="display:inline-flex;align-items:center;gap:3px;"><span style="width:12px;height:12px;border-radius:3px;display:inline-block;background:rgba(99,102,241,0.22);border:1px solid rgba(99,102,241,0.45);"></span>4〜7件</span>
+                        <span style="display:inline-flex;align-items:center;gap:3px;"><span style="width:12px;height:12px;border-radius:3px;display:inline-block;background:rgba(99,102,241,0.38);border:1px solid rgba(99,102,241,0.7);"></span>8件以上</span>
+                    </div>
+                    <div id="aggDayDetail" style="display:none;"></div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; flex-wrap: wrap; gap: 10px;">
+                    <h2 style="margin: 0; border: none; padding: 0;">保存された履歴（入出庫管理）</h2>
+                    <div style="display: flex; align-items: flex-start; flex-direction: column; gap: 10px; width: 100%;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                <button id="syncBtn" style="background: rgba(16, 185, 129, 0.2); color: var(--success); border: 1px solid var(--success); font-weight: bold; padding: 8px 15px; border-radius: 8px; cursor: pointer; transition: 0.2s;" onclick="syncCloud()">🔄 クラウド同期</button>
+                                <button onclick="exportXLSX()" style="background: rgba(99,102,241,0.2); color: var(--primary-color); border: 1px solid var(--primary-color); font-weight: bold; padding: 8px 15px; border-radius: 8px; cursor: pointer; transition: 0.2s;">📊 XLSX出力</button>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="font-size: 0.75rem; color: var(--text-muted);">👤 端末:</span>
+                                <input type="text" id="authorNameInput" placeholder="入力者名" style="padding: 6px; border-radius: 6px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.1); color: white; width: 90px; font-size: 0.85rem;" onchange="saveAuthorName()">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 2rem; margin-bottom: 2rem;">
+                    <h2 id="monthSummaryTitle">📊 入出庫 ＆ 在庫表（選果場内）</h2>
+                    <div style="overflow-x: auto; margin-top: 10px;">
+                        <table class="history-table" style="min-width: 500px; font-size: 0.9rem;">
+                            <thead>
+                                <tr>
+                                    <th rowspan="2" style="background: rgba(0,0,0,0.5); width: 15%;">規格</th>
+                                    <th colspan="2" style="background: rgba(56, 189, 248, 0.2); text-align: center;">本日</th>
+                                    <th colspan="2" style="background: rgba(245, 158, 11, 0.2); text-align: center;">当月累計</th>
+                                    <th rowspan="2" style="background: rgba(16,185,129,0.2); color: var(--success); font-weight: bold; text-align: center;">現在庫数<br><span style="font-size:0.7rem; font-weight:normal;">(選果場)</span></th>
+                                </tr>
+                                <tr>
+                                    <th style="background: rgba(56, 189, 248, 0.1); text-align: center;">入庫</th>
+                                    <th style="background: rgba(56, 189, 248, 0.1); text-align: center;">出庫</th>
+                                    <th style="background: rgba(245, 158, 11, 0.1); text-align: center;">入庫</th>
+                                    <th style="background: rgba(245, 158, 11, 0.1); text-align: center;">出庫</th>
+                                </tr>
+                            </thead>
+                            <tbody id="monthSummaryBody">
+                                <!-- JSで描画 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- フィルター機能 -->
+                <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 10px; margin-bottom: 5px; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.9rem; color: var(--text-muted);">規格選択:</span>
+                        <select id="filterSpec" style="padding: 6px; border-radius: 6px; background: rgba(255,255,255,0.1); color: white; border: 1px solid var(--border-color); cursor: pointer;" onchange="renderHistoryAndSummary()">
+                            <option value="ALL">すべて表示</option>
+                            <option value="M">M</option>
+                            <option value="L">L</option>
+                            <option value="3P">3P</option>
+                            <option value="5P">5P</option>
+                            <option value="レギュラー">レギュラー</option>
+                            <option value="○品">○品</option>
+                            <option value="なし">なし</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.9rem; color: var(--text-muted);">ステータス:</span>
+                        <select id="filterStatus" style="padding: 6px; border-radius: 6px; background: rgba(255,255,255,0.1); color: white; border: 1px solid var(--border-color); cursor: pointer;" onchange="renderHistoryAndSummary()">
+                            <option value="ALL">すべて表示</option>
+                            <option value="入庫">入庫のみ</option>
+                            <option value="出庫">出庫済のみ</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.9rem; color: var(--text-muted);">出荷先:</span>
+                        <select id="filterDest" style="padding: 6px; border-radius: 6px; background: rgba(255,255,255,0.1); color: white; border: 1px solid var(--border-color); cursor: pointer;" onchange="renderHistoryAndSummary()">
+                            <option value="ALL">すべて表示</option>
+                            <option value="未定">未定</option>
+                            <option value="三和食品">三和食品</option>
+                            <option value="岸本冷蔵">岸本冷蔵</option>
+                            <option value="サニー">サニー</option>
+                            <option value="SRS">SRS</option>
+                            <option value="ヨシケイ">ヨシケイ</option>
+                            <option value="高果">高果</option>
+                            <option value="マルナカ・フジ">マルナカ・フジ</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.9rem; color: var(--text-muted);">並び順:</span>
+                        <select id="filterSort" style="padding: 6px; border-radius: 6px; background: rgba(255,255,255,0.1); color: white; border: 1px solid var(--border-color); cursor: pointer;" onchange="renderHistoryAndSummary()">
+                            <option value="desc">新しい順</option>
+                            <option value="asc">古い順</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap;">
+                        <button id="selectAllFilteredBtn" onclick="selectAllFiltered()" style="padding: 6px 14px; border-radius: 6px; background: rgba(99,102,241,0.25); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.5); cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: 0.2s; white-space: nowrap;">☑ すべて選択</button>
+                        <button onclick="deselectAllFiltered()" style="padding: 6px 14px; border-radius: 6px; background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: 0.2s; white-space: nowrap;">☐ 選択解除</button>
+                        <!-- 選択時に展開する一括出荷エリア -->
+                        <div id="quickBulkShipArea" style="display:none; align-items:center; gap:6px; flex-wrap:wrap; background:rgba(16,185,129,0.12); padding:6px 10px; border-radius:8px; border:1px solid rgba(16,185,129,0.4);">
+                            <span style="font-size:0.82rem; color:#6ee7b7; font-weight:bold; white-space:nowrap;">✅ <span id="quickBulkCount">0</span>件選択</span>
+                            <select id="quickBulkDest" style="padding:5px 8px; border-radius:6px; background:rgba(0,0,0,0.4); color:white; border:1px solid rgba(16,185,129,0.5); font-size:0.85rem; cursor:pointer; min-width:110px;">
+                                <option value="">▼ 一括出荷先</option>
+                                <option value="未定">未定</option>
+                                <option value="三和食品">三和食品</option>
+                                <option value="岸本冷蔵">岸本冷蔵</option>
+                                <option value="サニー">サニー</option>
+                                <option value="SRS">SRS</option>
+                                <option value="ヨシケイ">ヨシケイ</option>
+                                <option value="高果">高果</option>
+                                <option value="マルナカ・フジ">マルナカ・フジ</option>
+                            </select>
+                            <button onclick="bulkShukkoQuick('today')" style="padding:5px 12px; border-radius:6px; background:#10b981; color:white; border:none; font-size:0.85rem; font-weight:bold; cursor:pointer; white-space:nowrap;">🚀 一括当日出庫</button>
+                            <button onclick="bulkShukkoQuick('calendar')" style="padding:5px 12px; border-radius:6px; background:#38bdf8; color:white; border:none; font-size:0.85rem; font-weight:bold; cursor:pointer; white-space:nowrap;">📅 一括予定出庫</button>
+                            <div id="quickBulkCalArea" style="display:none; align-items:center; gap:6px; width:100%; margin-top:4px;">
+                                <span style="font-size:0.82rem; color:var(--text-muted); white-space:nowrap;">📆 予定日:</span>
+                                <input type="date" id="quickBulkDate" style="padding:5px; border-radius:4px; background:rgba(255,255,255,0.1); color:white; border:1px solid var(--border-color); flex:1; min-width:120px;">
+                                <button onclick="bulkShukkoQuick('applyDate')" style="padding:5px 12px; border-radius:6px; background:#38bdf8; color:white; border:none; font-size:0.85rem; font-weight:bold; cursor:pointer;">適用</button>
+                            </div>
+                            <div id="quickBulkRevertBtn" style="display:none;">
+                                <button onclick="bulkRevertToNyuko()" style="padding:5px 12px; border-radius:6px; background:rgba(245,158,11,0.25); color:#fcd34d; border:1px solid rgba(245,158,11,0.4); font-size:0.85rem; font-weight:bold; cursor:pointer; white-space:nowrap;">📦 入庫に戻す</button>
+                            </div>
+                            <button onclick="deleteSelected()" style="padding:5px 10px; border-radius:6px; background:rgba(239,68,68,0.2); color:#fca5a5; border:1px solid rgba(239,68,68,0.4); font-size:0.82rem; font-weight:bold; cursor:pointer; white-space:nowrap;">🗑 削除</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 1.5rem;" class="swipe-tabs">
+                    <div id="tabNyuko" class="swipe-tab tab-active-nyuko" onclick="window.scrollToTab('nyuko')">📦 入庫・出庫予定</div>
+                    <div id="tabShukko" class="swipe-tab tab-inactive" onclick="window.scrollToTab('shukko')">🚚 出庫済</div>
+                </div>
+
+                <!-- 既存 JS との互換性のための隠し要素 -->
+                <div id="bulkActions" style="display:none;">
+                    <select id="quickSelectSpec" style="display:none;"></select>
+                    <select id="bulkDestSelect" style="display:none;"><option value="">▼ 一括出荷先</option></select>
+                    <input type="date" id="bulkDateSelect" style="display:none;">
+                    <div id="bulkActionsControls" style="display:none;"></div>
+                    <div id="bulkNyukoControls" style="display:none;"></div>
+                    <div id="bulkShukkoControls" style="display:none;"></div>
+                    <div id="bulkCalendarArea" style="display:none;"></div>
+                    <span id="bulkCountBadge" style="display:none;"><span id="bulkCount">0</span></span>
+                </div>
+
+                <div id="swipeContainer" class="swipe-wrapper">
+                    <!-- 入庫ペイン -->
+                    <div id="paneNyuko" class="swipe-pane pane-nyuko-active">
+                        <div class="table-responsive">
+                            <table id="nyukoTable" style="margin-bottom: 0;">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40px; text-align: center;">
+                                            <label style="display:flex; flex-direction:column; align-items:center; gap:2px; font-size:0.65rem; color:var(--text-muted); cursor:pointer; margin:0;">
+                                                <input type="checkbox" id="selectAllCheckbox1" onchange="toggleSelectAll(this)" title="すべて選択" style="transform: scale(1.1); margin-bottom: 2px;">
+                                                <span style="white-space:nowrap;">すべて<br>選択</span>
+                                            </label>
+                                        </th>
+                                        <th>履歴詳細データ</th>
+                                        <th style="width: 140px;">ステータス・操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="nyukoBody">
+                                    <!-- JSで描画 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- 出庫ペイン -->
+                    <div id="paneShukko" class="swipe-pane pane-hidden">
+                        <div class="table-responsive">
+                            <table id="shukkoTable" style="margin-bottom: 0;">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40px; text-align: center;">
+                                            <label style="display:flex; flex-direction:column; align-items:center; gap:2px; font-size:0.65rem; color:var(--text-muted); cursor:pointer; margin:0;">
+                                                <input type="checkbox" id="selectAllCheckbox2" onchange="toggleSelectAll(this)" title="すべて選択" style="transform: scale(1.1); margin-bottom: 2px;">
+                                                <span style="white-space:nowrap;">すべて<br>選択</span>
+                                            </label>
+                                        </th>
+                                        <th>履歴詳細データ</th>
+                                        <th style="width: 140px;">ステータス・操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="shukkoBody">
+                                    <!-- JSで描画 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 1rem; color: var(--text-muted); font-size: 0.85rem; text-align: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+                    ※ リスト部分を横にスワイプ（スクロール）すると入庫と出庫を切り替えられます<br>
+                    ※ クラウド同期はGoogle Apps Script経由で記録されます
+                </div>
+            </section>
+        </main>
+        </div><!-- /.main-layout -->
+    </div>
+
+    <script>
+        // Google Apps ScriptのWebアプリURL（必ず自分の環境に合わせて変更してください）
+        const GOOGLE_APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxswTvmo6zZvvaw6nbRJOWaxuaWwzoyxpjX4yhPV8QLngcC9pKb7_6oDN_qWJg32wFR/exec"; 
+
+        const producerCodes = ['99', '98', '97', '96', '95'];
+
+        const housesData = [
+            {id: 1, name: '1番(1号)', regex: /1|１|一|いち\b|1号|1番/},
+            {id: 2, name: '2番(2号)', regex: /2|２|二\b|に\b|2号|2番/},
+            {id: 3, name: '3番(3号)', regex: /3|３|三|さん\b|3号|3番/},
+            {id: 4, name: '4番(4号)', regex: /4|４|四|よん|し\b|4号|4番/},
+            {id: 5, name: '5番(5連)', regex: /5|５|五|ご\b|5号|5番|5連/},
+            {id: 6, name: '6番(2連)', regex: /6|６|六|ろく|6号|6番|2連/},
+            {id: 7, name: '7番(軒高)', regex: /7|７|七|なな|しち|7号|7番|軒高/},
+            {id: 8, name: '8番(岡)',   regex: /8|８|八|はち|8号|8番|岡/},
+            {id: 9, name: '9番(坂)',   regex: /9|９|九|きゅう|く\b|9号|9番|坂/},
+            {id: 10, name: '10番(5号)', regex: /10|１０|十|じゅう|10号|10番/} 
+        ];
+
+        // 履歴欄の出庫用セレクトボックス用、および集計用のリスト
+        const destinations = ['三和食品', '岸本冷蔵', 'サニー', 'SRS', 'ヨシケイ', '高果', 'マルナカ・フジ', '出庫時選択'];
+        const specs = ['M', 'L', '3P', '5P', 'レギュラー', '○品', 'なし'];
+
+        let selectedDateInfo = null;
+        let selectedProducerStr = localStorage.getItem('trace_last_producer') || null;
+        let selectedHouses = [];
+        let selectedSpec = null;
+        
+        let currentMonthDate = new Date();
+        let histories = JSON.parse(localStorage.getItem('trace_history_v6')) || [];
+        
+        if (histories.length === 0) {
+            histories = JSON.parse(localStorage.getItem('trace_history_v5')) || [];
+            localStorage.setItem('trace_history_v6', JSON.stringify(histories));
+        }
+
+        window.scrollToTab = function(pane) {
+            const pN = document.getElementById('paneNyuko');
+            const pS = document.getElementById('paneShukko');
+            const tabN = document.getElementById('tabNyuko');
+            const tabS = document.getElementById('tabShukko');
+            if (pane === 'nyuko') {
+                if (pN) pN.className = 'swipe-pane pane-nyuko-active';
+                if (pS) pS.className = 'swipe-pane pane-hidden';
+                if (tabN) tabN.className = 'swipe-tab tab-active-nyuko';
+                if (tabS) tabS.className = 'swipe-tab tab-inactive';
+            } else {
+                if (pN) pN.className = 'swipe-pane pane-hidden';
+                if (pS) pS.className = 'swipe-pane pane-shukko-active';
+                if (tabN) tabN.className = 'swipe-tab tab-inactive';
+                if (tabS) tabS.className = 'swipe-tab tab-active-shukko';
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const authorInput = document.getElementById('authorNameInput');
+            if (authorInput) authorInput.value = authorName;
+
+            const swiper = document.getElementById('swipeContainer');
+            if (swiper) {
+                let s_startX = 0, s_startY = 0;
+                swiper.addEventListener('touchstart', e => {
+                    s_startX = e.changedTouches[0].screenX;
+                    s_startY = e.changedTouches[0].screenY;
+                }, {passive: true});
+                swiper.addEventListener('touchend', e => {
+                    let dx = e.changedTouches[0].screenX - s_startX;
+                    let dy = e.changedTouches[0].screenY - s_startY;
+                    if (Math.abs(dx) > 50 && Math.abs(dy) < 40) {
+                        let tbl = e.target.closest('.table-responsive');
+                        if (tbl) {
+                            let maxScroll = tbl.scrollWidth - tbl.clientWidth;
+                            if (dx < 0 && tbl.scrollLeft < maxScroll - 5) return;
+                            if (dx > 0 && tbl.scrollLeft > 5) return;
+                        }
+                        let tabN = document.getElementById('tabNyuko');
+                        if (tabN) {
+                            let isNyuko = tabN.classList.contains('tab-active-nyuko');
+                            if (dx < 0 && isNyuko) window.scrollToTab('shukko');
+                            else if (dx > 0 && !isNyuko) window.scrollToTab('nyuko');
+                        }
+                    }
+                }, {passive: true});
+            }
+
+            initProducers();
+            initHouses();
+            initSpecs();
+            renderCalendar(currentMonthDate);
+            renderHistoryAndSummary();
+            setupVoiceAssistant();
+
+            // 初回表示時に自動でクラウド同期を試みる
+            syncCloud();
+
+            document.getElementById('prevMonthBtn').addEventListener('click', () => {
+                currentMonthDate.setMonth(currentMonthDate.getMonth() - 1);
+                renderCalendar(currentMonthDate);
+            });
+
+            document.getElementById('nextMonthBtn').addEventListener('click', () => {
+                currentMonthDate.setMonth(currentMonthDate.getMonth() + 1);
+                renderCalendar(currentMonthDate);
+            });
+
+            document.getElementById('todayBtn').addEventListener('click', () => {
+                const now = new Date();
+                currentMonthDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                renderCalendar(currentMonthDate);
+                setTimeout(() => {
+                    const dayEl = document.querySelector(`.calendar-day[data-day="${now.getDate()}"]`);
+                    if (dayEl) dayEl.click();
+                }, 50);
+            });
+
+            // 集計カレンダー初期化
+            aggCurrentMonth = new Date();
+            renderAggCalendar(aggCurrentMonth);
+            document.getElementById('aggPrevBtn').addEventListener('click', () => {
+                aggCurrentMonth.setMonth(aggCurrentMonth.getMonth() - 1);
+                renderAggCalendar(aggCurrentMonth);
+            });
+            document.getElementById('aggNextBtn').addEventListener('click', () => {
+                aggCurrentMonth.setMonth(aggCurrentMonth.getMonth() + 1);
+                renderAggCalendar(aggCurrentMonth);
+            });
+
+            document.getElementById('saveCodeBtn').addEventListener('click', saveCode);
+        });
+
+        // ==========================
+        // UIフローの制御 (ステップ進行)
+        // ==========================
+        function checkFlow() {
+            let newlyRevealed = null;
+            if (selectedDateInfo) { 
+                if (document.getElementById('step2').classList.contains('step-hidden')) newlyRevealed = 'step2';
+                showStep('step2'); 
+            } else { hideStepsFrom(2); return; }
+            
+            if (selectedProducerStr) {
+                if (selectedProducerStr !== '99') {
+                    // 99以外はハウス選択スキップ
+                    selectedHouses = [];
+                    let s3 = document.getElementById('step3');
+                    if (s3) { s3.classList.add('step-hidden'); s3.classList.remove('step-visible'); }
+                } else {
+                    if (document.getElementById('step3').classList.contains('step-hidden')) newlyRevealed = newlyRevealed || 'step3';
+                    showStep('step3');
+                }
+            } else { 
+                hideStepsFrom(3); return; 
+            }
+            
+            // 99の場合はハウス必須、それ以外はハウス不要で次に進める
+            if (selectedProducerStr === '99' && selectedHouses.length === 0) {
+                hideStepsFrom(4); return;
+            } else {
+                if (document.getElementById('step4').classList.contains('step-hidden')) newlyRevealed = newlyRevealed || 'step4';
+                showStep('step4'); // 規格選択へ
+            }
+            
+            if (selectedSpec) {
+                showStep('step5');
+                updateConfirmPanel();
+            } else {
+                hideStepsFrom(5); return;
+            }
+
+            // GUI操作時のガタツキをなくすため、ここでの自動スクロールは削除（音声側で制御）
+            updateStepNavState();
+        }
+
+        function showStep(stepId) {
+            const el = document.getElementById(stepId);
+            if (el && el.classList.contains('step-hidden')) {
+                el.classList.remove('step-hidden');
+                el.classList.add('step-visible');
+            }
+        }
+
+        // 強制的に次のステップへ見やすくスクロールする関数
+        function scrollToStep(stepId) {
+            setTimeout(() => {
+                const el = document.getElementById(stepId);
+                if (el && !el.classList.contains('step-hidden')) {
+                    const y = el.getBoundingClientRect().top + window.scrollY - 20;
+                    window.scrollTo({top: y, behavior: 'smooth'});
+                }
+            }, 100);
+        }
+
+        // ── 左パネル：ステップナビのクリック ──
+        function navToStep(n) {
+            if (n === 6) {
+                const hs = document.getElementById('historySection');
+                if (hs) { hs.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+                return;
+            }
+            const stepId = 'step' + n;
+            const el = document.getElementById(stepId);
+            if (!el) return;
+            if (el.classList.contains('step-hidden')) {
+                showToast('前のステップを完了してから進めてください', 2500);
+            } else {
+                const y = el.getBoundingClientRect().top + window.scrollY - 20;
+                window.scrollTo({ top: y, behavior: 'smooth' });
+            }
+        }
+
+        // ── 左パネル：アコーディオン開閉 ──
+        function toggleLpAcc(id) {
+            const body  = document.getElementById(id);
+            const arrow = document.getElementById(id + '-arrow');
+            if (!body) return;
+            const isOpen = body.classList.toggle('open');
+            if (arrow) arrow.style.transform = isOpen ? 'rotate(90deg)' : '';
+        }
+
+        // ── 左パネル：高度検索 ──
+        let lpSearchQuery = '';
+
+        window.applyLpSearch = function(val) {
+            lpSearchQuery = (val || '').trim().toLowerCase();
+            renderHistoryAndSummary();
+        };
+
+        window.syncLpSpec = function(val) {
+            const fs = document.getElementById('filterSpec');
+            if (fs) { fs.value = val; }
+            renderHistoryAndSummary();
+        };
+
+        window.syncLpStatus = function(val) {
+            const fst = document.getElementById('filterStatus');
+            if (fst) { fst.value = val; }
+            renderHistoryAndSummary();
+        };
+
+        window.applyLpBulkSpec = function(val) {
+            const sel = document.getElementById('lpBulkSpec');
+            if (!val) return;
+            const activePane = document.querySelector('.swipe-pane:not(.pane-hidden)');
+            if (activePane) {
+                activePane.querySelectorAll('.history-checkbox').forEach(cb => {
+                    const hk = histories.find(h => String(h.id) === cb.value);
+                    if (hk) cb.checked = (hk.spec === val);
+                });
+            }
+            if (sel) sel.value = '';
+            updateDeleteSelectedBtn();
+        };
+
+        // ── 左パネル：ステップナビ状態更新 (checkFlow から呼ぶ) ──
+        function updateStepNavState() {
+            const step1Done = !!selectedDateInfo;
+            const step2Done = !!selectedProducerStr;
+            const step3Done = selectedProducerStr !== '99' || selectedHouses.length > 0;
+            const step4Done = !!selectedSpec;
+            const step5Done = false; // 登録後にチェックマーク（saveCode側でセット）
+
+            function setNav(n, done, active, locked) {
+                const item = document.getElementById('snav' + n);
+                const st   = document.getElementById('snavSt' + n);
+                if (!item) return;
+                item.classList.remove('snav-done', 'snav-active', 'snav-locked');
+                if (done)   { item.classList.add('snav-done');   if (st) st.textContent = '✓'; }
+                else if (active) { item.classList.add('snav-active'); if (st) st.textContent = '○'; }
+                else        { item.classList.add('snav-locked'); if (st) st.textContent = '🔒'; }
+            }
+
+            setNav(1, step1Done, !step1Done, false);
+            setNav(2, step2Done, step1Done && !step2Done, !step1Done);
+            const step3Active  = step2Done && !step3Done && selectedProducerStr === '99';
+            const step3Locked  = !step2Done;
+            const step3Skipped = step2Done && selectedProducerStr !== '99';
+            if (step3Skipped) {
+                const item = document.getElementById('snav3');
+                const st   = document.getElementById('snavSt3');
+                if (item) { item.classList.remove('snav-done','snav-active','snav-locked'); item.classList.add('snav-done'); }
+                if (st) st.textContent = '–';
+            } else {
+                setNav(3, step3Done && step2Done && selectedProducerStr === '99', step3Active, step3Locked);
+            }
+            setNav(4, step4Done, step3Done && step2Done && !step4Done, !step3Done || !step2Done);
+            setNav(5, false, step4Done, !step4Done);
+        }
+
+        // ── 簡易トースト通知 ──
+        function showToast(msg, duration) {
+            let t = document.getElementById('lp-toast');
+            if (!t) {
+                t = document.createElement('div');
+                t.id = 'lp-toast';
+                t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;padding:10px 18px;border-radius:20px;font-size:0.9rem;z-index:99999;pointer-events:none;transition:opacity 0.3s;white-space:nowrap;';
+                document.body.appendChild(t);
+            }
+            t.textContent = msg;
+            t.style.opacity = '1';
+            clearTimeout(t._timer);
+            t._timer = setTimeout(() => { t.style.opacity = '0'; }, duration || 2000);
+        }
+
+        // ── 印刷ビュー ──
+        function openPrintView() {
+            const histories_copy = histories.slice();
+            let rows = histories_copy.map(h => `
+                <tr>
+                    <td>${h.targetDate||''}</td>
+                    <td style="font-family:monospace;font-weight:bold;">${h.code||''}</td>
+                    <td>${h.producer||''}</td>
+                    <td>${h.houses||''}</td>
+                    <td>${h.spec||''}</td>
+                    <td>${h.status||'入庫'}</td>
+                    <td>${h.destination||''}</td>
+                    <td>${h.shippedAt||''}</td>
+                    <td>${h.memo||''}</td>
+                </tr>`).join('');
+            const win = window.open('', '_blank');
+            win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>トレサビ 印刷ビュー</title>
+<style>
+body { font-family: sans-serif; font-size: 11px; margin: 15px; color: #000; }
+h2 { font-size: 14px; margin-bottom: 8px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { border: 1px solid #999; padding: 4px 6px; text-align: left; }
+th { background: #dde; font-weight: bold; }
+tr:nth-child(even) { background: #f5f5f5; }
+@media print { button { display: none; } }
+</style></head><body>
+<h2>トレサビ 入出庫履歴 ― ${new Date().toLocaleDateString('ja-JP')}</h2>
+<button onclick="window.print()" style="margin-bottom:10px;padding:6px 14px;background:#333;color:white;border:none;cursor:pointer;border-radius:4px;">🖨️ 印刷する</button>
+<table>
+<thead><tr><th>対象日</th><th>コード</th><th>生産者</th><th>ハウス</th><th>規格</th><th>状態</th><th>出荷先</th><th>出荷日時</th><th>メモ</th></tr></thead>
+<tbody>${rows}</tbody>
+</table></body></html>`);
+            win.document.close();
+        }
+
+        function hideStepsFrom(stepNum) {
+            for (let i = stepNum; i <= 5; i++) {
+                const el = document.getElementById('step' + i);
+                if (el) {
+                    el.classList.add('step-hidden');
+                    el.classList.remove('step-visible');
+                }
+            }
+        }
+
+        function resetFlow() {
+            // スキップ機能（DateとProducerを保持して連続入力可能にする）
+            selectedHouses = [];
+            selectedSpec = null;
+            
+            document.querySelectorAll('.house-btn').forEach(b => b.classList.remove('selected'));
+            document.querySelectorAll('.spec-btn').forEach(b => b.classList.remove('selected'));
+            document.getElementById('selectedHousesLabel').textContent = 'なし';
+            document.getElementById('memoInput').value = '';
+
+            checkFlow();
+            if (selectedProducerStr === '99') {
+                scrollToStep('step3'); 
+            } else {
+                scrollToStep('step4');
+            }
+        }
+
+        function updateConfirmPanel() {
+            if (!selectedDateInfo || !selectedProducerStr || !selectedSpec) return;
+            if (selectedProducerStr === '99' && selectedHouses.length === 0) return;
+
+            const dateStr = `${selectedDateInfo.year}年${selectedDateInfo.monthBase1}月${selectedDateInfo.date}日`;
+            const housesStr = selectedProducerStr === '99' 
+                ? selectedHouses.map(id => housesData.find(x => x.id === id).name).join(', ') 
+                : '不要（スキップ）';
+            
+            document.getElementById('confirmTargetDate').textContent = dateStr;
+            document.getElementById('confirmProducer').textContent = selectedProducerStr;
+            document.getElementById('confirmHouse').textContent = housesStr;
+            document.getElementById('confirmSpec').textContent = selectedSpec;
+
+            const codeDisplay = document.getElementById('generatedCode');
+            const saveBtn = document.getElementById('saveCodeBtn');
+            const housesCodeStr = selectedProducerStr === '99' ? '-' + selectedHouses.join('_') : '';
+            // 新しいコード形式： 生産者[-ハウス]-週アルファベット-曜日
+            const code = `${selectedProducerStr}${housesCodeStr}-${selectedDateInfo.weekAlpha}-${selectedDateInfo.dayNumber}`;
+            codeDisplay.textContent = code;
+            saveBtn.disabled = false;
+        }
+
+        // ==========================
+        // ボタン一覧の生成
+        // ==========================
+
+        let authorName = localStorage.getItem('trace_author_name') || '';
+        if (!authorName) {
+            authorName = '端末-' + Math.floor(Math.random() * 10000).toString(16).toUpperCase();
+            localStorage.setItem('trace_author_name', authorName);
+        }
+
+        window.saveAuthorName = function() {
+            const input = document.getElementById('authorNameInput');
+            if (input && input.value.trim()) {
+                authorName = input.value.trim();
+                localStorage.setItem('trace_author_name', authorName);
+                renderHistoryAndSummary();
+            }
+        };
+
+        window.translateToGAS = function(entry) {
+            return {
+                'id': entry.id,
+                '識別番号': entry.id || '',
+                '対象日': entry.targetDate || '',
+                '生産者': entry.producer || '',
+                'ハウス名': entry.houses || '',
+                '出荷先': entry.destination || '',
+                '規格': entry.spec || '',
+                'トレサビコード': entry.code || '',
+                'メモ': entry.memo || '',
+                'ステータス': entry.status || '',
+                '作成日': entry.createdDateStr || '',
+                '作成日時': entry.createdAt || '',
+                '出庫日時': entry.shippedAt || '',
+                '入力者': entry.author || '',
+                'updateType': entry.updateType || ''
+            };
+        };
+
+        function initProducers() {
+            const pGrid = document.getElementById('producerGrid');
+            pGrid.innerHTML = '';
+            producerCodes.forEach(p => {
+                const btn = document.createElement('button');
+                btn.className = 'btn-select producer-btn';
+                if (selectedProducerStr === p) btn.classList.add('selected');
+                btn.textContent = p;
+                btn.onclick = () => selectProducer(p, btn);
+                pGrid.appendChild(btn);
+            });
+        }
+
+        function selectProducer(p, btn) {
+            document.querySelectorAll('.producer-btn').forEach(b => b.classList.remove('selected'));
+            if (selectedProducerStr === p) {
+                selectedProducerStr = null;
+                localStorage.removeItem('trace_last_producer');
+            } else {
+                selectedProducerStr = p;
+                localStorage.setItem('trace_last_producer', p);
+                btn.classList.add('selected');
+            }
+            checkFlow();
+            if (selectedProducerStr) {
+                if (selectedProducerStr === '99') scrollToStep('step3'); // ハウス選択へ
+                else scrollToStep('step4'); // ハウス不要なので規格選択へスキップ
+            }
+        }
+
+        function initHouses() {
+            const grid = document.getElementById('houseGrid');
+            grid.innerHTML = '';
+            housesData.forEach(h => {
+                const btn = document.createElement('button');
+                btn.className = 'btn-select house-btn';
+                btn.textContent = `${h.id}. ${h.name}`;
+                btn.onclick = () => toggleHouse(h.id, btn);
+                grid.appendChild(btn);
+            });
+        }
+
+        function toggleHouse(id, btn) {
+            if (selectedHouses.includes(id)) {
+                selectedHouses = selectedHouses.filter(x => x !== id);
+                if(btn) btn.classList.remove('selected');
+            } else {
+                selectedHouses.push(id);
+                if(btn) btn.classList.add('selected');
+                
+                // 新しくハウスを追加した時だけ次にスクロール（複数選択しやすくするための処理）
+                if (selectedHouses.length === 1) {
+                    scrollToStep('step4'); // 規格選択へ
+                }
+            }
+            const label = selectedHouses.length > 0 ? selectedHouses.map(hid => housesData.find(x => x.id === hid).name).join(', ') : 'なし';
+            document.getElementById('selectedHousesLabel').textContent = label;
+            checkFlow();
+        }
+
+        function getSpecColorClass(s) {
+            if (s === 'M') return 'color-spec-m';
+            if (s === 'L') return 'color-spec-l';
+            if (s === '3P') return 'color-spec-3p';
+            if (s === '5P') return 'color-spec-5p';
+            if (s === 'レギュラー') return 'color-spec-reg';
+            if (s === '○品') return 'color-spec-maru';
+            return '';
+        }
+
+        function initSpecs() {
+            const sGrid = document.getElementById('specGrid');
+            sGrid.innerHTML = '';
+            specs.forEach(s => {
+                const btn = document.createElement('button');
+                btn.className = `btn-select spec-btn ${getSpecColorClass(s)}`;
+                btn.textContent = s;
+                btn.onclick = () => selectSpec(s, btn);
+                sGrid.appendChild(btn);
+            });
+        }
+
+        function selectSpec(s, btn) {
+            document.querySelectorAll('.spec-btn').forEach(b => b.classList.remove('selected'));
+            if (selectedSpec === s) {
+                selectedSpec = null;
+            } else {
+                selectedSpec = s;
+                btn.classList.add('selected');
+            }
+            checkFlow();
+            if (selectedSpec) {
+                scrollToStep('step5');
+            }
+        }
+
+        // カレンダー表示部
+        function getOrGenerateAlphabets(year, month, numWeeks) {
+            const key = `trace_alphabets_${year}_${month}`;
+            let stored = localStorage.getItem(key);
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                // 重複チェック: 既存データに重複があれば再生成
+                if (new Set(parsed).size === parsed.length && parsed.length >= numWeeks) return parsed;
+            }
+            // Fisher-Yatesシャッフルで重複なしアルファベットを生成
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split('');
+            for (let i = chars.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [chars[i], chars[j]] = [chars[j], chars[i]];
+            }
+            const alphabets = chars.slice(0, numWeeks);
+            localStorage.setItem(key, JSON.stringify(alphabets));
+            return alphabets;
+        }
+
+        function renderCalendar(dateObj) {
+            const year = dateObj.getFullYear();
+            const month = dateObj.getMonth();
+            const todayNow = new Date();
+            const todayYear = todayNow.getFullYear();
+            const todayMonth = todayNow.getMonth();
+            const todayDate = todayNow.getDate();
+            document.getElementById('currentMonthLabel').textContent = `${year}年 ${month + 1}月`;
+            
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const numDays = lastDay.getDate();
+            const startingDayOfWeek = firstDay.getDay(); 
+            const numWeeks = Math.ceil((numDays + startingDayOfWeek) / 7);
+            const alphabets = getOrGenerateAlphabets(year, month, numWeeks);
+            
+            const grid = document.getElementById('calendarDays');
+            grid.innerHTML = '';
+            
+            for (let i = 0; i < startingDayOfWeek; i++) {
+                const div = document.createElement('div'); div.className = 'calendar-day empty'; grid.appendChild(div);
+            }
+            
+            for (let i = 1; i <= numDays; i++) {
+                const div = document.createElement('div');
+                div.className = 'calendar-day';
+                div.setAttribute('data-day', i);
+                
+                const currentCellIndex = startingDayOfWeek + i - 1;
+                const weekIndex = Math.floor(currentCellIndex / 7);
+                const weekAlpha = alphabets[weekIndex]; 
+                const dayNumber = (currentCellIndex % 7) + 1; 
+                
+                div.innerHTML = `<div class="date-num">${i}</div><div class="cal-code-row"><span class="cal-unified-badge"><span class="badge-alpha">${weekAlpha}</span><span class="badge-sep">-</span><span class="badge-num">${dayNumber}</span></span></div>`;
+                if (year === todayYear && month === todayMonth && i === todayDate) {
+                    div.classList.add('today');
+                }
+                
+                div.onclick = () => {
+                    document.querySelectorAll('.calendar-day').forEach(el => el.classList.remove('selected'));
+                    div.classList.add('selected');
+                    selectedDateInfo = { date: i, year, monthBase1: month + 1, weekAlpha, dayNumber };
+                    checkFlow();
+                    scrollToStep('step2'); // カレンダー選択時は生産者エリアへスクロール
+                };
+                grid.appendChild(div);
+            }
+        }
+
+        // 保存とサマリー描画
+        async function saveCode() {
+            if (!selectedProducerStr || !selectedDateInfo || !selectedSpec) return;
+            if (selectedProducerStr === '99' && selectedHouses.length === 0) return;
+            
+            const saveBtn = document.getElementById('saveCodeBtn');
+            saveBtn.textContent = '保存中...';
+            saveBtn.disabled = true;
+
+            const housesNames = selectedProducerStr === '99' ? selectedHouses.map(id => housesData.find(x => x.id === id).name).join(', ') : '仕入';
+            const code = document.getElementById('generatedCode').textContent;
+            const dateStr = `${selectedDateInfo.year}/${selectedDateInfo.monthBase1}/${selectedDateInfo.date}`;
+            const memo = document.getElementById('memoInput').value.trim();
+            
+            const dateNow = new Date();
+            const yyyy = dateNow.getFullYear();
+            const mm = String(dateNow.getMonth() + 1).padStart(2, '0');
+            const dd = String(dateNow.getDate()).padStart(2, '0');
+            
+            const entry = {
+                id: Date.now(), 
+                targetDate: dateStr,
+                producer: selectedProducerStr,
+                houses: housesNames, 
+                destination: '', 
+                spec: selectedSpec,
+                code: code, 
+                memo: memo, 
+                status: '入庫', 
+                createdDateStr: `${yyyy}/${mm}/${dd}`, 
+                createdAt: dateNow.toLocaleString('ja-JP', {year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'}),
+                author: authorName
+            };
+            
+            histories.unshift(entry);
+            localStorage.setItem('trace_history_v6', JSON.stringify(histories));
+            
+            if (GOOGLE_APP_SCRIPT_URL) {
+                // スプレッドシート側のD列に影響をあたえずコード側に生産者番号を含めて送信する
+                try { await fetch(GOOGLE_APP_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(translateToGAS(entry)) }); } catch(e) {}
+            }
+
+            renderHistoryAndSummary();
+            
+            let statusEl = document.getElementById('voiceStatus');
+            statusEl.textContent = '✅ 登録を完了しました！';
+            setTimeout(() => { statusEl.textContent = 'マイクを押して音声で一連の登録が可能！'; }, 3000);
+
+            // 登録完了時にステップ5をチェック済み表示
+            const sn5 = document.getElementById('snav5');
+            const st5 = document.getElementById('snavSt5');
+            if (sn5) { sn5.classList.remove('snav-active','snav-locked'); sn5.classList.add('snav-done'); }
+            if (st5) st5.textContent = '✓';
+            setTimeout(() => updateStepNavState(), 500); // resetFlow後に再評価
+
+            resetFlow();
+            saveBtn.textContent = 'この内容で登録する（入力）';
+        }
+
+        // ★ Multi-select check logic
+        window.toggleSelectAll = function(el) {
+            const pane = el.closest('.swipe-pane');
+            const checkboxes = pane.querySelectorAll('.history-checkbox');
+            checkboxes.forEach(cb => cb.checked = el.checked);
+            updateDeleteSelectedBtn();
+        }
+
+        // 上部 一括出荷エリアの操作
+        window.bulkShukkoQuick = function(mode) {
+            const destSel = document.getElementById('quickBulkDest');
+            // bulkDestSelect を quickBulkDest に同期（既存 bulkShukko() が参照）
+            const legacySel = document.getElementById('bulkDestSelect');
+            if (legacySel) legacySel.value = destSel ? destSel.value : '';
+
+            if (mode === 'calendar') {
+                const cal = document.getElementById('quickBulkCalArea');
+                if (cal) cal.style.display = cal.style.display === 'flex' ? 'none' : 'flex';
+                return;
+            }
+            if (mode === 'applyDate') {
+                const qDate = document.getElementById('quickBulkDate');
+                const legacyDate = document.getElementById('bulkDateSelect');
+                if (legacyDate && qDate) legacyDate.value = qDate.value;
+                bulkShukko('calendar');
+                return;
+            }
+            bulkShukko(mode);
+        }
+
+        // フィルター適用後の表示中履歴をすべて選択
+        window.selectAllFiltered = function() {
+            const activePane = document.querySelector('.swipe-pane:not(.pane-hidden)');
+            if (activePane) {
+                activePane.querySelectorAll('.history-checkbox').forEach(cb => cb.checked = true);
+                // ヘッダーのチェックボックスも同期
+                const selAll = activePane.querySelector('[id^="selectAllCheckbox"]');
+                if (selAll) selAll.checked = true;
+            }
+            updateDeleteSelectedBtn();
+        }
+
+        // フィルター適用後の表示中履歴の選択をすべて解除
+        window.deselectAllFiltered = function() {
+            document.querySelectorAll('.history-checkbox').forEach(cb => cb.checked = false);
+            document.querySelectorAll('[id^="selectAllCheckbox"]').forEach(cb => cb.checked = false);
+            updateDeleteSelectedBtn();
+        }
+
+        window.updateDeleteSelectedBtn = function() {
+            const checkboxes = document.querySelectorAll('.history-checkbox:checked');
+            const container = document.getElementById('bulkActions');
+            // 出庫済タブかどうか判定
+            const paneShukko = document.getElementById('paneShukko');
+            const isShukkoTab = paneShukko && !paneShukko.classList.contains('pane-hidden');
+            if (checkboxes.length > 0) {
+                if (container) {
+                    container.style.background = 'rgba(56, 189, 248, 0.15)';
+                    container.style.borderStyle = 'solid';
+                }
+                // 上部の quickBulkShipArea を表示・件数更新
+                const qBulk = document.getElementById('quickBulkShipArea');
+                if (qBulk) {
+                    qBulk.style.display = 'flex';
+                    const qCount = document.getElementById('quickBulkCount');
+                    if (qCount) qCount.textContent = checkboxes.length;
+                    // タブに応じてボタン表示切替
+                    const revertBtn = document.getElementById('quickBulkRevertBtn');
+                    if (revertBtn) revertBtn.style.display = isShukkoTab ? 'block' : 'none';
+                    const shipBtn1 = qBulk.querySelector('[onclick*="bulkShukkoQuick(\'today\')"]');
+                    const shipBtn2 = qBulk.querySelector('[onclick*="bulkShukkoQuick(\'calendar\')"]');
+                    const destSel = document.getElementById('quickBulkDest');
+                    if (shipBtn1) shipBtn1.style.display = isShukkoTab ? 'none' : 'inline-block';
+                    if (shipBtn2) shipBtn2.style.display = isShukkoTab ? 'none' : 'inline-block';
+                    if (destSel) destSel.style.display = isShukkoTab ? 'none' : 'inline-block';
+                    // quickBulkDest に選択肢を動的設定
+                    if (destSel) {
+                        let specsInSel = new Set();
+                        checkboxes.forEach(cb => { const hk = histories.find(h => String(h.id) === cb.value); if(hk && hk.spec) specsInSel.add(hk.spec); });
+                        let allowedDests = destinations.filter(d => d !== '出庫時選択');
+                        specsInSel.forEach(s => {
+                            let listForSpec = destinations;
+                            if (s === 'レギュラー') listForSpec = ['マルナカ・フジ', '高果'];
+                            else if (s === 'M') listForSpec = ['三和食品', '岸本冷蔵', 'サニー', 'SRS', 'ヨシケイ'];
+                            else if (s === 'L') listForSpec = ['三和食品', '岸本冷蔵'];
+                            else if (s === '3P') listForSpec = ['SRS', 'マルナカ・フジ', '高果'];
+                            allowedDests = allowedDests.filter(d => listForSpec.includes(d));
+                        });
+                        const prev = destSel.value;
+                        destSel.innerHTML = '<option value="">▼ 一括出荷先</option>';
+                        allowedDests.forEach(d => { const opt = document.createElement('option'); opt.value = d; opt.textContent = d; destSel.appendChild(opt); });
+                        if (prev) destSel.value = prev;
+                    }
+                }
+                const bBadge = document.getElementById('bulkCountBadge');
+                if (bBadge) bBadge.style.display = 'inline-block';
+                const bCount = document.getElementById('bulkCount');
+                if (bCount) bCount.textContent = checkboxes.length;
+                const bHint = document.getElementById('bulkHint');
+                if (bHint) bHint.style.display = 'none';
+
+                const controls = document.getElementById('bulkActionsControls');
+                if (controls) controls.style.display = 'flex';
+                
+                const bulkNyukoControls = document.getElementById('bulkNyukoControls');
+                const bulkShukkoControls = document.getElementById('bulkShukkoControls');
+
+                let isOnlyShukko = true;
+                let specsInSelection = new Set();
+
+                checkboxes.forEach(cb => {
+                    const hk = histories.find(h => String(h.id) === cb.value);
+                    if (hk) {
+                        if (hk.status !== '出庫') isOnlyShukko = false;
+                        if (hk.spec) specsInSelection.add(hk.spec);
+                    }
+                });
+
+                if (isOnlyShukko) {
+                    if(bulkNyukoControls) bulkNyukoControls.style.display = 'none';
+                    if(bulkShukkoControls) bulkShukkoControls.style.display = 'flex';
+                } else {
+                    if(bulkNyukoControls) bulkNyukoControls.style.display = 'flex';
+                    if(bulkShukkoControls) bulkShukkoControls.style.display = 'none';
+                }
+
+                const bulkDestSelect = document.getElementById('bulkDestSelect');
+                if (bulkDestSelect) {
+                    
+                    let allowedDests = destinations.filter(d => d !== '出庫時選択');
+                    specsInSelection.forEach(s => {
+                        let listForSpec = destinations; 
+                        if (s === 'レギュラー') listForSpec = ['マルナカ・フジ', '高果'];
+                        else if (s === 'M') listForSpec = ['三和食品', '岸本冷蔵', 'サニー', 'SRS', 'ヨシケイ'];
+                        else if (s === 'L') listForSpec = ['三和食品', '岸本冷蔵'];
+                        else if (s === '3P') listForSpec = ['SRS', 'マルナカ・フジ', '高果'];
+                        allowedDests = allowedDests.filter(d => listForSpec.includes(d));
+                    });
+                    
+                    bulkDestSelect.innerHTML = '<option value="">▼ 一括出荷先</option>';
+                    allowedDests.forEach(d => {
+                        const opt = document.createElement('option');
+                        opt.value = d; opt.textContent = d;
+                        bulkDestSelect.appendChild(opt);
+                    });
+                }
+                const bulkDateSelect = document.getElementById('bulkDateSelect');
+                if (bulkDateSelect && !bulkDateSelect.value) {
+                    let dNow = new Date();
+                    bulkDateSelect.value = (new Date(dNow - dNow.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+                }
+            } else {
+                if (container) {
+                    container.style.background = 'rgba(56, 189, 248, 0.05)';
+                    container.style.borderStyle = 'dashed';
+                }
+                const qBulkHide = document.getElementById('quickBulkShipArea');
+                if (qBulkHide) qBulkHide.style.display = 'none';
+                const bBadge = document.getElementById('bulkCountBadge');
+                if (bBadge) bBadge.style.display = 'none';
+                const fabBulkShip = document.getElementById('fabBulkShip');
+                if (fabBulkShip) fabBulkShip.style.display = 'none';
+                
+                const controls = document.getElementById('bulkActionsControls');
+                if (controls) controls.style.display = 'none';
+                
+                const sa1 = document.getElementById('selectAllCheckbox1');
+                const sa2 = document.getElementById('selectAllCheckbox2');
+                if (sa1) sa1.checked = false;
+                if (sa2) sa2.checked = false;
+            }
+        }
+
+        window.toggleCalendar = function(id) {
+            const calArea = document.getElementById(`calendarArea_${id}`);
+            if (calArea) calArea.style.display = calArea.style.display === 'none' ? 'flex' : 'none';
+        };
+
+        window.toggleBulkCalendar = function() {
+            const calArea = document.getElementById(`bulkCalendarArea`);
+            if (calArea) calArea.style.display = calArea.style.display === 'none' ? 'flex' : 'none';
+        };
+
+        window.getShippedDateString = function(dateString) {
+            const dayStrs = ['日', '月', '火', '水', '木', '金', '土'];
+            let d = new Date();
+            
+            if (dateString) {
+                let cleanStr = String(dateString).trim().replace(/\//g, '-');
+                let parts = cleanStr.split('-');
+                if (parts.length >= 3) {
+                    let selYear = parseInt(parts[0], 10);
+                    let selMonth = parseInt(parts[1], 10) - 1;
+                    let selDay = parseInt(parts[2], 10);
+                    
+                    let targetDate = new Date(selYear, selMonth, selDay);
+                    let yobi = dayStrs[targetDate.getDay()];
+                    
+                    let month = String(selMonth + 1).padStart(2, '0');
+                    let day = String(selDay).padStart(2, '0');
+                    let hr = String(d.getHours()).padStart(2, '0');
+                    let mn = String(d.getMinutes()).padStart(2, '0');
+                    
+                    let todayZero = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+                    let offsetDays = Math.round((targetDate - todayZero) / 86400000);
+                    
+                    let relativeStr = '';
+                    if (offsetDays === 1) relativeStr = ' (翌日)';
+                    else if (offsetDays === 2) relativeStr = ' (翌々日)';
+                    else if (offsetDays >= 3) relativeStr = ` (${offsetDays}日後)`;
+                    else if (offsetDays === -1) relativeStr = ' (昨日)';
+                    else if (offsetDays < -1) relativeStr = ` (${Math.abs(offsetDays)}日前)`;
+                    
+                    if (offsetDays === 0) {
+                        return `${month}/${day}(${yobi}) ${hr}:${mn} 出庫`;
+                    } else {
+                        return `出荷予定日: ${month}/${day}(${yobi})${relativeStr}`;
+                    }
+                }
+            }
+            
+            let month = String(d.getMonth() + 1).padStart(2, '0');
+            let day = String(d.getDate()).padStart(2, '0');
+            let hr = String(d.getHours()).padStart(2, '0');
+            let mn = String(d.getMinutes()).padStart(2, '0');
+            let yobi = dayStrs[d.getDay()];
+            return `${month}/${day}(${yobi}) ${hr}:${mn} 出庫`;
+        };
+
+        window.bulkShukkoObj = null;
+
+        window.confirmBulkShukkoAction = function() {
+            if (window.bulkShukkoObj) {
+                const { idsToShip, destValue, shippedAtTime } = window.bulkShukkoObj;
+                let updatedEntries = [];
+                histories = histories.map(h => {
+                    if (idsToShip.includes(h.id) && h.status !== '出庫') {
+                        let updated = { ...h, status: '出庫', destination: destValue, shippedAt: shippedAtTime };
+                        updatedEntries.push(updated);
+                        return updated;
+                    }
+                    return h;
+                });
+                
+                localStorage.setItem('trace_history_v6', JSON.stringify(histories));
+                renderHistoryAndSummary();
+                
+                if (GOOGLE_APP_SCRIPT_URL) {
+                    for (let entry of updatedEntries) {
+                        try { fetch(GOOGLE_APP_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(translateToGAS({...entry, updateType: 'status_change'})) }); } catch(e){}
+                    }
+                }
+            }
+            closeShukkoModal();
+            window.bulkShukkoObj = null;
+        }
+
+        window.bulkShukko = function(mode = 'calendar') {
+            const checkboxes = document.querySelectorAll('.history-checkbox:checked');
+            if (checkboxes.length === 0) return;
+            const bulkDestSelect = document.getElementById('bulkDestSelect');
+            const destValue = bulkDestSelect.value;
+            
+            if (!destValue) {
+                alert("一括出庫する「出荷先」を左のプルダウンから選んでください！");
+                return;
+            }
+            
+            let dateValue = '';
+            let dateLabel = '';
+            
+            if (mode === 'today') {
+                dateValue = ''; 
+                dateLabel = '当日 (現在時刻)';
+            } else {
+                const bulkDateSelect = document.getElementById('bulkDateSelect');
+                dateValue = bulkDateSelect ? bulkDateSelect.value : '';
+                dateLabel = dateValue || '当日';
+            }
+            
+            const idsToShip = Array.from(checkboxes).map(cb => parseInt(cb.value));
+            let shippedAtTime = getShippedDateString(dateValue);
+            
+            window.bulkShukkoObj = { idsToShip, destValue, shippedAtTime };
+            
+            document.getElementById('shukkoModalText').innerHTML = `選択した ${checkboxes.length} 件を「<span style="color:var(--accent); font-weight:bold;">${destValue}</span>」として<br>出庫済みにしますか？<br><br><span style="font-size:0.9rem; color:#666;">（出庫予定日: ${dateLabel}）</span>`;
+            document.getElementById('shukkoModalOkBtn').setAttribute('onclick', 'confirmBulkShukkoAction()');
+            document.getElementById('shukkoModal').style.display = 'flex';
+        }
+
+        window.bulkRevertToNyuko = function() {
+            const checkboxes = document.querySelectorAll('.history-checkbox:checked');
+            if (checkboxes.length === 0) return;
+            
+            if(!confirm(`選択した ${checkboxes.length} 件を「入庫」に戻しますか？`)) return;
+
+            const idsToRevert = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+            let updatedEntries = [];
+            histories = histories.map(h => {
+                if (idsToRevert.includes(h.id) && h.status === '出庫') {
+                    let updated = { ...h, status: '入庫' };
+                    delete updated.shippedAt;
+                    updatedEntries.push(updated);
+                    return updated;
+                }
+                return h;
+            });
+
+            localStorage.setItem('trace_history_v6', JSON.stringify(histories));
+            if (navigator.vibrate) navigator.vibrate([100]);
+            
+            renderHistoryAndSummary();
+            
+            if (GOOGLE_APP_SCRIPT_URL) {
+                for (let entry of updatedEntries) {
+                    try { fetch(GOOGLE_APP_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(translateToGAS({...entry, updateType: 'status_change'})) }); } catch(e){}
+                }
+            }
+        }
+
+        window.undoCreation = function(id) {
+            const h = histories.find(x => x.id === id);
+            if (!h) return;
+            
+            if(!confirm("この登録を取り消して、入力画面に内容を戻しますか？\n（※間違えて入庫した場合の便利な「1つ戻る」修正機能です）")) return;
+
+            // Load data back into global vars
+            let dateParts = h.targetDate.split('/');
+            if (dateParts.length === 3) {
+                let y = parseInt(dateParts[0]); let m = parseInt(dateParts[1]); let d = parseInt(dateParts[2]);
+                currentMonthDate = new Date(y, m - 1, 1);
+                let codeParts = h.code.split('-');
+                if (codeParts.length >= 3) {
+                    let wAlpha = codeParts[codeParts.length - 2];
+                    let dNum = parseInt(codeParts[codeParts.length - 1]);
+                    selectedDateInfo = { year: y, monthBase1: m, date: d, weekAlpha: wAlpha, dayNumber: dNum };
+                } else {
+                    selectedDateInfo = { year: y, monthBase1: m, date: d, weekAlpha: '?', dayNumber: 1 };
+                }
+                renderCalendar(currentMonthDate);
+            }
+
+            selectedProducerStr = h.producer;
+            
+            selectedHouses = [];
+            if (h.houses && h.houses !== '仕入' && h.houses !== '不要（スキップ）') {
+                housesData.forEach(HD => {
+                    if (h.houses.includes(HD.name)) selectedHouses.push(HD.id);
+                });
+            }
+
+            selectedSpec = (h.spec === '-' || h.spec === '') ? 'なし' : h.spec;
+            document.getElementById('memoInput').value = h.memo || '';
+
+            // Update UI
+            initProducers();
+            initHouses();
+            initSpecs();
+
+            histories = histories.filter(x => x.id !== id);
+            localStorage.setItem('trace_history_v6', JSON.stringify(histories));
+            
+            if (GOOGLE_APP_SCRIPT_URL) {
+                try { fetch(GOOGLE_APP_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(translateToGAS({...h, status: '削除', updateType: 'status_change'})) }); } catch(e){}
+            }
+
+            renderHistoryAndSummary();
+            checkFlow();
+            if (selectedSpec) showStep('step5');
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        // ===== 日付別集計カレンダー =====
+        let aggCurrentMonth = new Date();
+        let aggSelectedDate = null;
+
+        function renderAggCalendar(dateObj) {
+            const year = dateObj.getFullYear();
+            const month = dateObj.getMonth();
+            const todayNow = new Date();
+            const todayY = todayNow.getFullYear();
+            const todayM = todayNow.getMonth();
+            const todayD = todayNow.getDate();
+
+            document.getElementById('aggMonthLabel').textContent = `${year}年 ${month + 1}月`;
+
+            // 日別カウント集計
+            const dayCounts = {};
+            histories.forEach(h => {
+                if (!h.createdDateStr) return;
+                const parts = h.createdDateStr.split('/');
+                if (parts.length !== 3) return;
+                const y = parseInt(parts[0]);
+                const m = parseInt(parts[1]) - 1;
+                const d = parseInt(parts[2]);
+                if (y === year && m === month) {
+                    dayCounts[d] = (dayCounts[d] || 0) + 1;
+                }
+            });
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const numDays = new Date(year, month + 1, 0).getDate();
+
+            const grid = document.getElementById('aggCalendarDays');
+            grid.innerHTML = '';
+
+            for (let i = 0; i < firstDay; i++) {
+                const div = document.createElement('div');
+                div.className = 'agg-day agg-empty';
+                grid.appendChild(div);
+            }
+
+            for (let i = 1; i <= numDays; i++) {
+                const div = document.createElement('div');
+                div.className = 'agg-day';
+                const count = dayCounts[i] || 0;
+
+                const isToday = year === todayY && month === todayM && i === todayD;
+                if (isToday) div.classList.add('agg-today');
+
+                const isSel = aggSelectedDate && aggSelectedDate.year === year && aggSelectedDate.month === month && aggSelectedDate.day === i;
+                if (isSel) div.classList.add('agg-selected');
+
+                if (count >= 8) div.setAttribute('data-intensity', '3');
+                else if (count >= 4) div.setAttribute('data-intensity', '2');
+                else if (count >= 1) div.setAttribute('data-intensity', '1');
+
+                div.innerHTML = `
+                    <div class="agg-date-num">${i}</div>
+                    ${count > 0 ? `<div class="agg-count-badge">${count}件</div>` : ''}
+                `;
+
+                div.addEventListener('click', () => {
+                    document.querySelectorAll('.agg-day').forEach(d => d.classList.remove('agg-selected'));
+                    div.classList.add('agg-selected');
+                    aggSelectedDate = { year, month, day: i };
+                    showAggDayDetail(year, month, i);
+                });
+
+                grid.appendChild(div);
+            }
+        }
+
+        function showAggDayDetail(year, month, day) {
+            const mm = String(month + 1).padStart(2, '0');
+            const dd = String(day).padStart(2, '0');
+            const dateStr = `${year}/${mm}/${dd}`;
+
+            const panel = document.getElementById('aggDayDetail');
+            const dayHistories = histories.filter(h => h.createdDateStr === dateStr);
+
+            if (dayHistories.length === 0) {
+                panel.style.display = 'block';
+                panel.innerHTML = `
+                    <div class="agg-detail-panel" style="text-align:center; color:var(--text-muted); padding:12px 0;">
+                        📭 ${year}年${month + 1}月${day}日 の登録はありません
+                    </div>`;
+                return;
+            }
+
+            // 規格別集計
+            const specMap = {};
+            const specOrder = ['M', 'L', '3P', 'レギュラー', 'なし'];
+            dayHistories.forEach(h => {
+                const spec = h.spec || 'なし';
+                if (!specMap[spec]) specMap[spec] = { total: 0, nyuko: 0, shukko: 0 };
+                specMap[spec].total++;
+                if (h.status === '出庫') specMap[spec].shukko++;
+                else specMap[spec].nyuko++;
+            });
+
+            // 出荷先別集計
+            const destMap = {};
+            dayHistories.filter(h => h.status === '出庫' && h.destination).forEach(h => {
+                destMap[h.destination] = (destMap[h.destination] || 0) + 1;
+            });
+
+            const sortedSpecs = [...new Set([...specOrder, ...Object.keys(specMap)])].filter(s => specMap[s]);
+
+            let specCardsHtml = sortedSpecs.map(spec => {
+                const c = specMap[spec];
+                const colorClass = getSpecColorClass(spec);
+                const colorStyle = colorClass ? '' : 'color:var(--orange);';
+                return `
+                    <div class="agg-spec-card">
+                        <div class="agg-spec-name ${colorClass}" style="${colorStyle}">${spec}</div>
+                        <div class="agg-spec-total">${c.total}</div>
+                        <div class="agg-spec-sub">在庫 ${c.nyuko} / 出庫 ${c.shukko}</div>
+                    </div>`;
+            }).join('');
+
+            let destHtml = '';
+            if (Object.keys(destMap).length > 0) {
+                const destItems = Object.entries(destMap).map(([d, cnt]) =>
+                    `<span style="background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.3); border-radius:6px; padding:3px 10px; font-size:0.85rem;">${d} <strong style="color:var(--accent);">${cnt}</strong>件</span>`
+                ).join('');
+                destHtml = `
+                    <div style="margin-top:10px;">
+                        <div style="font-size:0.82rem; color:var(--text-muted); margin-bottom:5px;">🚚 出荷先内訳</div>
+                        <div style="display:flex; flex-wrap:wrap; gap:6px;">${destItems}</div>
+                    </div>`;
+            }
+
+            panel.style.display = 'block';
+            panel.innerHTML = `
+                <div class="agg-detail-panel">
+                    <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                        <span style="font-weight:bold; color:var(--accent); font-size:1rem;">
+                            ${year}年${month + 1}月${day}日 の集計
+                        </span>
+                        <span style="font-size:0.85rem; color:var(--text-muted);">合計 <strong style="color:white;">${dayHistories.length}</strong> 件登録</span>
+                    </div>
+                    <div class="agg-spec-grid" style="margin-top:10px;">${specCardsHtml}</div>
+                    ${destHtml}
+                </div>`;
+        }
+
+        // ★ 指定された特定の組み合わせを表示するためのロジック
+        function renderHistoryAndSummary() {
+            const d = new Date();
+            const todayStr = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+            const todayYMD = (new Date(d - d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+            
+            const displayKeys = ["M", "L", "3P", "5P", "レギュラー", "○品"];
+            let specCounts = {};
+            displayKeys.forEach(k => specCounts[k] = 0);
+            
+            const currentMonthPrefix = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2, '0')}`;
+            const currentMonthStr = String(d.getMonth()+1).padStart(2, '0');
+            const todayDayStr = String(d.getDate()).padStart(2, '0');
+            
+            let todayInCounts = {};
+            let todayOutCounts = {};
+            let monthInCounts = {};
+            let monthOutCounts = {};
+            let currentInvCounts = {};
+            displayKeys.forEach(k => {
+                todayInCounts[k] = 0; todayOutCounts[k] = 0;
+                monthInCounts[k] = 0; monthOutCounts[k] = 0; currentInvCounts[k] = 0;
+            });
+
+            let todayTotal = 0;
+            histories.forEach(h => {
+                let s_name = (h.spec && h.spec !== '未設定' && h.spec !== '-') ? h.spec : 'なし';
+                
+                // 本日サマリー用 (For visual cards)
+                if (h.createdDateStr === todayStr) {
+                    if(specCounts[s_name] !== undefined) specCounts[s_name]++; else specCounts[s_name] = 1;
+                    todayTotal++;
+                }
+                
+                // 表計算ロジック
+                if (s_name !== 'なし' || monthInCounts[s_name] !== undefined) {
+                    if (monthInCounts[s_name] === undefined) {
+                        todayInCounts[s_name] = 0; todayOutCounts[s_name] = 0;
+                        monthInCounts[s_name] = 0; monthOutCounts[s_name] = 0; currentInvCounts[s_name] = 0;
+                    }
+                    
+                    if (h.createdDateStr === todayStr) todayInCounts[s_name]++;
+                    
+                    if (h.createdDateStr && h.createdDateStr.startsWith(currentMonthPrefix)) {
+                        monthInCounts[s_name]++;
+                    }
+                    
+                    if (h.status === '出庫' && h.shippedAt) {
+                        let match = h.shippedAt.match(/(\d{2})\/(\d{2})/);
+                        if (match && match[1] === currentMonthStr) {
+                             monthOutCounts[s_name]++;
+                             if (match[2] === todayDayStr) {
+                                 todayOutCounts[s_name]++;
+                             }
+                        }
+                    }
+                    
+                    if (h.status !== '出庫' && h.status !== '削除') {
+                        currentInvCounts[s_name]++;
+                    }
+                }
+            });
+
+            document.getElementById('todaySummaryLabel').textContent = `📅 ${todayStr} の合計登録数（作成数）: ${todayTotal}件`;
+            const summaryGrid = document.getElementById('todaySummaryGrid');
+            summaryGrid.innerHTML = '';
+            
+            Object.keys(specCounts).forEach(key => {
+                if (key !== 'なし' && (specCounts[key] > 0 || displayKeys.includes(key))) {
+                    const card = document.createElement('div'); card.className = 'summary-card';
+                    card.innerHTML = `<div class="summary-dest">${key}</div><div class="summary-count">${specCounts[key]}</div>`;
+                    summaryGrid.appendChild(card);
+                }
+            });
+
+            const monthBody = document.getElementById('monthSummaryBody');
+            if (monthBody) {
+                monthBody.innerHTML = '';
+                let tdIn = 0, tdOut = 0, tIn = 0, tOut = 0, tInv = 0;
+                Object.keys(monthInCounts).forEach(key => {
+                    if (key !== 'なし' && (monthInCounts[key] > 0 || currentInvCounts[key] > 0 || displayKeys.includes(key))) {
+                        tdIn += todayInCounts[key]; tdOut += todayOutCounts[key];
+                        tIn += monthInCounts[key]; tOut += monthOutCounts[key]; tInv += currentInvCounts[key];
+                        let tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td style="font-weight:bold; color:var(--accent); text-align:center;">${key}</td>
+                            <td style="text-align:center;">${todayInCounts[key]}</td>
+                            <td style="text-align:center;">${todayOutCounts[key]}</td>
+                            <td style="text-align:center; background:rgba(0,0,0,0.2);">${monthInCounts[key]}</td>
+                            <td style="text-align:center; background:rgba(0,0,0,0.2);">${monthOutCounts[key]}</td>
+                            <td style="text-align:center; font-weight:bold; color:var(--success); background:rgba(16,185,129,0.1); font-size:1.1rem;">${currentInvCounts[key]}</td>
+                        `;
+                        monthBody.appendChild(tr);
+                    }
+                });
+                
+                // 合計行
+                let totalTr = document.createElement('tr');
+                totalTr.innerHTML = `
+                    <td style="font-weight:bold; text-align:center; background:rgba(0,0,0,0.3);">合計</td>
+                    <td style="font-weight:bold; text-align:center; background:rgba(0,0,0,0.3);">${tdIn}</td>
+                    <td style="font-weight:bold; text-align:center; background:rgba(0,0,0,0.3);">${tdOut}</td>
+                    <td style="font-weight:bold; text-align:center; background:rgba(0,0,0,0.5);">${tIn}</td>
+                    <td style="font-weight:bold; text-align:center; background:rgba(0,0,0,0.5);">${tOut}</td>
+                    <td style="font-weight:bold; text-align:center; background:rgba(16,185,129,0.2); color:var(--success); font-size:1.2rem;">${tInv}</td>
+                `;
+                monthBody.appendChild(totalTr);
+            }
+
+            const nyukoBody = document.getElementById('nyukoBody');
+            const shukkoBody = document.getElementById('shukkoBody');
+            if (nyukoBody) nyukoBody.innerHTML = '';
+            if (shukkoBody) shukkoBody.innerHTML = '';
+
+            const saCheck1 = document.getElementById('selectAllCheckbox1');
+            const saCheck2 = document.getElementById('selectAllCheckbox2');
+            if (saCheck1) saCheck1.checked = false;
+            if (saCheck2) saCheck2.checked = false;
+            
+            updateDeleteSelectedBtn();
+
+            const filterSpecVal = document.getElementById('filterSpec') ? document.getElementById('filterSpec').value : 'ALL';
+            const filterStatusVal = document.getElementById('filterStatus') ? document.getElementById('filterStatus').value : 'ALL';
+            const filterDestVal = document.getElementById('filterDest') ? document.getElementById('filterDest').value : 'ALL';
+
+            let filteredHistories = histories;
+            if (filterSpecVal !== 'ALL') {
+                filteredHistories = filteredHistories.filter(h => h.spec === filterSpecVal);
+            }
+            if (filterStatusVal !== 'ALL') {
+                filteredHistories = filteredHistories.filter(h => {
+                    let s = h.status || '入庫';
+                    return s === filterStatusVal;
+                });
+            }
+            if (filterDestVal !== 'ALL') {
+                filteredHistories = filteredHistories.filter(h => {
+                    let d = h.destination || '';
+                    if (filterDestVal === '未定') return d === '' || d === '未定';
+                    return d === filterDestVal;
+                });
+            }
+
+            const filterSortVal = document.getElementById('filterSort') ? document.getElementById('filterSort').value : 'desc';
+            if (filterSortVal === 'asc') {
+                filteredHistories = filteredHistories.slice().reverse();
+            }
+
+            // 高度検索：フリーテキストフィルター
+            if (typeof lpSearchQuery !== 'undefined' && lpSearchQuery) {
+                filteredHistories = filteredHistories.filter(h => {
+                    const combined = [h.code, h.producer, h.houses, h.destination, h.memo, h.targetDate, h.spec]
+                        .filter(Boolean).join(' ').toLowerCase();
+                    return combined.includes(lpSearchQuery);
+                });
+            }
+
+            // 左パネルの規格・ステータスセレクトをメインフィルターと同期
+            const lpSF = document.getElementById('lpSpecFilter');
+            const lpStF = document.getElementById('lpStatusFilter');
+            if (lpSF) lpSF.value = filterSpecVal;
+            if (lpStF) lpStF.value = filterStatusVal;
+
+            if (filteredHistories.length === 0) {
+                if (nyukoBody) nyukoBody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2rem;">条件に一致する履歴はありません。</td></tr>`;
+                if (shukkoBody) shukkoBody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2rem;">条件に一致する出庫履歴はありません。</td></tr>`;
+                return;
+            }
+            filteredHistories.forEach(h => {
+                const tr = document.createElement('tr');
+                let statusHtml = '';
+                if (h.status === '入庫' || !h.status) {
+                    let rowDests = destinations;
+                    if (h.spec === 'レギュラー') rowDests = ['マルナカ・フジ', '高果', '出庫時選択'];
+                    else if (h.spec === '○品') rowDests = ['マルナカ・フジ', '高果', '出庫時選択'];
+                    else if (h.spec === 'M') rowDests = ['三和食品', '岸本冷蔵', 'サニー', 'SRS', 'ヨシケイ', '出庫時選択'];
+                    else if (h.spec === 'L') rowDests = ['三和食品', '岸本冷蔵', '出庫時選択'];
+                    else if (h.spec === '3P') rowDests = ['SRS', 'マルナカ・フジ', '高果', '出庫時選択'];
+                    else if (h.spec === '5P') rowDests = ['SRS', 'マルナカ・フジ', '高果', '出庫時選択'];
+                    
+                    let destOptions = rowDests.map(d => `<option value="${d}" ${h.destination === d ? 'selected' : ''}>${d}</option>`).join('');
+                    statusHtml = `
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            <span class="status-badge status-nyuko" style="align-self: flex-start;">入庫</span>
+                            <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
+                                <div style="display: flex; gap: 4px; width: 100%;">
+                                    <select id="shukkoDest_${h.id}" style="padding:6px; border-radius:4px; font-size:0.85rem; background:rgba(0,0,0,0.3); color:white; border:1px solid var(--border-color); flex: 1; min-width: 80px;">
+                                        <option value="">出荷先</option>
+                                        ${destOptions}
+                                    </select>
+                                    <button class="btn-action btn-shukko" style="padding: 6px 10px; font-size: 0.85rem; white-space: nowrap;" onclick="executeShukko(${h.id}, 'today')">当日出庫</button>
+                                    <button class="btn-action" style="background:var(--accent); color:white; padding: 6px 10px; font-size: 0.85rem; white-space: nowrap;" onclick="toggleCalendar(${h.id})">予定出庫</button>
+                                </div>
+                                <div id="calendarArea_${h.id}" style="display: none; align-items: center; gap: 6px; background: rgba(0,0,0,0.2); padding: 6px; border-radius: 4px; width: 100%; box-sizing: border-box;">
+                                    <span style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;">📆 予定:</span>
+                                    <input type="date" id="shukkoDate_${h.id}" value="${todayYMD}" style="padding:4px; border-radius:4px; font-size:0.8rem; background:rgba(255,255,255,0.1); color:white; border:1px solid var(--border-color); flex:1; min-width: 120px; cursor:pointer;">
+                                    <button class="btn-action" style="background:var(--accent); color:white; padding: 5px 10px; font-size: 0.85rem; white-space: nowrap;" onclick="executeShukko(${h.id}, 'calendar')">完了</button>
+                                </div>
+                            </div>
+                        </div>`;
+                } else if (h.status === '予定出庫') {
+                    let displayVal = h.shippedAt ? h.shippedAt.replace('出荷予定日: ', '').replace(' 出庫完了', '') : '';
+                    let timeInfo = `
+                    <div style="margin-top: 6px; background: rgba(0,0,0,0.2); border-left: 3px solid var(--accent); padding: 6px 8px; border-radius: 4px; width: 100%;">
+                        <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 2px;">📆 出荷予定日</div>
+                        <div style="font-size: 0.85rem; font-weight: bold; color: var(--accent);">${displayVal}</div>
+                    </div>`;
+                    
+                    statusHtml = `
+                        <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
+                            <span class="status-badge" style="background: var(--accent); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; align-self: flex-start;">出庫予定</span>
+                            ${timeInfo}
+                            <div style="display: flex; gap: 4px; width: 100%; margin-top: 2px;">
+                                <button class="btn-shukko" style="padding: 6px 4px; flex: 1; font-weight: bold; font-size: 0.85rem; background: var(--success); white-space: nowrap;" onclick="executeShukko(${h.id}, 'today')">当日出庫</button>
+                                <button class="btn-action btn-cancel" style="padding: 6px 4px; flex: 1; font-size: 0.85rem; white-space: nowrap;" onclick="changeStatus(${h.id}, '入庫')">入庫へ戻す</button>
+                            </div>
+                        </div>`;
+                } else if (h.status === '出庫') {
+                    let displayVal = h.shippedAt ? h.shippedAt.replace('出荷予定日: ', '').replace(' 出庫完了', '') : '';
+                    let timeInfo = `
+                    <div style="margin-top: 6px; background: rgba(0,0,0,0.2); border-left: 3px solid var(--success); padding: 6px 8px; border-radius: 4px; width: 100%;">
+                        <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 2px;">🚚 出庫完了日時</div>
+                        <div style="font-size: 0.85rem; font-weight: bold; color: var(--success);">${displayVal}</div>
+                    </div>`;
+                    
+                    statusHtml = `
+                        <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
+                            <span class="status-badge status-shukko" style="align-self: flex-start;">出庫済</span>
+                            ${timeInfo}
+                            <button class="btn-action btn-cancel" style="padding: 6px 4px; width: 100%; font-size: 0.85rem; margin-top: 2px;" onclick="changeStatus(${h.id}, '入庫')">入庫へ戻す</button>
+                        </div>`;
+                }
+
+                let specDisplay = h.spec === 'なし' ? '-' : h.spec || '-';
+                let prodDisplay = h.producer ? `<span style="color:var(--pink); font-weight:bold;">${h.producer}</span>` : '';
+                
+                let codeFontSize = '1.35rem';
+                let authorDisplayCompact = h.author ? `<span style="font-size: 0.85rem; color: rgba(255,255,255,0.8); margin-left: 8px; font-weight: normal;">👤 ${h.author}</span>` : '';
+                
+                let detailsHtml = `
+                    <div style="display: flex; flex-direction: column; gap: 4px; padding: 2px 0;">
+                        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                            <span class="code-cell" style="font-size: ${codeFontSize}; line-height: 1;">${h.code}</span>
+                            <span style="font-size: 0.8rem; color: var(--text-muted); white-space: nowrap;">${h.createdAt}</span>
+                        </div>
+                        
+                        <div style="display: flex; align-items: baseline; flex-wrap: wrap; margin-top: 2px;">
+                            <span style="color: var(--pink); font-weight: bold; font-size: 1.15rem;">${h.producer || '-'}</span>
+                            <span style="font-size: 1.05rem; color: var(--text-main); margin-left: 4px;">${h.houses ? h.houses.replace('不要（スキップ）', '') : ''}</span>
+                            ${authorDisplayCompact}
+                        </div>
+                        
+                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">
+                            <span>📅 対象日: <span style="font-weight: bold; color: white;">${h.targetDate}</span></span>
+                        </div>
+                        
+                        <div style="font-size: 1.15rem; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 4px; background: rgba(0,0,0,0.2); padding: 6px 8px; border-radius: 6px; border-left: 3px solid var(--purple);">
+                            <span>🚚 発送先: <span style="color:white; font-weight:bold;">${h.destination || '<span style="color:var(--warning);">未設定</span>'}</span></span>
+                            <span class="${getSpecColorClass(h.spec)}" style="${getSpecColorClass(h.spec) ? '' : 'color:var(--orange);'} font-weight: bold; font-size: 1.05rem;">[${specDisplay}]</span>
+                        </div>
+
+                        ${h.memo ? `<div style="font-size: 0.85rem; color: rgba(255,255,255,0.8); background: rgba(0,0,0,0.2); padding: 4px 6px; border-radius: 4px; margin-top: 2px; border-left: 2px solid var(--accent); line-height: 1.2;">📝 ${h.memo}</div>` : ''}
+                    </div>
+                `;
+
+                let actionsDiv = `
+                    <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 6px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 6px;">
+                        ${(h.status === '入庫' || !h.status) ? `<button class="btn-action" style="background:rgba(245, 158, 11, 0.2); color:var(--warning); border:1px solid rgba(245,158,11,0.4); width:100%; padding: 4px;" onclick="undoCreation(${h.id})">戻して修正</button>` : ''}
+                        <button class="delete-btn" style="width:100%; padding: 4px;" onclick="deleteHistory(${h.id})">履歴を削除</button>
+                    </div>
+                `;
+                
+                tr.innerHTML = `
+                    <td style="text-align: center; vertical-align: top; padding: 12px 4px; width: 30px;"><input type="checkbox" class="history-checkbox" value="${h.id}" onchange="updateDeleteSelectedBtn()"></td>
+                    <td style="vertical-align: top; padding: 8px 6px;">${detailsHtml}</td>
+                    <td style="vertical-align: top; width: 140px; padding: 8px 4px;">
+                        ${statusHtml}
+                        ${actionsDiv}
+                    </td>
+                `;
+                if (h.status === '出庫') {
+                    if (shukkoBody) shukkoBody.appendChild(tr);
+                } else {
+                    if (nyukoBody) nyukoBody.appendChild(tr);
+                }
+            });
+
+            // 集計カレンダーを再描画（データ更新時に件数バッジを同期）
+            const aggGrid = document.getElementById('aggCalendarDays');
+            if (aggGrid) {
+                renderAggCalendar(aggCurrentMonth);
+                // 選択中の日付があれば詳細も更新
+                if (aggSelectedDate) {
+                    showAggDayDetail(aggSelectedDate.year, aggSelectedDate.month, aggSelectedDate.day);
+                }
+            }
+        }
+
+        window.changeStatus = async function(id, newStatus, actualDest = null, offsetValue = '0') {
+            let updatedEntry = null;
+            histories = histories.map(h => {
+                if (h.id === id) {
+                    let shippedAtTime = (newStatus === '出庫' || newStatus === '予定出庫') ? getShippedDateString(offsetValue) : null;
+                    updatedEntry = { ...h, status: newStatus };
+                    if (actualDest) {
+                        updatedEntry.destination = actualDest; 
+                    }
+                    if (shippedAtTime) updatedEntry.shippedAt = shippedAtTime;
+                    else if (newStatus === '入庫') delete updatedEntry.shippedAt;
+                    return updatedEntry;
+                }
+                return h;
+            });
+            localStorage.setItem('trace_history_v6', JSON.stringify(histories));
+            renderHistoryAndSummary();
+            
+            if (GOOGLE_APP_SCRIPT_URL && updatedEntry) {
+                try { fetch(GOOGLE_APP_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(translateToGAS({...updatedEntry, updateType: 'status_change'})) }); } catch(e){}
+            }
+        }
+
+        window.shukkoObj = null;
+
+        window.closeShukkoModal = function() {
+            document.getElementById('shukkoModal').style.display = 'none';
+            window.shukkoObj = null;
+        }
+
+        window.confirmShukkoAction = function() {
+            if (window.shukkoObj) {
+                changeStatus(window.shukkoObj.id, window.shukkoObj.nextStatus, window.shukkoObj.destValue, window.shukkoObj.dateValue);
+            }
+            closeShukkoModal();
+        }
+
+        window.executeShukko = function(id, mode = 'calendar') {
+            const history = histories.find(h => h.id === id);
+            const destSelect = document.getElementById(`shukkoDest_${id}`);
+            let destValue = '';
+            
+            if (destSelect) {
+                destValue = destSelect.value;
+            } else if (history && history.destination) {
+                destValue = history.destination;
+            }
+            
+            if (!destValue) {
+                alert("出荷先を選択してください。");
+                return;
+            }
+            
+            let dateValue = '';
+            let dateLabel = '';
+            let nextStatus = '出庫';
+            
+            if (mode === 'today') {
+                dateValue = ''; 
+                dateLabel = '当日 (現在時刻)';
+                nextStatus = '出庫';
+            } else {
+                const dateInput = document.getElementById(`shukkoDate_${id}`);
+                dateValue = dateInput ? dateInput.value : '';
+                dateLabel = dateValue || '当日';
+                nextStatus = '予定出庫';
+            }
+            
+            let dispSt = nextStatus === '出庫' ? '出庫済' : '予定出庫';
+            
+            window.shukkoObj = { id, nextStatus, destValue, dateValue };
+            
+            document.getElementById('shukkoModalText').innerHTML = `この項目を「<span style="color:var(--accent); font-weight:bold;">${destValue}</span>」として<br>${dispSt}にしますか？<br><br><span style="font-size:0.9rem; color:#666;">（${dispSt}: ${dateLabel}）</span>`;
+            document.getElementById('shukkoModalOkBtn').setAttribute('onclick', 'confirmShukkoAction()');
+            document.getElementById('shukkoModal').style.display = 'flex';
+        }
+
+        window.deleteHistory = function(id) {
+            if(!confirm("本当にこのデータを削除してもよろしいですか？\n（※スプレッドシート側にも「削除」として履歴が送信されます）")) return;
+            const targetEntry = histories.find(h => h.id === id);
+            histories = histories.filter(h => h.id !== id);
+            localStorage.setItem('trace_history_v6', JSON.stringify(histories));
+            renderHistoryAndSummary();
+
+            if (GOOGLE_APP_SCRIPT_URL && targetEntry) {
+                try { fetch(GOOGLE_APP_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(translateToGAS({...targetEntry, status: '削除', updateType: 'status_change'})) }); } catch(e){}
+            }
+        }
+
+        window.deleteSelected = function() {
+            const checkboxes = document.querySelectorAll('.history-checkbox:checked');
+            if (checkboxes.length === 0) return;
+            
+            if(!confirm(`選択した ${checkboxes.length} 件のデータをまとめて削除してもよろしいですか？\n（※スプレッドシート側にもそれぞれ「削除」として履歴が追加送信されます）`)) return;
+
+            const idsToDelete = Array.from(checkboxes).map(cb => parseInt(cb.value));
+            
+            if (GOOGLE_APP_SCRIPT_URL) {
+                const targetEntries = histories.filter(h => idsToDelete.includes(h.id));
+                for (let targetEntry of targetEntries) {
+                    try { fetch(GOOGLE_APP_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(translateToGAS({...targetEntry, status: '削除', updateType: 'status_change'})) }); } catch(e){}
+                }
+            }
+
+            histories = histories.filter(h => !idsToDelete.includes(h.id));
+            localStorage.setItem('trace_history_v6', JSON.stringify(histories));
+            renderHistoryAndSummary();
+        }
+
+        window.toggleMic = function() {
+            document.getElementById('globalMicBtn').click();
+        };
+
+        window.syncCloud = async function() {
+            const syncBtn = document.getElementById('syncBtn');
+            if(syncBtn) { syncBtn.disabled = true; syncBtn.textContent = '🔄 同期中...'; }
+            
+            try {
+                if (!GOOGLE_APP_SCRIPT_URL) throw new Error('GAS URLが未設定です。');
+                
+                const res = await fetch(GOOGLE_APP_SCRIPT_URL);
+                if (!res.ok) throw new Error('Network response was not ok');
+                
+                const rawData = await res.text();
+                if (rawData.includes('<html')) throw new Error('GAS側にdoGet関数が設定されていません！プラン書の手順でGASプログラムを更新してください。');
+                
+                const cloudEvents = JSON.parse(rawData);
+                if (!Array.isArray(cloudEvents)) throw new Error('無効なデータ形式を受信しました。');
+                
+                // ID正規化ヘルパー（GASが科学記法 "1.712E+12" で返しても正しく解析）
+                function safeParseId(raw) {
+                    if (!raw) return 0;
+                    let n = Number(raw);
+                    return (isNaN(n) || n <= 0) ? 0 : Math.round(n);
+                }
+                // 作成日の正規化ヘルパー（"2026/4/4" → "2026/04/04"）
+                function normDateStr(ds) {
+                    if (!ds) return '';
+                    let parts = String(ds).split('/');
+                    if (parts.length === 3) {
+                        return parts[0] + '/' + parts[1].padStart(2,'0') + '/' + parts[2].padStart(2,'0');
+                    }
+                    return ds;
+                }
+
+                let cloudMap = {};
+                for (let e of cloudEvents) {
+                    let eid = safeParseId(e.id || e.ID || e['識別番号']);
+                    if (!eid) continue;
+
+                    cloudMap[eid] = {
+                        id: eid,
+                        targetDate: e.targetDate || e['対象日'] || e.TargetDate,
+                        producer: e.producer || e['生産者'] || e.Producer,
+                        houses: e.houses || e['ハウス'] || e['ハウス名'] || e.Houses,
+                        destination: (e.destination || e['出荷先'] || e['出庫先'] || e.Destination || ''),
+                        spec: e.spec || e['規格'] || e.Spec,
+                        code: e.code || e['トレサビコード'] || e['コード'] || e.Code,
+                        memo: e.memo || e['メモ'] || '',
+                        status: e.status || e['ステータス'] || e['状況'] || e.Status || '入庫',
+                        createdDateStr: normDateStr(e.createdDateStr || e['作成日'] || e.CreatedDateStr),
+                        createdAt: e.createdAt || e['作成日時'] || e.CreatedAt,
+                        shippedAt: e.shippedAt || e['出庫日時'] || e.ShippedAt || null,
+                        author: e.author || e['入力者'] || e.Author || '不明'
+                    };
+                }
+                
+                let mergedMap = {};
+                let missingInCloud = [];
+
+                for (let localH of histories) {
+                    mergedMap[localH.id] = { ...localH };
+                }
+
+                for (let cid in cloudMap) {
+                    if (mergedMap[cid]) {
+                        // ローカルに既存：ローカルデータ優先、クラウド側のステータス・出荷先のみ反映
+                        const local = mergedMap[cid];
+                        const cloud = cloudMap[cid];
+                        mergedMap[cid] = {
+                            ...local,
+                            status: cloud.status || local.status,
+                            destination: cloud.destination || local.destination,
+                            shippedAt: cloud.shippedAt || local.shippedAt
+                        };
+                    } else {
+                        // クラウドのみに存在する新規エントリー → そのまま追加
+                        mergedMap[cid] = cloudMap[cid];
+                    }
+                }
+                
+                for (let lid in mergedMap) {
+                    if (!cloudMap[lid]) {
+                        missingInCloud.push(mergedMap[lid]);
+                    }
+                }
+                
+                let rebuiltHistories = Object.values(mergedMap);
+                rebuiltHistories = rebuiltHistories.filter(h => h.status !== '削除');
+                rebuiltHistories.sort((a, b) => b.id - a.id);
+                
+                histories = rebuiltHistories;
+                localStorage.setItem('trace_history_v6', JSON.stringify(histories));
+                renderHistoryAndSummary();
+                
+                if (missingInCloud.length > 0 && GOOGLE_APP_SCRIPT_URL) {
+                    for (let missing of missingInCloud) {
+                        try { fetch(GOOGLE_APP_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(translateToGAS({...missing, updateType: 'status_change'})) }); } catch(e){}
+                    }
+                }
+                
+                if(syncBtn) {
+                    syncBtn.textContent = '✅ スマホ同期完了！';
+                    Object.assign(syncBtn.style, { background: 'rgba(16,185,129,0.3)', color: '#10b981', borderColor: '#10b981' });
+                }
+            } catch (err) {
+                console.error("Sync Error:", err);
+                if(syncBtn) {
+                    syncBtn.textContent = '⚠️ 同期失敗 (タップで詳細)';
+                    Object.assign(syncBtn.style, { background: 'rgba(239,68,68,0.2)', color: '#ef4444', borderColor: '#ef4444' });
+                    syncBtn.onclick = () => {
+                        alert('クラウド同期エラー：\\n' + err.message);
+                        window.syncCloud(); 
+                    };
+                }
+            }
+            
+            setTimeout(() => {
+                const sBtn = document.getElementById('syncBtn');
+                if(sBtn) { 
+                    sBtn.disabled = false; 
+                    sBtn.textContent = '🔄 クラウド同期'; 
+                    Object.assign(sBtn.style, { background: 'rgba(16, 185, 129, 0.2)', color: 'var(--success)', borderColor: 'var(--success)' });
+                    sBtn.onclick = window.syncCloud; 
+                }
+            }, 3000);
+        }
+
+        // ======= Pull to Refresh 実装 =======
+        let pStartY = 0; let pDist = 0;
+        const pRefresh = document.createElement('div');
+        pRefresh.innerHTML = '🔄 下に引っ張ってスプレッドシートと同期...';
+        pRefresh.style.cssText = 'height: 0px; overflow: hidden; text-align: center; color: var(--accent); font-weight: bold; background: rgba(56,189,248,0.1); display: flex; align-items: center; justify-content: center; transition: height 0.2s ease-out;';
+        window.addEventListener('DOMContentLoaded', () => {
+            document.body.prepend(pRefresh);
+        });
+
+        document.addEventListener('touchstart', e => {
+            if (window.scrollY <= 0) pStartY = e.touches[0].clientY;
+        }, {passive:true});
+
+        document.addEventListener('touchmove', e => {
+            if (pStartY > 0 && window.scrollY <= 0) {
+                pDist = e.touches[0].clientY - pStartY;
+                if (pDist > 0 && pDist < 150) {
+                    pRefresh.style.height = `${pDist}px`;
+                    pRefresh.style.transition = 'none';
+                    if (pDist > 70) pRefresh.innerHTML = '✨ 離して同期を実行...';
+                    else pRefresh.innerHTML = '🔄 下に引っ張って同期...';
+                }
+            }
+        }, {passive:true});
+
+        document.addEventListener('touchend', e => {
+            if (pDist > 70) {
+                pRefresh.style.height = '60px';
+                pRefresh.style.transition = 'height 0.2s';
+                pRefresh.innerHTML = '📶 同期中...';
+                if (navigator.vibrate) navigator.vibrate([50]);
+                syncCloud().then(() => {
+                    pRefresh.innerHTML = '✅ 同期完了！';
+                    if (navigator.vibrate) navigator.vibrate([100]);
+                    setTimeout(() => { pRefresh.style.height = '0px'; pStartY = 0; pDist = 0; }, 1200);
+                }).catch(() => {
+                    pRefresh.innerHTML = '❌ エラー';
+                    setTimeout(() => { pRefresh.style.height = '0px'; pStartY = 0; pDist = 0; }, 1200);
+                });
+            } else if (pDist > 0) {
+                pRefresh.style.height = '0px';
+                pRefresh.style.transition = 'height 0.2s';
+                pStartY = 0; pDist = 0;
+            } else {
+                pStartY = 0; pDist = 0;
+            }
+        }, {passive:true});
+
+        // ======= XLSXエクスポート (SheetJS) =======
+        window.exportCSV = window.exportXLSX = function() {
+            let target = histories;
+            const fs = document.getElementById('filterSpec').value;
+            const fSt = document.getElementById('filterStatus').value;
+            const fd = document.getElementById('filterDest').value;
+
+            if (fs !== 'ALL') target = target.filter(h => h.spec === fs);
+            if (fSt !== 'ALL') target = target.filter(h => h.status === fSt || (fSt==='入庫'&&!h.status));
+            if (fd !== 'ALL') target = target.filter(h => h.destination === fd);
+
+            if (target.length === 0) { alert('出力するデータがありません。'); return; }
+
+            const dStr = new Date().toISOString().split('T')[0];
+
+            if (typeof XLSX !== 'undefined') {
+                // ── SheetJS で .xlsx 出力 ──
+                const headers = ['ID','対象日','作成日時','生産者','ハウス','コード','規格','ステータス','出荷先','出荷完了日時','メモ'];
+                const rows = target.map(h => [
+                    h.id, h.targetDate, h.createdAt||'', h.producer||'', h.houses||'',
+                    h.code||'', h.spec||'', h.status||'入庫',
+                    h.destination||'', h.shippedAt||'', h.memo||''
+                ]);
+                const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+                // 列幅を内容に合わせて自動調整
+                ws['!cols'] = headers.map((h, i) => ({
+                    wch: Math.max(h.length, ...rows.map(r => String(r[i]||'').length)) + 2
+                }));
+                // ヘッダー行を太字・背景色に
+                headers.forEach((_, ci) => {
+                    const cellRef = XLSX.utils.encode_cell({ r: 0, c: ci });
+                    if (ws[cellRef]) {
+                        ws[cellRef].s = { font: { bold: true }, fill: { fgColor: { rgb: 'D6E4F7' } } };
+                    }
+                });
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'トレサビ履歴');
+                XLSX.writeFile(wb, `トレサビ履歴_${dStr}.xlsx`);
+            } else {
+                // ── フォールバック: CSV出力 ──
+                let csvContent = "\uFEFF";
+                csvContent += "ID,対象日,作成日時,生産者,ハウス,コード,規格,ステータス,出荷先,出荷完了日時,メモ\n";
+                target.forEach(h => {
+                    let row = [
+                        h.id, h.targetDate, h.createdAt, h.producer, h.houses, h.code, h.spec,
+                        h.status||'入庫', h.destination||'', h.shippedAt||'', h.memo||''
+                    ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",");
+                    csvContent += row + "\n";
+                });
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `トレサビ履歴_${dStr}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        };
+
+        // 🟡 最終版：スマートマイク機能（サイレント入力 + 最終AI確認型）
+        function setupVoiceAssistant() {
+            const micBtn = document.getElementById('globalMicBtn');
+            const voiceStatus = document.getElementById('voiceStatus');
+            
+            let SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                micBtn.style.display = 'none';
+                voiceStatus.textContent = 'お使いのブラウザは音声入力非対応です';
+                return;
+            }
+            
+            let recognition = new SpeechRecognition();
+            recognition.lang = 'ja-JP';
+            recognition.continuous = true; 
+            recognition.interimResults = true;
+            
+            let voiceMode = 'active'; 
+            let isRecording = false; 
+            let sessionStartIndex = 0; 
+            
+            let initialDate = null;
+            let initialProd = null;
+            let initialHouses = [];
+            let initialSpec = null;
+
+            let isSpeaking = false; // TTS再生中フラグ（マイクがTTS音声を拾って誤作動するのを防ぐ）
+
+            function speak(text) {
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    isSpeaking = true; // 再生開始: onresultを無視
+                    let msg = new SpeechSynthesisUtterance(text);
+                    msg.lang = 'ja-JP';
+                    msg.rate = 1.1;
+                    msg.onend = function() { isSpeaking = false; };  // 再生完了で解除
+                    msg.onerror = function() { isSpeaking = false; }; // エラー時も解除
+
+                    let voices = window.speechSynthesis.getVoices();
+                    // iOSの男性ボイス「Otoya」など、名前にOtoyaかMaleかIchiroが含まれるものを探す
+                    let maleVoice = voices.find(v => v.lang.includes('ja') && (v.name.includes('Otoya') || v.name.includes('Male') || v.name.includes('Ichiro')));
+
+                    if (maleVoice) {
+                        msg.voice = maleVoice;
+                    } else {
+                        // 専用の男性ボイスが見つからない場合は不自然にならない程度にピッチ調整 (0.8)
+                        msg.pitch = 0.8;
+                    }
+
+                    window.speechSynthesis.speak(msg);
+                }
+            }
+
+            // iOS Safari向けのVoice読み込みトリガー
+            if ('onvoiceschanged' in window.speechSynthesis) {
+                window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+            }
+
+            recognition.onstart = function() {
+                isRecording = true;
+                sessionStartIndex = 0; 
+                
+                micBtn.classList.add('recording');
+                document.querySelectorAll('.step-mic-btn').forEach(b => b.classList.add('recording'));
+                
+                voiceMode = 'active'; // 常にアクティブから開始（起動時の挨拶は省略）
+                voiceStatus.textContent = '音声受付中: 項目をお話しください';
+                
+                initialDate = selectedDateInfo?.date;
+                initialProd = selectedProducerStr;
+                initialHouses = [...selectedHouses];
+                initialSpec = selectedSpec;
+            };
+
+            recognition.onresult = function(event) {
+                // 音声合成中はマイク入力を無視（TTS音声が再帰的に認識されるのを防ぐ）
+                if (isSpeaking) return;
+
+                let currentSessionTranscript = "";
+                for (let i = sessionStartIndex; i < event.results.length; i++) {
+                    currentSessionTranscript += event.results[i][0].transcript;
+                }
+                // 句読点（、。）は連続した数字の結合を防ぐために残し、全角数字のみ半角に変換
+                let pureTranscript = currentSessionTranscript.replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).replace(/\s/g, '');
+
+                if (/(マイクオフ|マイク切って|終了|やめる)/.test(pureTranscript)) {
+                    sessionStartIndex = event.results.length;
+                    recognition.stop();
+                    voiceStatus.textContent = "音声入力を一時停止しました";
+                    return;
+                }
+
+                if (voiceMode === 'confirming') {
+                    // AI自身が喋った声（スピーカー音漏れ）をマイクが拾って誤作動するのを防ぐため、AIの定型文部分を純粋なテキストから削り取る
+                    let safeTranscript = pureTranscript.replace(/.*とお話し.*?[いさい]/g, '').replace(/.*ですね/g, '');
+
+                    let displayTranscript = safeTranscript.replace(/(登録完了|完了|キャンセル|ちがう|やり直し|はい|いいえ|オッケー|決定)/g, '');
+                    if (displayTranscript) voiceStatus.textContent = `最終確認: 「登録完了」か「キャンセル」とお答えください`;
+
+                    if (/(登録完了|完了|はい|オッケー|決定)/.test(safeTranscript)) {
+                        if (navigator.vibrate) navigator.vibrate([50, 100]);
+                        saveCode();
+
+                        // 【不具合修正】2回目の登録でフリーズする原因：初回の登録完了後にマイクを強制停止せず点けっぱなしにしていたため
+                        recognition.stop();
+                        // 読み返し不要 — 「分かりました」のみで作業終了
+                        speak("分かりました");
+
+                        voiceMode = 'active';
+
+                        voiceStatus.textContent = `登録完了 (次を入力する場合はマイクを押してください)`;
+                        return;
+                    } else if (/(キャンセル|やり直し|ちがう|いいえ|だめ|戻る|もどる)/.test(safeTranscript)) {
+                        // 確認時のキャンセルは、一度マイクを止めて完全にUIを入力量前にリセットする
+                        recognition.stop(); 
+                        speak("キャンセルしました。マイクを押して初めからお話しください");
+                        
+                        voiceMode = 'active';
+                        // 入力前の状態に確実に戻す
+                        document.querySelectorAll('.house-btn.selected').forEach(b => b.classList.remove('selected'));
+                        document.querySelectorAll('.spec-btn.selected').forEach(b => b.classList.remove('selected'));
+                        selectedHouses = [...initialHouses]; // initialDateなどはそのままなので再描画
+                        selectedSpec = initialSpec;
+                        checkFlow();
+                        
+                        voiceStatus.textContent = `キャンセルしました。マイクを押してやり直してください`;
+                        return;
+                     }
+                     return; 
+                 }
+
+                let isFinalEvent = event.results[event.results.length-1].isFinal;
+                let displayTranscript = pureTranscript.replace(/(入力|保存|登録|完了|いれて|オッケー|決定|マイクオフ|音声入力)/g, '');
+                if (displayTranscript) voiceStatus.textContent = `認識中: ${displayTranscript}`;
+
+                let actions = [];
+                let m;
+
+                const extract = (regex, type, valFunc) => {
+                    let re = new RegExp(regex.source, regex.flags + (regex.flags.includes('g') ? '' : 'g'));
+                    while ((m = re.exec(pureTranscript)) !== null) {
+                        actions.push({ type, idx: m.index, val: valFunc ? valFunc(m) : null });
+                    }
+                };
+
+                // クリア／キャンセル系
+                if (/(クリア|キャンセル|やり直し|リセット|間違え|ちがう|最初から)/.test(pureTranscript)) {
+                    // 特定の項目キャンセルでなければ全消去とみなす
+                    if (!/([0-9０-９一二三四五六七八九十]|生産者|ハウス|規格).*?(キャンセル|クリア|取り消し|なし|ちがう|やめる)/.test(pureTranscript)) {
+                        extract(/(クリア|キャンセル|やり直し|リセット|間違え|最初から)/, 'full_cancel');
+                    }
+                }
+                
+                extract(/(一つ戻る|戻る|もどる|前にもどる)/, 'step_back');
+                
+                extract(/生産者(キャンセル|クリア|取り消し|ちがう|ちがった|なし)/, 'prod_cancel');
+                extract(/ハウス(キャンセル|クリア|取り消し|ちがう|ちがった|なし)/, 'house_cancel_all');
+                extract(/規格(キャンセル|クリア|取り消し|ちがう|ちがった|なし)/, 'spec_cancel');
+
+                // 日付
+                extract(/(?:(\d+)[月がつ])?(\d+)[日](?!後)/, 'date', m => ({m: m[1] ? parseInt(m[1],10)-1 : null, d: parseInt(m[2],10)}));
+                extract(/今日|きょう/, 'date', () => 'today');
+
+                // 生産者
+                extract(/自社|じしゃ|じか|自家|きゅうじゅうきゅう|きゅうきゅう|99番?(?![0-9])/, 'prod', () => '99');
+                for (let p of producerCodes) {
+                    if (p !== '99') extract(new RegExp(`(?:^|[^0-9])(${p}番?|生産者${p})`), 'prod', () => p);
+                }
+
+                // ハウス指定（「ハウスコード〇」という明確なコマンドに変更し誤認識を完全防止）
+                const houseMappings = [
+                    { id: 1, re: /ハウスコード(1|一|いち)(?!(0|〇|十))/ },
+                    { id: 2, re: /ハウスコード(2|二|に)/ },
+                    { id: 3, re: /ハウスコード(3|三|さん)/ },
+                    { id: 4, re: /ハウスコード(4|四|よん|し)/ },
+                    { id: 5, re: /ハウスコード(5|五|ご)/ },
+                    { id: 6, re: /ハウスコード(6|六|ろく)/ },
+                    { id: 7, re: /ハウスコード(7|七|なな|しち)/ },
+                    { id: 8, re: /ハウスコード(8|八|はち)/ },
+                    { id: 9, re: /ハウスコード(9|九|きゅう|く)/ },
+                    { id: 10, re: /ハウスコード(10|十|じゅう)/ }
+                ];
+                
+                houseMappings.forEach(hm => {
+                    extract(hm.re, 'house_add', () => hm.id);
+                    // ハウスごとのキャンセルマッチング
+                    extract(new RegExp(hm.re.source + '(?:キャンセル|取り消し|クリア|ちがう|ちがった|やめる)'), 'house_rem', () => hm.id);
+                });
+
+                // 規格
+                ['M', 'L', '3P', '5P', 'レギュラー', '○品', 'なし'].forEach(s => {
+                    if (s === 'M') extract(/M|Ｍ|エム(?!ピー)|えむ/i, 'spec', () => s);
+                    else if (s === 'L') extract(/L|Ｌ|エル(?!ピー)|える/i, 'spec', () => s);
+                    else if (s === '3P') extract(/3P|３Ｐ|スリーピー|3ピー|さんピー|サンピー/i, 'spec', () => s);
+                    else if (s === '5P') extract(/5P|５Ｐ|ファイブピー|5ピー|ごピー|ゴピー/i, 'spec', () => s);
+                    else if (s === 'レギュラー') extract(/レギュラー|レギュラ/i, 'spec', () => s);
+                    else if (s === '○品') extract(/○品|まるひん|マルヒン|丸品|まるしな/i, 'spec', () => s);
+                    else if (s === 'なし') extract(/規格なし/i, 'spec', () => s);
+                });
+
+                actions.sort((a,b) => a.idx - b.idx);
+
+                let vDateObj = null;
+                let vProd = initialProd;
+                let vHouses = [...initialHouses];
+                let vSpec = initialSpec;
+                let dateHasTriggeredLocally = false;
+                let steppedBack = false;
+
+                for (let act of actions) {
+                    if (act.type === 'step_back') {
+                        steppedBack = true;
+                        if (vSpec) vSpec = null;
+                        else if (vHouses.length > 0) vHouses = [];
+                        else if (vProd) vProd = null;
+                        else vDateObj = 'CLEAR';
+                        continue;
+                    }
+                    if (act.type === 'full_cancel') { 
+                        vDateObj = 'CLEAR'; 
+                        vProd = null; 
+                        vHouses = []; 
+                        vSpec = null; 
+                        dateHasTriggeredLocally = false;
+                        initialDate = null;
+                        initialProd = null;
+                        initialHouses = [];
+                        initialSpec = null;
+                    }
+                    if (act.type === 'prod_cancel') vProd = null;
+                    if (act.type === 'house_cancel_all') vHouses = [];
+                    if (act.type === 'spec_cancel') vSpec = null;
+                    
+                    if (act.type === 'date') {
+                        dateHasTriggeredLocally = true;
+                        if (act.val === 'today') vDateObj = { y: new Date().getFullYear(), m: new Date().getMonth(), d: new Date().getDate() };
+                        else {
+                            vDateObj = vDateObj || { y: currentMonthDate.getFullYear(), m: currentMonthDate.getMonth(), d: selectedDateInfo?.date };
+                            if (act.val.m !== null) vDateObj.m = act.val.m;
+                            vDateObj.d = act.val.d;
+                        }
+                    }
+                    if (act.type === 'prod') vProd = act.val;
+                    if (act.type === 'spec') vSpec = act.val;
+                    
+                    if (act.type === 'house_rem') {
+                        vHouses = vHouses.filter(x => x !== act.val);
+                    }
+                    if (act.type === 'house_add') {
+                        let canAddHouse = (initialDate !== null && initialDate !== undefined) || dateHasTriggeredLocally;
+                        if (canAddHouse) {
+                            if (act.val === 1 && /10/.test(pureTranscript.substr(act.idx, 2))) continue;
+                            if (!vHouses.includes(act.val)) vHouses.push(act.val);
+                        }
+                    }
+                }
+
+                if (vDateObj === 'CLEAR') {
+                    selectedDateInfo = null;
+                    document.querySelectorAll('.calendar-day.selected').forEach(d => d.classList.remove('selected'));
+                    let hiddenInput = document.getElementById('selectedDateInput');
+                    if(hiddenInput) hiddenInput.value = '';
+                } else if (vDateObj) {
+                    let dateChanged = false;
+                    if (vDateObj.m !== currentMonthDate.getMonth() || vDateObj.y !== currentMonthDate.getFullYear()) {
+                        currentMonthDate.setFullYear(vDateObj.y);
+                        currentMonthDate.setMonth(vDateObj.m);
+                        renderCalendar(currentMonthDate);
+                        dateChanged = true;
+                    }
+                    if (dateChanged || vDateObj.d !== selectedDateInfo?.date || vDateObj.m !== selectedDateInfo?.monthBase1 - 1) {
+                        let dayEl = document.querySelector(`.calendar-day[data-day="${vDateObj.d}"]`);
+                        if (dayEl) dayEl.click();
+                    }
+                }
+
+                if (vProd !== selectedProducerStr) {
+                    if (!vProd) {
+                        selectedProducerStr = null;
+                        document.querySelectorAll('.producer-btn').forEach(b => b.classList.remove('selected'));
+                    } else {
+                        let btn = Array.from(document.querySelectorAll('.producer-btn')).find(b => b.textContent.includes(vProd === '99' ? '99' : vProd));
+                        if(btn) selectProducer(vProd, btn);
+                    }
+                }
+                
+                let addedHouses = vHouses.filter(h => !selectedHouses.includes(h));
+                let removedHouses = selectedHouses.filter(h => !vHouses.includes(h));
+                addedHouses.forEach(hId => {
+                    let btn = document.querySelectorAll('.house-btn')[hId-1];
+                    if (btn && !btn.classList.contains('selected')) toggleHouse(hId, btn);
+                });
+                removedHouses.forEach(hId => {
+                    let btn = document.querySelectorAll('.house-btn')[hId-1];
+                    if (btn && btn.classList.contains('selected')) toggleHouse(hId, btn);
+                });
+
+                if (vSpec !== selectedSpec) {
+                    if (!vSpec) {
+                        selectedSpec = null;
+                        document.querySelectorAll('.spec-btn').forEach(b => b.classList.remove('selected'));
+                    } else {
+                        let btn = Array.from(document.querySelectorAll('.spec-btn')).find(b => b.textContent === vSpec);
+                        if (btn) selectSpec(vSpec, btn);
+                    }
+                }
+
+                checkFlow();
+
+                const hLabelEl = document.getElementById('selectedHousesLabel');
+                if (hLabelEl) hLabelEl.textContent = selectedHouses.length > 0 ? selectedHouses.map(id => housesData.find(x => x.id === id).name).join(', ') : 'なし';
+
+                // 【UI改善】音声コマンドによって新しく登録された項目に基づいて、画面をスムーズに追従スクロールさせる
+                let houseAddedByVoice = addedHouses.length > 0;
+                
+                // ※規格（Spec）入力後にstep5へ自動スクロールすると画面が動きすぎて不快になるため、規格時はスクロールしない
+                if (houseAddedByVoice) {
+                    scrollToStep('step4');
+                } else if (steppedBack) {
+                    if (selectedHouses.length > 0) scrollToStep('step4');
+                    else if (selectedProducerStr) scrollToStep('step3');
+                    else if (selectedDateInfo) scrollToStep('step2');
+                    else scrollToStep('step1');
+                }
+
+                // --- 4. 確認・保存への移行 ---
+                // 「確認」を含むキーワードがあった場合
+                if (/(登録確認|確認|確認して)/.test(pureTranscript)) {
+                    const isHouseValid = selectedProducerStr === '99' ? (selectedHouses.length > 0) : true;
+                    if (selectedDateInfo && selectedProducerStr && isHouseValid && selectedSpec) {
+                        // 【変更】元の音声（〇番カッコ〇号）へ戻すため split を削除
+                        let hNamesText = selectedProducerStr === '99' ? selectedHouses.map(id => housesData.find(x => x.id === id).name).join('と') + '、' : '';
+                        let pName = `${selectedProducerStr}番`;
+                        
+                        // 【重要】AIが自身の言葉（「登録完了とお話しください」等）を聞き取って誤作動する現象を防ぐフィルタを搭載したため、安全に「登録完了」をアナウンス可能
+                        let spkText = `${selectedDateInfo.date}日、${pName}、${hNamesText}規格${selectedSpec}ですね。よろしければ「登録完了」とお話しください。`;
+                        voiceMode = 'confirming'; 
+                        voiceStatus.textContent = `最終確認: 「登録完了」か「キャンセル」とお答えください`;
+                        
+                        speak(spkText);
+                        return; 
+                    } else {
+                        if (isFinalEvent) {
+                            voiceStatus.textContent = `エラー: アナウンス確認に必要な全ての項目が入力されていません`;
+                        }
+                    }
+                }
+                // 「入力」「登録」「完了」などの確定ワードも確認読み上げを通す（直接登録スキップ廃止）
+                else if (/(入力|登録|完了)/.test(pureTranscript) && !/(登録確認|確認|登録完了)/.test(pureTranscript)) {
+                    const isHouseValid = selectedProducerStr === '99' ? (selectedHouses.length > 0) : true;
+                    if (selectedDateInfo && selectedProducerStr && isHouseValid && selectedSpec) {
+                        let hNamesText = selectedProducerStr === '99' ? selectedHouses.map(id => housesData.find(x => x.id === id).name).join('と') + '、' : '';
+                        let pName = `${selectedProducerStr}番`;
+                        let spkText = `${selectedDateInfo.date}日、${pName}、${hNamesText}規格${selectedSpec}ですね。よろしければ「登録完了」とお話しください。`;
+                        voiceMode = 'confirming';
+                        voiceStatus.textContent = `最終確認: 「登録完了」か「キャンセル」とお答えください`;
+                        speak(spkText);
+                        return;
+                    } else {
+                        if (isFinalEvent) {
+                            voiceStatus.textContent = `エラー: 登録に必要な項目が不足しています`;
+                        }
+                    }
+                }
+            };
+
+            // 【重要】エラー要因を全て画面に表示する強化版エラーハンドラー
+            recognition.onerror = function(event) {
+                isRecording = false;
+                micBtn.classList.remove('recording');
+                document.querySelectorAll('.step-mic-btn').forEach(b => b.classList.remove('recording'));
+                
+                if (event.error === 'not-allowed') {
+                    alert("マイクのアクセスがブロックされています。\n\nSafariのURLバー左上の「ぁあ」を押して「Webサイトの設定」からマイクを【許可】にするか、iPhoneの「設定」＞「Safari」＞「マイク」を【許可】に変更してください。");
+                    voiceStatus.textContent = 'エラー: マイクへのアクセスが拒否されています';
+                } else if (event.error === 'service-not-allowed') {
+                    alert("iOSの音声認識サービスが利用できません。\n\n「設定」＞「Siriと検索」でSiriがオンになっているか、「音声入力」がオンになっているか確認してください。");
+                    voiceStatus.textContent = 'エラー: 音声サービスが利用できません';
+                } else if (event.error === 'network') {
+                    voiceStatus.textContent = 'エラー: ネットワーク通信エラーが発生しました';
+                } else if (event.error === 'aborted') {
+                    voiceStatus.textContent = 'マイクを押して録音開始';
+                } else {
+                    voiceStatus.textContent = 'システムエラー: ' + event.error;
+                }
+            };
+            
+            recognition.onend = function() {
+                isRecording = false;
+                micBtn.classList.remove('recording');
+                document.querySelectorAll('.step-mic-btn').forEach(b => b.classList.remove('recording'));
+                if (!voiceStatus.textContent.includes('エラー') && !voiceStatus.textContent.includes('拒否') && !voiceStatus.textContent.includes('完了') && !voiceStatus.textContent.includes('確認')) {
+                    voiceStatus.textContent = 'マイクを押して録音開始';
+                }
+            };
+
+            micBtn.addEventListener('click', () => {
+                if (isRecording) {
+                    isRecording = false;
+                    micBtn.classList.remove('recording');
+                    document.querySelectorAll('.step-mic-btn').forEach(b => b.classList.remove('recording'));
+                    voiceStatus.textContent = 'マイクを押して開始';
+                    try { recognition.stop(); } catch(e) {}
+                } else {
+                    voiceStatus.textContent = 'マイクの起動を申請中...';
+                    try { 
+                        recognition.start(); 
+                    } catch(e) {
+                        if (e.name === 'NotAllowedError') {
+                            alert("マイクのアクセスが拒否されています。端末の設定からSafari（ブラウザ）のマイク権限を「許可」にしてください。");
+                            voiceStatus.textContent = 'エラー: マイクが拒否されました';
+                        } else if (e.name === 'InvalidStateError') {
+                            isRecording = true;
+                            micBtn.classList.add('recording');
+                            document.querySelectorAll('.step-mic-btn').forEach(b => b.classList.add('recording'));
+                            voiceStatus.textContent = 'すでに起動中です。そのままお話しください。';
+                        } else {
+                            alert("システム再起動エラー: " + e.message);
+                        }
+                    }
+                }
+            });
+        }
+
+        // ======= OCR文字認識（カメラから赤枠撮影モード） =======
+        let ocrWorker = null;
+        let ocrVideo = null;
+        let ocrCanvas = null;
+
+        async function initTesseract() {
+            if (ocrWorker) return;
+            const hint = document.getElementById('scannerHint');
+            hint.textContent = '読取エンジンを起動中... (数秒かかります)';
+            try {
+                ocrWorker = await Tesseract.createWorker('eng', 1);
+                await ocrWorker.setParameters({
+                    tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+                });
+                hint.textContent = 'コードを赤枠に入れて「撮影して読取」を押してください';
+            } catch(e) { 
+                hint.textContent = 'エンジンの起動に失敗しました'; 
+                console.error('OCR Init Error', e); 
+            }
+        }
+
+        window.startOcrScanner = async function() {
+            document.getElementById('scannerModal').style.display = 'flex';
+            ocrVideo = document.getElementById('ocr-video');
+            ocrCanvas = document.getElementById('ocr-canvas');
+            document.getElementById('shootBtn').disabled = false;
+            
+            if (!ocrWorker) {
+                initTesseract();
+            } else {
+                document.getElementById('scannerHint').textContent = 'コードを赤枠に入れて「撮影して読取」を押してください';
+            }
+
+            try {
+                // ideal: environment でリアカメラを優先、失敗したらフロントカメラにフォールバック
+                let stream;
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } });
+                } catch(e1) {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                }
+                ocrVideo.srcObject = stream;
+                await new Promise(r => { ocrVideo.onloadedmetadata = r; });
+                ocrVideo.play();
+            } catch (err) {
+                document.getElementById('scannerHint').textContent = 'カメラへのアクセスが拒否されたか、起動に失敗しました。ブラウザのカメラ許可を確認してください。';
+                console.error('Camera error:', err);
+            }
+        }
+
+        window.stopScanner = function() {
+            if (ocrVideo && ocrVideo.srcObject) {
+                ocrVideo.srcObject.getTracks().forEach(t => t.stop());
+            }
+            document.getElementById('scannerModal').style.display = 'none';
+        }
+
+        window.shootOcrPhoto = async function() {
+            if (!ocrWorker || !ocrVideo || ocrVideo.videoWidth === 0) return;
+            
+            const hint = document.getElementById('scannerHint');
+            const btn = document.getElementById('shootBtn');
+            btn.disabled = true;
+            hint.textContent = '解析中... (数秒お待ちください)';
+
+            try {
+                const vw = ocrVideo.videoWidth;
+                const vh = ocrVideo.videoHeight;
+                
+                const cropW = vw * 0.8;
+                const cropH = vh * 0.25;
+                const sx = (vw - cropW) / 2;
+                const sy = (vh - cropH) / 2;
+                
+                ocrCanvas.width = cropW;
+                ocrCanvas.height = cropH;
+                const ctx = ocrCanvas.getContext('2d');
+                ctx.drawImage(ocrVideo, sx, sy, cropW, cropH, 0, 0, cropW, cropH);
+
+                const { data: { text } } = await ocrWorker.recognize(ocrCanvas);
+                
+                const blocks = text.split(/[\s\n\r]+/).map(t => t.replace(/[^0-9A-Z]/gi, '').trim().toUpperCase()).filter(t => t.length >= 3);
+                let targetCode = '';
+                if (blocks.length > 0) {
+                    targetCode = blocks.reduce((a, b) => a.length > b.length ? a : b);
+                } else {
+                    targetCode = text.replace(/[^0-9A-Z]/gi, '').trim().toUpperCase();
+                }
+
+                if (targetCode.length < 2) {
+                    alert('コードが認識できませんでした。赤枠内にはっきりと写るようにして、もう一度撮影してください。');
+                    hint.textContent = 'コードを赤枠に入れて「撮影して読取」を押してください';
+                    btn.disabled = false;
+                    return;
+                }
+
+                // ユーザーに最終確認
+                const isOk = confirm(`読み取った英数字:\n【 ${targetCode} 】\n\nこのコード番号でよろしいですか？`);
+                if (!isOk) {
+                    hint.textContent = 'コードを赤枠に入れて「撮影して読取」を押してください';
+                    btn.disabled = false;
+                    return;
+                }
+
+                // 既存履歴から検索
+                let foundIndex = -1;
+                histories.forEach((h, i) => {
+                    if (h.code === targetCode || h.code.includes(targetCode)) { // 部分一致も含めて検索
+                        foundIndex = i;
+                    }
+                });
+
+                stopScanner(); // カメラを閉じる
+
+                if (foundIndex !== -1) {
+                    // 見つかった場合（検索機能として動作）
+                    const foundH = histories[foundIndex];
+                    if (foundH.status === '出庫') window.scrollToTab('shukko');
+                    else window.scrollToTab('nyuko');
+                    setTimeout(() => {
+                        const cb = document.querySelector(`.history-checkbox[value="${histories[foundIndex].id}"]`);
+                        if (cb) {
+                            cb.checked = true;
+                            const tr = cb.closest('tr');
+                            tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            tr.style.backgroundColor = 'rgba(56, 189, 248, 0.4)';
+                            setTimeout(() => tr.style.backgroundColor = '', 3000);
+                            updateDeleteSelectedBtn();
+                            alert(`在庫履歴に見つかりました（検索成功）。選択状態にしました。`);
+                        }
+                    }, 300);
+                } else {
+                    // 見つからなかった場合（新規登録機能として動作）
+                    const doRegister = confirm(`【 ${targetCode} 】は現在の在庫履歴に見つかりません。\n\nこのままこの番号を新しく「入庫（登録）」しますか？`);
+                    if (doRegister) {
+                        const newId = Date.now();
+                        const todayStr = new Date().toISOString().split('T')[0];
+                        histories.unshift({
+                            id: newId,
+                            createdAt: new Date().toLocaleString('ja-JP').replace('T', ' '),
+                            code: targetCode,
+                            // 写真から登録したため要素は不明とする
+                            dateNum: null, producer: '直接撮影', houses: '', spec: '不明', memo: 'カメラ撮影から手動登録',
+                            targetDate: todayStr,
+                            status: '入庫',
+                            destination: ''
+                        });
+                        localStorage.setItem('trace_history_v6', JSON.stringify(histories));
+                        window.scrollToTab('nyuko');
+                        renderHistoryAndSummary();
+                        alert(`【 ${targetCode} 】を新規入庫として登録しました！`);
+                    }
+                }
+            } catch (err) {
+                alert('認識処理中にエラーが発生しました。時間を置いてからお試しください。');
+                hint.textContent = 'コードを赤枠に入れて「撮影して読取」を押してください';
+                btn.disabled = false;
+            }
+        }
+    </script>
+
+    <!-- OCRスキャナー用モーダル -->
+    <div id="scannerModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); z-index: 10000; flex-direction: column; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 8px; overflow: hidden; width: 95%; max-width: 500px; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; background: var(--accent); padding: 12px 20px; color: white; font-weight: bold; font-size: 1.1rem;">
+                📷 赤枠に合わせて撮影
+                <button onclick="stopScanner()" style="background: none; border: none; color: white; font-size: 2.2rem; cursor: pointer; line-height: 1; padding: 0;">&times;</button>
+            </div>
+            
+            <div style="position: relative; width: 100%; height: 350px; background: black; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                <video id="ocr-video" style="width: 100%; height: 100%; object-fit: cover;" autoplay playsinline muted></video>
+                <div style="position: absolute; width: 80%; height: 25%; border: 4px solid var(--pink); border-radius: 8px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.6); pointer-events: none;"></div>
+            </div>
+            
+            <canvas id="ocr-canvas" style="display: none;"></canvas>
+
+            <div style="padding: 15px; text-align: center; background: #f8f9fa;">
+                <div id="scannerHint" style="color: #333; font-size: 0.95rem; font-weight: bold; margin-bottom: 10px;">
+                    コードを赤枠に入れて「撮影して読取」を押してください
+                </div>
+                <button id="shootBtn" onclick="shootOcrPhoto()" style="background: var(--primary-color); color: white; border: none; padding: 15px 30px; font-size: 1.2rem; font-weight: bold; border-radius: 8px; width: 100%; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
+                    📸 撮影して読取
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 中央配置のカスタム「出荷済みにしますか？」確認モーダル -->
+    <div id="shukkoModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.4); z-index: 99999; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(2px);">
+        <div style="background: white; border-radius: 12px; width: 85%; max-width: 320px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: popIn 0.2s ease-out forwards;">
+            <div style="background: var(--accent); padding: 16px; color: white; font-weight: bold; font-size: 1.15rem; text-align: center; letter-spacing: 1px;">
+                📦 出庫の確認
+            </div>
+            <div id="shukkoModalText" style="padding: 25px 20px; color: #333; font-size: 1.1rem; text-align: center; line-height: 1.5; font-weight: 500;">
+                この項目を出荷済みにしますか？
+            </div>
+            <div style="display: flex; border-top: 1px solid #ddd;">
+                <button onclick="closeShukkoModal()" style="flex: 1; padding: 15px; background: #f8f9fa; color: #888; border: none; border-right: 1px solid #ddd; font-weight: bold; font-size: 1.1rem; cursor: pointer;">キャンセル</button>
+                <button id="shukkoModalOkBtn" onclick="confirmShukkoAction()" style="flex: 1; padding: 15px; background: white; color: var(--accent); border: none; font-weight: bold; font-size: 1.1rem; cursor: pointer;">ＯＫ</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 一括操作用 フローティングボタン (FAB) -->
+    <div id="fabBulkShip" style="display: none; position: fixed; bottom: 20px; right: 20px; background: var(--pink); color: white; border-radius: 50px; padding: 12px 20px; font-weight: bold; font-size: 1rem; box-shadow: 0 4px 12px rgba(0,0,0,0.5); cursor: pointer; z-index: 1000; align-items: center; gap: 6px;" onclick="window.scrollTo({top:0, behavior:'smooth'}); document.getElementById('bulkActions').style.boxShadow = '0 0 20px var(--accent)'; setTimeout(()=>document.getElementById('bulkActions').style.boxShadow='', 1000);">
+        🚀 一括出庫 (<span id="fabCount">0</span>)
+    </div>
+</body>
+</html>
