@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>栽培支援システム</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+    :root{
+        --primary:#22c55e;
+        --primary-hover:#16a34a;
+        --bg:#0b1220;
+        --card-bg:rgba(22,34,54,0.72);
+        --card-solid:#16223a;
+        --text:#f1f5f9;
+        --muted:#8ea3bf;
+        --border:rgba(255,255,255,0.10);
+        --sky:#38bdf8;
+        --indigo:#818cf8;
+        --amber:#f59e0b;
+        --rose:#fb7185;
+        --teal:#2dd4bf;
+        --violet:#a78bfa;
+    }
+    *{box-sizing:border-box}
+    body{
+        margin:0;font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+        background:linear-gradient(140deg,#0b1220 0%,#101a33 55%,#0d1728 100%);
+        background-attachment:fixed;color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;
+    }
+    .container{max-width:1080px;margin:0 auto;padding:1.6rem 1rem 4rem}
+
+    /* Header */
+    header{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.6rem;flex-wrap:wrap}
+    .brand{display:flex;align-items:center;gap:.8rem}
+    .brand .logo{
+        width:48px;height:48px;border-radius:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.6rem;
+        background:linear-gradient(135deg,#22c55e,#38bdf8);box-shadow:0 6px 20px rgba(34,197,94,.35);
+    }
+    .brand h1{font-size:1.5rem;margin:0;line-height:1.2;font-weight:800;letter-spacing:.02em}
+    .brand .sub{color:var(--muted);font-size:.8rem;margin-top:2px}
+    .header-actions{display:flex;gap:.5rem;flex-wrap:wrap}
+
+    .btn{
+        border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);
+        padding:.55rem .9rem;border-radius:10px;font-size:.85rem;font-weight:600;cursor:pointer;
+        transition:all .18s ease;display:inline-flex;align-items:center;gap:.4rem;font-family:inherit;
+    }
+    .btn:hover{background:rgba(255,255,255,.12);transform:translateY(-1px)}
+    .btn.primary{background:var(--primary);border-color:transparent;color:#04220f}
+    .btn.primary:hover{background:var(--primary-hover);color:#fff}
+    .btn.ghost{background:transparent}
+    .btn.danger{color:var(--rose);border-color:rgba(251,113,133,.35)}
+    .btn.danger:hover{background:rgba(251,113,133,.15)}
+    .btn.sm{padding:.35rem .6rem;font-size:.78rem}
+
+    /* Voice hero */
+    .voice-hero{
+        background:radial-gradient(120% 140% at 15% 0%,rgba(56,189,248,.15),transparent 55%),
+                   radial-gradient(120% 140% at 100% 100%,rgba(34,197,94,.15),transparent 55%),
+                   var(--card-bg);
+        border:1px solid var(--border);border-radius:20px;padding:1.6rem;margin-bottom:1.6rem;
+        backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 12px 40px rgba(0,0,0,.28);
+    }
+    .voice-top{display:flex;align-items:center;gap:1.3rem}
+    .mic-btn{
+        width:84px;height:84px;border-radius:50%;border:none;cursor:pointer;flex-shrink:0;
+        background:linear-gradient(135deg,#22c55e,#0ea5e9);color:#fff;font-size:2.4rem;
+        display:flex;align-items:center;justify-content:center;transition:transform .2s ease;
+        box-shadow:0 8px 26px rgba(14,165,233,.45);
+    }
+    .mic-btn:hover{transform:scale(1.06)}
+    .mic-btn.recording{background:#ef4444;animation:pulse 1.4s infinite;box-shadow:0 0 0 0 rgba(239,68,68,.7)}
+    @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(239,68,68,.6)}70%{box-shadow:0 0 0 22px rgba(239,68,68,0)}100%{box-shadow:0 0 0 0 rgba(239,68,68,0)}}
+    .voice-copy{flex:1;min-width:0}
+    .voice-copy h2{margin:0 0 .3rem;font-size:1.15rem;font-weight:700}
+    #voiceStatus{color:var(--sky);font-weight:600;font-size:.95rem;display:block;min-height:1.2em}
+    .voice-copy .hint{color:var(--muted);font-size:.82rem;margin-top:.25rem}
+
+    .voice-transcript{
+        margin-top:1.1rem;background:rgba(0,0,0,.22);border:1px solid var(--border);border-radius:12px;
+        padding:.9rem 1rem;font-size:.92rem;color:var(--muted);min-height:2.4em;
+    }
+    .voice-transcript b{color:var(--text)}
+
+    .voice-answer{
+        margin-top:1rem;border-radius:14px;padding:1.1rem 1.2rem;display:none;
+        background:linear-gradient(135deg,rgba(34,197,94,.12),rgba(56,189,248,.10));
+        border:1px solid rgba(34,197,94,.35);
+    }
+    .voice-answer.show{display:block;animation:rise .35s ease}
+    @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    .voice-answer .a-label{font-size:.72rem;letter-spacing:.12em;color:var(--sky);font-weight:700;text-transform:uppercase}
+    .voice-answer .a-main{font-size:1.25rem;font-weight:700;margin:.35rem 0 .2rem;line-height:1.4}
+    .voice-answer .a-detail{color:var(--muted);font-size:.88rem;line-height:1.7}
+    .voice-answer .a-detail .row{padding:.15rem 0;border-bottom:1px dashed rgba(255,255,255,.08)}
+
+    .chips{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem}
+    .chip{
+        background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text);
+        padding:.4rem .8rem;border-radius:999px;font-size:.8rem;cursor:pointer;transition:all .15s ease;
+    }
+    .chip:hover{background:rgba(56,189,248,.18);border-color:rgba(56,189,248,.4)}
+
+    /* Stats */
+    .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:.7rem;margin-bottom:1.6rem}
+    .stat{
+        background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:.9rem .7rem;text-align:center;cursor:pointer;
+        transition:all .18s ease;backdrop-filter:blur(8px);
+    }
+    .stat:hover{transform:translateY(-2px);border-color:rgba(56,189,248,.4)}
+    .stat .ico{font-size:1.4rem}
+    .stat .num{font-size:1.5rem;font-weight:800;margin-top:.2rem;line-height:1}
+    .stat .lbl{font-size:.72rem;color:var(--muted);margin-top:.25rem}
+    @media(max-width:820px){.stats{grid-template-columns:repeat(3,1fr)}}
+    @media(max-width:480px){.stats{grid-template-columns:repeat(2,1fr)}}
+
+    /* Tabs */
+    .tabs{display:flex;gap:.4rem;overflow-x:auto;margin-bottom:1rem;padding-bottom:.3rem;-webkit-overflow-scrolling:touch}
+    .tab{
+        white-space:nowrap;padding:.55rem .95rem;border-radius:10px;border:1px solid var(--border);
+        background:rgba(255,255,255,.04);color:var(--muted);font-weight:600;font-size:.85rem;cursor:pointer;transition:all .15s ease;
+    }
+    .tab:hover{color:var(--text)}
+    .tab.active{background:var(--primary);color:#04220f;border-color:transparent}
+
+    /* Panels */
+    .panel{display:none;animation:rise .3s ease}
+    .panel.active{display:block}
+    .card{
+        background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:1.3rem;margin-bottom:1.2rem;
+        backdrop-filter:blur(10px);box-shadow:0 8px 30px rgba(0,0,0,.2);
+    }
+    .card-head{display:flex;align-items:center;justify-content:space-between;gap:.8rem;margin-bottom:1rem;flex-wrap:wrap}
+    .card-head h3{margin:0;font-size:1.1rem;font-weight:700;display:flex;align-items:center;gap:.5rem}
+    .card-head .desc{color:var(--muted);font-size:.8rem;margin-top:.25rem;font-weight:400}
+
+    /* Forms */
+    .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.7rem;margin-bottom:.9rem}
+    .field label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:.3rem;font-weight:600}
+    .field input,.field select,.field textarea{
+        width:100%;background:rgba(0,0,0,.28);border:1px solid var(--border);border-radius:9px;
+        padding:.55rem .6rem;color:var(--text);font-size:.88rem;font-family:inherit;
+    }
+    .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--sky)}
+    .field textarea{resize:vertical;min-height:42px}
+    .form-actions{display:flex;gap:.5rem;flex-wrap:wrap}
+
+    /* Table */
+    .table-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--border)}
+    table{width:100%;border-collapse:collapse;font-size:.85rem;min-width:520px}
+    th,td{padding:.65rem .8rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+    th{background:rgba(255,255,255,.04);color:var(--muted);font-weight:600;font-size:.76rem;position:sticky;top:0}
+    tbody tr:hover{background:rgba(255,255,255,.03)}
+    td.wrap{white-space:normal;min-width:160px}
+    .pill{display:inline-block;padding:.15rem .55rem;border-radius:999px;font-size:.72rem;font-weight:600}
+    .pill.g{background:rgba(34,197,94,.18);color:#4ade80}
+    .pill.b{background:rgba(56,189,248,.18);color:#7dd3fc}
+    .pill.a{background:rgba(245,158,11,.18);color:#fbbf24}
+    .pill.v{background:rgba(167,139,250,.18);color:#c4b5fd}
+    .pill.r{background:rgba(251,113,133,.18);color:#fda4af}
+    .row-del{color:var(--rose);cursor:pointer;font-weight:700;border:none;background:none;font-size:1rem}
+
+    .empty{
+        text-align:center;padding:2.4rem 1rem;color:var(--muted);
+        border:1.5px dashed var(--border);border-radius:14px;
+    }
+    .empty .ico{font-size:2.2rem;opacity:.7}
+    .empty p{margin:.6rem 0 0;font-size:.9rem}
+    .empty small{font-size:.78rem;opacity:.75}
+
+    /* Toast */
+    #toast{
+        position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(120px);
+        background:#16223a;border:1px solid var(--border);color:var(--text);padding:.8rem 1.3rem;border-radius:12px;
+        box-shadow:0 10px 30px rgba(0,0,0,.4);font-size:.9rem;font-weight:600;z-index:999;transition:transform .3s ease;
+    }
+    #toast.show{transform:translateX(-50%) translateY(0)}
+
+    footer{margin-top:2rem;padding-top:1.4rem;border-top:1px solid var(--border);color:var(--muted);font-size:.78rem;text-align:center;line-height:1.8}
+    footer .datamgmt{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin-bottom:1rem}
+</style>
+</head>
+<body>
+<div class="container">
+
+    <header>
+        <div class="brand">
+            <div class="logo">🌱</div>
+            <div>
+                <h1>栽培支援システム</h1>
+                <div class="sub">音声で引き出す自社データベース ― 圃場・作業・生育・収穫・資材</div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn ghost sm" onclick="loadDemo()">🧪 デモデータ</button>
+            <button class="btn ghost sm" onclick="exportData()">⬇ 書出</button>
+            <button class="btn ghost sm" onclick="document.getElementById('importFile').click()">⬆ 取込</button>
+            <input type="file" id="importFile" accept="application/json" hidden onchange="importData(event)">
+        </div>
+    </header>
+
+    <!-- ==================== 音声照会 ==================== -->
+    <section class="voice-hero">
+        <div class="voice-top">
+            <button id="micBtn" class="mic-btn" title="音声で質問する" onclick="toggleMic()">🎤</button>
+            <div class="voice-copy">
+                <h2>音声で聞くだけ、データを引き出す</h2>
+                <span id="voiceStatus">マイクを押して質問してください（例：「トマトの圃場はどこ？」）</span>
+                <div class="hint">質問すると、該当データを検索して画面に表示し、音声で読み上げます。データは後から登録できます。</div>
+            </div>
+        </div>
+
+        <div class="voice-transcript" id="transcript">聞き取った内容がここに表示されます。</div>
+
+        <div class="voice-answer" id="answer">
+            <div class="a-label">回答</div>
+            <div class="a-main" id="answerMain"></div>
+            <div class="a-detail" id="answerDetail"></div>
+        </div>
+
+        <div class="chips" id="chips">
+            <span class="chip" onclick="askExample(this)">今日の作業は？</span>
+            <span class="chip" onclick="askExample(this)">トマトの圃場はどこ？</span>
+            <span class="chip" onclick="askExample(this)">今週の収穫量は？</span>
+            <span class="chip" onclick="askExample(this)">最後の防除はいつ？</span>
+            <span class="chip" onclick="askExample(this)">A圃場の生育状況</span>
+            <span class="chip" onclick="askExample(this)">今日の気温は？</span>
+        </div>
+    </section>
+
+    <!-- ==================== 集計タイル ==================== -->
+    <div class="stats" id="stats"></div>
+
+    <!-- ==================== タブ ==================== -->
+    <div class="tabs" id="tabs">
+        <div class="tab active" data-tab="fields" onclick="switchTab('fields')">🌾 圃場・作物</div>
+        <div class="tab" data-tab="tasks" onclick="switchTab('tasks')">📋 作業記録</div>
+        <div class="tab" data-tab="growth" onclick="switchTab('growth')">📈 生育・環境</div>
+        <div class="tab" data-tab="harvests" onclick="switchTab('harvests')">🧺 収穫・出荷</div>
+        <div class="tab" data-tab="materials" onclick="switchTab('materials')">🧴 資材・農薬</div>
+    </div>
+
+    <!-- 圃場・作物 -->
+    <section class="panel active" id="panel-fields">
+        <div class="card">
+            <div class="card-head">
+                <div><h3>🌾 圃場・作物マスタ</h3><div class="desc">圃場（畑・ハウス）と栽培作物を登録します。音声照会の「場所」「作物」の基準になります。</div></div>
+            </div>
+            <div class="form-grid">
+                <div class="field"><label>圃場名 / コード</label><input id="f_name" placeholder="例：A圃場 / 3号ハウス"></div>
+                <div class="field"><label>作物</label><input id="f_crop" placeholder="例：トマト"></div>
+                <div class="field"><label>品種</label><input id="f_variety" placeholder="例：桃太郎"></div>
+                <div class="field"><label>面積</label><input id="f_area" placeholder="例：10a"></div>
+                <div class="field"><label>場所・メモ</label><input id="f_note" placeholder="例：南側 / 露地"></div>
+            </div>
+            <div class="form-actions"><button class="btn primary" onclick="addRecord('fields')">＋ 圃場を追加</button></div>
+        </div>
+        <div class="card"><div id="list-fields"></div></div>
+    </section>
+
+    <!-- 作業記録 -->
+    <section class="panel" id="panel-tasks">
+        <div class="card">
+            <div class="card-head">
+                <div><h3>📋 作業記録・予定</h3><div class="desc">水やり・施肥・防除・播種・定植・整枝・収穫などの作業を記録します。</div></div>
+            </div>
+            <div class="form-grid">
+                <div class="field"><label>日付</label><input type="date" id="t_date"></div>
+                <div class="field"><label>圃場</label><select id="t_field"></select></div>
+                <div class="field"><label>作業種別</label><select id="t_type">
+                    <option>水やり</option><option>施肥</option><option>防除</option><option>播種</option>
+                    <option>定植</option><option>整枝・摘芯</option><option>除草</option><option>収穫</option><option>その他</option>
+                </select></div>
+                <div class="field"><label>担当者</label><input id="t_worker" placeholder="例：田中"></div>
+                <div class="field"><label>内容</label><input id="t_content" placeholder="例：追肥 化成8-8-8"></div>
+                <div class="field"><label>状態</label><select id="t_done"><option value="予定">予定</option><option value="完了">完了</option></select></div>
+            </div>
+            <div class="form-actions"><button class="btn primary" onclick="addRecord('tasks')">＋ 作業を追加</button></div>
+        </div>
+        <div class="card"><div id="list-tasks"></div></div>
+    </section>
+
+    <!-- 生育・環境 -->
+    <section class="panel" id="panel-growth">
+        <div class="card">
+            <div class="card-head">
+                <div><h3>📈 生育・環境記録</h3><div class="desc">草丈・生育ステージ・気温・湿度などを記録します。</div></div>
+            </div>
+            <div class="form-grid">
+                <div class="field"><label>日付</label><input type="date" id="g_date"></div>
+                <div class="field"><label>圃場</label><select id="g_field"></select></div>
+                <div class="field"><label>生育ステージ</label><input id="g_stage" placeholder="例：開花期"></div>
+                <div class="field"><label>草丈(cm)</label><input id="g_height" type="number" placeholder="例：85"></div>
+                <div class="field"><label>気温(℃)</label><input id="g_temp" type="number" placeholder="例：28"></div>
+                <div class="field"><label>湿度(%)</label><input id="g_humidity" type="number" placeholder="例：65"></div>
+                <div class="field"><label>メモ</label><input id="g_note" placeholder="例：生育良好"></div>
+            </div>
+            <div class="form-actions"><button class="btn primary" onclick="addRecord('growth')">＋ 記録を追加</button></div>
+        </div>
+        <div class="card"><div id="list-growth"></div></div>
+    </section>
+
+    <!-- 収穫・出荷 -->
+    <section class="panel" id="panel-harvests">
+        <div class="card">
+            <div class="card-head">
+                <div><h3>🧺 収穫・出荷記録</h3><div class="desc">収穫量・等級・出荷先を記録します。音声で「収穫量」「収量」を集計できます。</div></div>
+            </div>
+            <div class="form-grid">
+                <div class="field"><label>日付</label><input type="date" id="h_date"></div>
+                <div class="field"><label>圃場</label><select id="h_field"></select></div>
+                <div class="field"><label>数量</label><input id="h_qty" type="number" placeholder="例：120"></div>
+                <div class="field"><label>単位</label><select id="h_unit"><option>kg</option><option>ケース</option><option>個</option><option>袋</option></select></div>
+                <div class="field"><label>等級</label><input id="h_grade" placeholder="例：秀 / A品"></div>
+                <div class="field"><label>出荷先・メモ</label><input id="h_note" placeholder="例：JA / 直売"></div>
+            </div>
+            <div class="form-actions"><button class="btn primary" onclick="addRecord('harvests')">＋ 収穫を追加</button></div>
+        </div>
+        <div class="card"><div id="list-harvests"></div></div>
+    </section>
+
+    <!-- 資材・農薬 -->
+    <section class="panel" id="panel-materials">
+        <div class="card">
+            <div class="card-head">
+                <div><h3>🧴 資材・農薬・肥料</h3><div class="desc">農薬・肥料・資材の使用を記録します。防除履歴として音声で引き出せます。</div></div>
+            </div>
+            <div class="form-grid">
+                <div class="field"><label>日付</label><input type="date" id="m_date"></div>
+                <div class="field"><label>圃場</label><select id="m_field"></select></div>
+                <div class="field"><label>区分</label><select id="m_cat"><option>農薬</option><option>肥料</option><option>資材</option></select></div>
+                <div class="field"><label>名称</label><input id="m_name" placeholder="例：ダコニール1000"></div>
+                <div class="field"><label>使用量</label><input id="m_amount" placeholder="例：1000倍 500L"></div>
+                <div class="field"><label>メモ</label><input id="m_note" placeholder="例：うどんこ病予防"></div>
+            </div>
+            <div class="form-actions"><button class="btn primary" onclick="addRecord('materials')">＋ 資材を追加</button></div>
+        </div>
+        <div class="card"><div id="list-materials"></div></div>
+    </section>
+
+    <footer>
+        <div class="datamgmt">
+            <button class="btn ghost sm" onclick="loadDemo()">🧪 デモデータを投入</button>
+            <button class="btn ghost sm" onclick="exportData()">⬇ JSONで書き出す</button>
+            <button class="btn ghost sm" onclick="document.getElementById('importFile').click()">⬆ JSONを取り込む</button>
+            <button class="btn danger sm" onclick="clearAll()">🗑 全データ消去</button>
+        </div>
+        栽培支援システム ― 自社内スタンドアロン版（データはこの端末のブラウザに保存されます）<br>
+        音声認識・読み上げは Chrome / Safari など Web Speech API 対応ブラウザで動作します。
+    </footer>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ======================================================================
+   データ層（localStorage）
+   ====================================================================== */
+const STORE_KEY = 'cultivation_support_v1';
+const SCHEMA = {
+    fields:    ['name','crop','variety','area','note'],
+    tasks:     ['date','fieldName','type','worker','content','done'],
+    growth:    ['date','fieldName','stage','height','temp','humidity','note'],
+    harvests:  ['date','fieldName','qty','unit','grade','note'],
+    materials: ['date','fieldName','cat','name','amount','note'],
+};
+let DB = load();
+
+function load(){
+    try{
+        const raw = localStorage.getItem(STORE_KEY);
+        if(raw) return JSON.parse(raw);
+    }catch(e){}
+    return {fields:[],tasks:[],growth:[],harvests:[],materials:[]};
+}
+function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(DB)); }
+function uid(){ return 'id'+Math.random().toString(36).slice(2,9); }
+
+/* ======================================================================
+   レコード追加・削除
+   ====================================================================== */
+function fieldOptionsHTML(selected){
+    let opts = '<option value="">（未選択）</option>';
+    DB.fields.forEach(f=>{
+        opts += `<option ${f.name===selected?'selected':''}>${esc(f.name)}</option>`;
+    });
+    return opts;
+}
+function refreshFieldSelects(){
+    ['t_field','g_field','h_field','m_field'].forEach(id=>{
+        const el = document.getElementById(id);
+        if(el){ const cur = el.value; el.innerHTML = fieldOptionsHTML(cur); }
+    });
+}
+
+function addRecord(type){
+    let rec = {id:uid()};
+    if(type==='fields'){
+        rec.name = val('f_name'); rec.crop = val('f_crop'); rec.variety = val('f_variety');
+        rec.area = val('f_area'); rec.note = val('f_note');
+        if(!rec.name){ toast('圃場名を入力してください'); return; }
+        ['f_name','f_crop','f_variety','f_area','f_note'].forEach(clr);
+    }else if(type==='tasks'){
+        rec.date = val('t_date')||today(); rec.fieldName = val('t_field'); rec.type = val('t_type');
+        rec.worker = val('t_worker'); rec.content = val('t_content'); rec.done = val('t_done');
+        ['t_worker','t_content'].forEach(clr);
+    }else if(type==='growth'){
+        rec.date = val('g_date')||today(); rec.fieldName = val('g_field'); rec.stage = val('g_stage');
+        rec.height = val('g_height'); rec.temp = val('g_temp'); rec.humidity = val('g_humidity'); rec.note = val('g_note');
+        ['g_stage','g_height','g_temp','g_humidity','g_note'].forEach(clr);
+    }else if(type==='harvests'){
+        rec.date = val('h_date')||today(); rec.fieldName = val('h_field'); rec.qty = val('h_qty');
+        rec.unit = val('h_unit'); rec.grade = val('h_grade'); rec.note = val('h_note');
+        ['h_qty','h_grade','h_note'].forEach(clr);
+    }else if(type==='materials'){
+        rec.date = val('m_date')||today(); rec.fieldName = val('m_field'); rec.cat = val('m_cat');
+        rec.name = val('m_name'); rec.amount = val('m_amount'); rec.note = val('m_note');
+        ['m_name','m_amount','m_note'].forEach(clr);
+    }
+    DB[type].unshift(rec);
+    save(); renderAll();
+    toast('登録しました');
+}
+function delRecord(type,id){
+    DB[type] = DB[type].filter(r=>r.id!==id);
+    save(); renderAll();
+}
+
+/* ======================================================================
+   一覧レンダリング
+   ====================================================================== */
+function renderAll(){ renderStats(); renderList('fields'); renderList('tasks'); renderList('growth'); renderList('harvests'); renderList('materials'); refreshFieldSelects(); }
+
+function renderStats(){
+    const conf = [
+        {k:'fields',ico:'🌾',lbl:'圃場'},
+        {k:'tasks',ico:'📋',lbl:'作業'},
+        {k:'growth',ico:'📈',lbl:'生育'},
+        {k:'harvests',ico:'🧺',lbl:'収穫'},
+        {k:'materials',ico:'🧴',lbl:'資材'},
+    ];
+    let total = conf.reduce((s,c)=>s+DB[c.k].length,0);
+    let html = conf.map(c=>`<div class="stat" onclick="switchTab('${c.k}')">
+        <div class="ico">${c.ico}</div><div class="num">${DB[c.k].length}</div><div class="lbl">${c.lbl}</div></div>`).join('');
+    html += `<div class="stat"><div class="ico">🗂️</div><div class="num">${total}</div><div class="lbl">全記録</div></div>`;
+    document.getElementById('stats').innerHTML = html;
+}
+
+function renderList(type){
+    const box = document.getElementById('list-'+type);
+    if(!DB[type].length){ box.innerHTML = emptyState(type); return; }
+    let head='', rows='';
+    if(type==='fields'){
+        head = '<th>圃場</th><th>作物</th><th>品種</th><th>面積</th><th>メモ</th><th></th>';
+        rows = DB[type].map(r=>`<tr><td><span class="pill g">${esc(r.name)}</span></td><td>${esc(r.crop)}</td><td>${esc(r.variety)}</td><td>${esc(r.area)}</td><td class="wrap">${esc(r.note)}</td>${delCell(type,r.id)}</tr>`).join('');
+    }else if(type==='tasks'){
+        head = '<th>日付</th><th>圃場</th><th>種別</th><th>内容</th><th>担当</th><th>状態</th><th></th>';
+        rows = sortByDate(DB[type]).map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.fieldName)}</td><td><span class="pill b">${esc(r.type)}</span></td><td class="wrap">${esc(r.content)}</td><td>${esc(r.worker)}</td><td><span class="pill ${r.done==='完了'?'g':'a'}">${esc(r.done)}</span></td>${delCell(type,r.id)}</tr>`).join('');
+    }else if(type==='growth'){
+        head = '<th>日付</th><th>圃場</th><th>ステージ</th><th>草丈</th><th>気温</th><th>湿度</th><th>メモ</th><th></th>';
+        rows = sortByDate(DB[type]).map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.fieldName)}</td><td><span class="pill v">${esc(r.stage)}</span></td><td>${num(r.height,'cm')}</td><td>${num(r.temp,'℃')}</td><td>${num(r.humidity,'%')}</td><td class="wrap">${esc(r.note)}</td>${delCell(type,r.id)}</tr>`).join('');
+    }else if(type==='harvests'){
+        head = '<th>日付</th><th>圃場</th><th>数量</th><th>等級</th><th>出荷先</th><th></th>';
+        rows = sortByDate(DB[type]).map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.fieldName)}</td><td><b>${esc(r.qty)}</b> ${esc(r.unit)}</td><td><span class="pill a">${esc(r.grade)}</span></td><td class="wrap">${esc(r.note)}</td>${delCell(type,r.id)}</tr>`).join('');
+    }else if(type==='materials'){
+        head = '<th>日付</th><th>圃場</th><th>区分</th><th>名称</th><th>使用量</th><th>メモ</th><th></th>';
+        rows = sortByDate(DB[type]).map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.fieldName)}</td><td><span class="pill ${r.cat==='農薬'?'r':(r.cat==='肥料'?'g':'v')}">${esc(r.cat)}</span></td><td>${esc(r.name)}</td><td>${esc(r.amount)}</td><td class="wrap">${esc(r.note)}</td>${delCell(type,r.id)}</tr>`).join('');
+    }
+    box.innerHTML = `<div class="table-wrap"><table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function delCell(type,id){ return `<td><button class="row-del" title="削除" onclick="delRecord('${type}','${id}')">×</button></td>`; }
+function emptyState(type){
+    const map = {fields:['🌾','圃場・作物がまだありません','上のフォームから圃場を追加してください'],
+        tasks:['📋','作業記録がまだありません','日々の作業を記録すると音声で引き出せます'],
+        growth:['📈','生育・環境記録がまだありません','草丈や気温を記録できます'],
+        harvests:['🧺','収穫記録がまだありません','収穫量は音声で集計できます'],
+        materials:['🧴','資材・農薬の記録がまだありません','防除履歴として残せます']};
+    const m = map[type];
+    return `<div class="empty"><div class="ico">${m[0]}</div><p>${m[1]}</p><small>${m[2]}</small></div>`;
+}
+
+/* ======================================================================
+   タブ切替
+   ====================================================================== */
+function switchTab(tab){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+tab));
+}
+
+/* ======================================================================
+   音声照会エンジン
+   ====================================================================== */
+const REL_DATE = {
+    '今日':()=>[today(),today()], '本日':()=>[today(),today()],
+    '昨日':()=>{const d=addDays(-1);return [d,d];},
+    '一昨日':()=>{const d=addDays(-2);return [d,d];},
+    '今週':()=>weekRange(0), '先週':()=>weekRange(-1),
+    '今月':()=>monthRange(0), '先月':()=>monthRange(-1),
+};
+const CATEGORY_KW = [
+    {key:'harvests', label:'収穫', kw:['収穫','収量','取れ高','とれ高','出荷']},
+    {key:'materials',label:'資材・農薬', kw:['農薬','防除','消毒','散布','肥料','施肥','資材','薬']},
+    {key:'growth',   label:'生育・環境', kw:['生育','成長','草丈','背丈','ステージ','気温','温度','湿度','環境']},
+    {key:'tasks',    label:'作業', kw:['作業','予定','タスク','やること','水やり','灌水','整枝','除草','播種','定植']},
+    {key:'fields',   label:'圃場・作物', kw:['圃場','ほ場','畑','ハウス','場所','どこ','作物','品種','なに']},
+];
+
+function runQuery(qRaw){
+    const q = normalize(qRaw);
+
+    // 1) 日付範囲
+    let dateRange=null, dateLabel='';
+    for(const key in REL_DATE){ if(q.includes(key)){ dateRange=REL_DATE[key](); dateLabel=key; break; } }
+
+    // 2) 圃場エンティティ
+    let field = matchField(q);
+
+    // 3) 作物エンティティ
+    let crop = matchCrop(q);
+
+    // 4) カテゴリ判定
+    let cat=null;
+    for(const c of CATEGORY_KW){ if(c.kw.some(k=>q.includes(k))){ cat=c; break; } }
+
+    // 気温・湿度など環境の特定質問
+    const wantTemp = q.includes('気温')||q.includes('温度');
+    const wantHumidity = q.includes('湿度');
+    const wantLatest = q.includes('最後')||q.includes('直近')||q.includes('いつ')||q.includes('前回');
+    const wantWhere = q.includes('どこ')||q.includes('場所');
+
+    // ---- 圃場・作物の場所照会 ----
+    if((cat && cat.key==='fields') || (crop && !cat) || wantWhere){
+        return answerFields(crop, field);
+    }
+
+    // カテゴリが決まらない場合の推定
+    if(!cat){
+        if(field) cat = CATEGORY_KW.find(c=>c.key==='tasks');
+        else return {ok:false, main:'質問の内容を認識できませんでした。', detail:'「今日の作業」「トマトの圃場」「今週の収穫量」のように話してください。'};
+    }
+
+    // ---- 各カテゴリ照会 ----
+    if(cat.key==='harvests')  return answerHarvests(dateRange,dateLabel,field,crop);
+    if(cat.key==='materials') return answerMaterials(dateRange,dateLabel,field,wantLatest);
+    if(cat.key==='growth')    return answerGrowth(dateRange,dateLabel,field,wantTemp,wantHumidity);
+    if(cat.key==='tasks')     return answerTasks(dateRange,dateLabel,field);
+    return {ok:false, main:'該当するデータが見つかりませんでした。', detail:''};
+}
+
+/* --- 圃場・作物 --- */
+function answerFields(crop, field){
+    let list = DB.fields;
+    if(field) list = list.filter(f=>f.name===field);
+    if(crop)  list = list.filter(f=>(f.crop||'').includes(crop));
+    if(!list.length){
+        if(!DB.fields.length) return {ok:false, main:'圃場データがまだ登録されていません。', detail:'「圃場・作物」タブから登録できます。'};
+        return {ok:false, main:`${crop||field||'該当'}の圃場は見つかりませんでした。`, detail:''};
+    }
+    const names = list.map(f=>f.name).join('、');
+    const main = crop ? `${crop}の圃場は「${names}」です。` : `該当する圃場は「${names}」です。`;
+    const detail = list.map(f=>`<div class="row">📍 <b>${esc(f.name)}</b> ｜ ${esc(f.crop)||'—'} ${f.variety?'（'+esc(f.variety)+'）':''} ｜ ${esc(f.area)||'面積—'} ｜ ${esc(f.note)||''}</div>`).join('');
+    return {ok:true, tab:'fields', main, detail};
+}
+
+/* --- 収穫 --- */
+function answerHarvests(range,label,field,crop){
+    let list = filterByDate(DB.harvests, range);
+    if(field) list = list.filter(r=>r.fieldName===field);
+    if(crop)  list = list.filter(r=>{const f=DB.fields.find(x=>x.name===r.fieldName);return f&&(f.crop||'').includes(crop);});
+    const scope = [label,field,crop].filter(Boolean).join('・')||'全期間';
+    if(!list.length) return noData('収穫',scope,'harvests');
+    // 単位ごとに集計
+    const byUnit={};
+    list.forEach(r=>{ const u=r.unit||'kg'; byUnit[u]=(byUnit[u]||0)+(parseFloat(r.qty)||0); });
+    const sumStr = Object.entries(byUnit).map(([u,v])=>`${round(v)}${u}`).join('、');
+    const main = `${scope}の収穫量は 合計 ${sumStr}（${list.length}件）です。`;
+    const detail = list.slice(0,8).map(r=>`<div class="row">🧺 ${esc(r.date)} ｜ ${esc(r.fieldName)} ｜ <b>${esc(r.qty)}${esc(r.unit)}</b> ｜ ${esc(r.grade)||''} ${esc(r.note)||''}</div>`).join('');
+    return {ok:true, tab:'harvests', main, detail};
+}
+
+/* --- 資材・農薬 --- */
+function answerMaterials(range,label,field,wantLatest){
+    let list = filterByDate(DB.materials, range);
+    if(field) list = list.filter(r=>r.fieldName===field);
+    const scope = [label,field].filter(Boolean).join('・')||'全期間';
+    if(!list.length) return noData('資材・農薬',scope,'materials');
+    list = sortByDate(list);
+    if(wantLatest){
+        const r = list[0];
+        const main = `${field||''}直近の防除・資材使用は ${r.date}「${r.name}」です。`;
+        const detail = `<div class="row">🧴 ${esc(r.date)} ｜ ${esc(r.fieldName)} ｜ <b>${esc(r.cat)} ${esc(r.name)}</b> ｜ ${esc(r.amount)||''} ｜ ${esc(r.note)||''}</div>`;
+        return {ok:true, tab:'materials', main, detail};
+    }
+    const main = `${scope}の資材・農薬使用は ${list.length}件 あります。`;
+    const detail = list.slice(0,8).map(r=>`<div class="row">🧴 ${esc(r.date)} ｜ ${esc(r.fieldName)} ｜ ${esc(r.cat)} <b>${esc(r.name)}</b> ｜ ${esc(r.amount)||''}</div>`).join('');
+    return {ok:true, tab:'materials', main, detail};
+}
+
+/* --- 生育・環境 --- */
+function answerGrowth(range,label,field,wantTemp,wantHumidity){
+    let list = filterByDate(DB.growth, range);
+    if(field) list = list.filter(r=>r.fieldName===field);
+    const scope = [label,field].filter(Boolean).join('・')||'全期間';
+    if(!list.length) return noData('生育・環境',scope,'growth');
+    list = sortByDate(list);
+    if(wantTemp || wantHumidity){
+        const key = wantTemp?'temp':'humidity', unit=wantTemp?'℃':'%', name=wantTemp?'気温':'湿度';
+        const vals = list.map(r=>parseFloat(r[key])).filter(v=>!isNaN(v));
+        if(!vals.length) return noData(name,scope,'growth');
+        const latest = list.find(r=>!isNaN(parseFloat(r[key])));
+        const avg = round(vals.reduce((a,b)=>a+b,0)/vals.length);
+        const main = `${scope}の${name}は 最新 ${latest[key]}${unit}（平均 ${avg}${unit}）です。`;
+        const detail = list.slice(0,8).map(r=>`<div class="row">📈 ${esc(r.date)} ｜ ${esc(r.fieldName)} ｜ ${name} <b>${esc(r[key])}${unit}</b></div>`).join('');
+        return {ok:true, tab:'growth', main, detail};
+    }
+    const r = list[0];
+    const main = `${field||scope}の生育状況：最新は ${r.date}「${r.stage||'記録あり'}」です。`;
+    const detail = list.slice(0,8).map(x=>`<div class="row">📈 ${esc(x.date)} ｜ ${esc(x.fieldName)} ｜ ${esc(x.stage)||''} ｜ 草丈${num(x.height,'cm')} 気温${num(x.temp,'℃')} 湿度${num(x.humidity,'%')} ${esc(x.note)||''}</div>`).join('');
+    return {ok:true, tab:'growth', main, detail};
+}
+
+/* --- 作業 --- */
+function answerTasks(range,label,field){
+    let list = filterByDate(DB.tasks, range);
+    if(field) list = list.filter(r=>r.fieldName===field);
+    const scope = [label,field].filter(Boolean).join('・')||'全期間';
+    if(!list.length) return noData('作業',scope,'tasks');
+    list = sortByDate(list);
+    const pend = list.filter(r=>r.done!=='完了').length;
+    const main = `${scope}の作業は ${list.length}件（未完了 ${pend}件）です。`;
+    const detail = list.slice(0,8).map(r=>`<div class="row">📋 ${esc(r.date)} ｜ ${esc(r.fieldName)} ｜ <b>${esc(r.type)}</b> ${esc(r.content)||''} ｜ ${esc(r.worker)||''} ｜ ${r.done==='完了'?'✅完了':'🕒予定'}</div>`).join('');
+    return {ok:true, tab:'tasks', main, detail};
+}
+
+function noData(name,scope,tab){
+    const empty = !DB[tab] || !DB[tab].length;
+    return {ok:false, tab, main:`${scope}の${name}データは見つかりませんでした。`,
+        detail: empty?'まだ記録が登録されていません。タブから登録するか「デモデータ」でお試しください。':''};
+}
+
+/* --- エンティティ照合 --- */
+function matchField(q){
+    // 完全一致 or 部分一致（長い名前優先）
+    const cand = DB.fields.map(f=>f.name).sort((a,b)=>b.length-a.length);
+    for(const n of cand){ if(q.includes(normalize(n))) return n; }
+    // 「3番」「A圃場」などの緩い一致
+    for(const n of cand){
+        const core = n.replace(/(圃場|ほ場|ハウス|号|番)/g,'');
+        if(core && q.includes(normalize(core))) return n;
+    }
+    return null;
+}
+function matchCrop(q){
+    const crops=[...new Set(DB.fields.map(f=>f.crop).filter(Boolean))].sort((a,b)=>b.length-a.length);
+    for(const c of crops){ if(q.includes(normalize(c))) return c; }
+    return null;
+}
+
+/* --- 日付ユーティリティ --- */
+function today(){ return fmt(new Date()); }
+function addDays(n){ const d=new Date(); d.setDate(d.getDate()+n); return fmt(d); }
+function fmt(d){ return d.toISOString().slice(0,10); }
+function weekRange(offset){ const d=new Date(); const day=(d.getDay()+6)%7; const mon=new Date(d); mon.setDate(d.getDate()-day+offset*7); const sun=new Date(mon); sun.setDate(mon.getDate()+6); return [fmt(mon),fmt(sun)]; }
+function monthRange(offset){ const d=new Date(); const first=new Date(d.getFullYear(),d.getMonth()+offset,1); const last=new Date(d.getFullYear(),d.getMonth()+offset+1,0); return [fmt(first),fmt(last)]; }
+function filterByDate(list,range){ if(!range) return list.slice(); return list.filter(r=>r.date>=range[0] && r.date<=range[1]); }
+function sortByDate(list){ return list.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')); }
+
+/* ======================================================================
+   音声認識・読み上げ
+   ====================================================================== */
+let recognition=null, listening=false, ttsSpeaking=false;
+const micBtn=document.getElementById('micBtn'), voiceStatus=document.getElementById('voiceStatus');
+
+function initSpeech(){
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR){ voiceStatus.textContent='このブラウザは音声入力に非対応です（手入力・デモは利用可）'; micBtn.style.opacity=.5; return; }
+    recognition = new SR();
+    recognition.lang='ja-JP'; recognition.interimResults=true; recognition.continuous=false;
+
+    recognition.onstart=()=>{ listening=true; micBtn.classList.add('recording'); voiceStatus.textContent='お聞きしています…話しかけてください'; };
+    recognition.onerror=(e)=>{ voiceStatus.textContent='認識エラー：'+e.error; stopMic(); };
+    recognition.onend=()=>{ stopMic(); };
+    recognition.onresult=(e)=>{
+        if(ttsSpeaking) return;
+        let interim='', finalT='';
+        for(let i=e.resultIndex;i<e.results.length;i++){
+            const t=e.results[i][0].transcript;
+            if(e.results[i].isFinal) finalT+=t; else interim+=t;
+        }
+        document.getElementById('transcript').innerHTML = finalT?`<b>${esc(finalT)}</b>`:esc(interim||'…');
+        if(finalT){ handleQuestion(finalT); }
+    };
+}
+function toggleMic(){ if(!recognition){ toast('音声非対応のためデモをご利用ください'); return; } listening?recognition.stop():recognition.start(); }
+function stopMic(){ listening=false; micBtn.classList.remove('recording'); if(!ttsSpeaking) voiceStatus.textContent='マイクを押して質問してください'; }
+
+function handleQuestion(text){
+    const res = runQuery(text);
+    showAnswer(res);
+    speak(res.main + (res.detail && res.ok ? '。詳細を画面に表示しました。' : ''));
+    if(res.ok && res.tab) switchTab(res.tab);
+}
+function askExample(el){
+    const q = el.textContent;
+    document.getElementById('transcript').innerHTML = `<b>${esc(q)}</b>`;
+    handleQuestion(q);
+}
+
+function showAnswer(res){
+    const box=document.getElementById('answer');
+    document.getElementById('answerMain').textContent = res.main;
+    document.getElementById('answerDetail').innerHTML = res.detail||'';
+    box.classList.add('show');
+    box.style.borderColor = res.ok ? 'rgba(34,197,94,.35)' : 'rgba(245,158,11,.4)';
+}
+
+function speak(text){
+    if(!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text.replace(/<[^>]+>/g,''));
+    u.lang='ja-JP'; u.rate=1.05; u.pitch=1;
+    const jp=(window.speechSynthesis.getVoices()||[]).find(v=>v.lang && v.lang.startsWith('ja'));
+    if(jp) u.voice=jp;
+    u.onstart=()=>{ ttsSpeaking=true; voiceStatus.textContent='回答を読み上げています…'; };
+    u.onend=()=>{ ttsSpeaking=false; voiceStatus.textContent='マイクを押して質問してください'; };
+    window.speechSynthesis.speak(u);
+}
+if('speechSynthesis' in window){ window.speechSynthesis.onvoiceschanged=()=>window.speechSynthesis.getVoices(); }
+
+/* ======================================================================
+   データ管理（デモ・書出・取込・消去）
+   ====================================================================== */
+function loadDemo(){
+    if((DB.fields.length||DB.tasks.length) && !confirm('現在のデータにデモデータを追加します。よろしいですか？')) return;
+    const d=today(), y=addDays(-1), w=addDays(-4), lw=addDays(-9);
+    DB.fields.push(
+        {id:uid(),name:'A圃場',crop:'トマト',variety:'桃太郎',area:'12a',note:'南側ハウス'},
+        {id:uid(),name:'B圃場',crop:'きゅうり',variety:'夏すずみ',area:'8a',note:'露地'},
+        {id:uid(),name:'3号ハウス',crop:'いちご',variety:'紅ほっぺ',area:'6a',note:'高設栽培'},
+    );
+    DB.tasks.push(
+        {id:uid(),date:d,fieldName:'A圃場',type:'防除',worker:'田中',content:'うどんこ病予防散布',done:'予定'},
+        {id:uid(),date:d,fieldName:'B圃場',type:'収穫',worker:'佐藤',content:'朝どり収穫',done:'完了'},
+        {id:uid(),date:y,fieldName:'3号ハウス',type:'施肥',worker:'田中',content:'液肥 500倍',done:'完了'},
+    );
+    DB.growth.push(
+        {id:uid(),date:d,fieldName:'A圃場',stage:'開花期',height:'95',temp:'28',humidity:'62',note:'生育良好'},
+        {id:uid(),date:w,fieldName:'B圃場',stage:'収穫期',height:'180',temp:'30',humidity:'70',note:'—'},
+    );
+    DB.harvests.push(
+        {id:uid(),date:d,fieldName:'B圃場',qty:'85',unit:'kg',grade:'秀',note:'JA出荷'},
+        {id:uid(),date:w,fieldName:'A圃場',qty:'120',unit:'kg',grade:'A品',note:'直売'},
+        {id:uid(),date:lw,fieldName:'B圃場',qty:'60',unit:'kg',grade:'優',note:'JA出荷'},
+    );
+    DB.materials.push(
+        {id:uid(),date:y,fieldName:'A圃場',cat:'農薬',name:'ダコニール1000',amount:'1000倍 300L',note:'うどんこ病予防'},
+        {id:uid(),date:lw,fieldName:'3号ハウス',cat:'肥料',name:'化成 8-8-8',amount:'20kg',note:'追肥'},
+    );
+    save(); renderAll(); toast('デモデータを投入しました');
+}
+function exportData(){
+    const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='栽培支援データ_'+today()+'.json'; a.click(); URL.revokeObjectURL(a.href);
+}
+function importData(e){
+    const file=e.target.files[0]; if(!file) return;
+    const r=new FileReader();
+    r.onload=()=>{ try{ const d=JSON.parse(r.result);
+        DB={fields:d.fields||[],tasks:d.tasks||[],growth:d.growth||[],harvests:d.harvests||[],materials:d.materials||[]};
+        save(); renderAll(); toast('データを取り込みました');
+    }catch(err){ toast('ファイルを読み込めませんでした'); } };
+    r.readAsText(file); e.target.value='';
+}
+function clearAll(){
+    if(!confirm('すべてのデータを消去します。元に戻せません。よろしいですか？')) return;
+    DB={fields:[],tasks:[],growth:[],harvests:[],materials:[]}; save(); renderAll(); toast('全データを消去しました');
+}
+
+/* ======================================================================
+   小物ユーティリティ
+   ====================================================================== */
+function val(id){ const el=document.getElementById(id); return el?el.value.trim():''; }
+function clr(id){ const el=document.getElementById(id); if(el) el.value=''; }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function num(v,u){ return (v===''||v==null)?'—':esc(v)+u; }
+function round(n){ return Math.round(n*10)/10; }
+function normalize(s){ return String(s).replace(/\s+/g,'').toLowerCase(); }
+let toastTimer=null;
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2200); }
+
+/* ======================================================================
+   初期化
+   ====================================================================== */
+(function init(){
+    ['t_date','g_date','h_date','m_date'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=today(); });
+    initSpeech();
+    renderAll();
+})();
+</script>
+</body>
+</html>
