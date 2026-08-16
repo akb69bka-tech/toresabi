@@ -268,6 +268,17 @@
 <!-- ===== 戦略設定 ===== -->
 <section id="tab-strategy" class="tabsec" style="display:none">
     <div class="card">
+        <h2><span class="ic">💴</span>運用プリセット</h2>
+        <p class="hint">
+            資金規模に合わせて設定を一括で切り替えます。日本株は通常100株単位のため、
+            1万円・10万円では<b>単元未満株（S株・ミニ株など1株から買える取引）</b>を前提とした設定になります。
+            手数料は単元未満株の実勢に近い片道0.55%を初期値としていますので、ご利用の証券会社に合わせて調整してください。
+        </p>
+        <div class="row-flex" style="margin-top:.8rem" id="presetBtns"></div>
+        <div class="sep"></div>
+        <div class="stat-grid" id="costStats"></div>
+    </div>
+    <div class="card">
         <h2><span class="ic">🧠</span>シグナル合成方式</h2>
         <div class="grid g3">
             <div class="field">
@@ -319,6 +330,22 @@
                 <label class="chk"><input type="checkbox" id="rkMinUnit" onchange="readRisk()"> 枠に満たなくても1単元は買う</label>
             </div>
         </div>
+    </div>
+
+    <div class="card">
+        <h2><span class="ic">🚨</span>安全装置（無理をさせないための制限）</h2>
+        <p class="hint">
+            <b>信用取引・借入は一切行いません。</b>発注はすべて保有現金の範囲内に限られ、
+            現金が足りない場合は数量を減らすか見送ります。損失が資金以上に膨らむことはありません。
+            以下はそれに加えて、損失の拡大や売買の過熱を自動的に止めるための制限です。
+        </p>
+        <div class="grid g4" style="margin-top:.8rem">
+            <div class="field"><label>資産の下限で停止(%)<br><span style="opacity:.7">0で無効</span></label><input type="number" id="rkHaltDD" step="1" onchange="readRisk()"></div>
+            <div class="field"><label>連敗で停止(回)<br><span style="opacity:.7">0で無効</span></label><input type="number" id="rkConsec" step="1" onchange="readRisk()"></div>
+            <div class="field"><label>1日の最大買い回数<br><span style="opacity:.7">0で無制限</span></label><input type="number" id="rkDaily" step="1" onchange="readRisk()"></div>
+            <div class="field"><label>常に残す現金(%)<br><span style="opacity:.7">初期資金に対する割合</span></label><input type="number" id="rkReserve" step="1" onchange="readRisk()"></div>
+        </div>
+        <p class="hint" id="safetyHint"></p>
     </div>
 </section>
 
@@ -377,6 +404,74 @@
     </div>
 </section>
 
+<!-- ===== デモ運用 ===== -->
+<section id="tab-demo" class="tabsec" style="display:none">
+    <div class="card">
+        <h2><span class="ic">🎬</span>デモ運用（過去データの日次再生）</h2>
+        <p class="hint">
+            実際のお金を使わずに、過去の値動きを1日ずつ再生しながら自動売買の動きを観察します。
+            資産がどう増減し、どこで買ってどこで損切りされるのかを、実際の運用と同じ順序で確認できます。
+        </p>
+        <div class="grid g4" style="margin-top:.8rem">
+            <div class="field"><label>対象</label><select id="dmTarget"></select></div>
+            <div class="field"><label>再生する日数</label><input type="number" id="dmDays" value="250" min="60"></div>
+            <div class="field"><label>再生速度</label>
+                <select id="dmSpeed">
+                    <option value="1">ゆっくり（1日ずつ）</option>
+                    <option value="3" selected>ふつう（3日ずつ）</option>
+                    <option value="10">速い（10日ずつ）</option>
+                </select>
+            </div>
+            <div class="field" style="justify-content:flex-end">
+                <button class="btn primary" id="dmPlay" onclick="demoToggle()">▶ 再生</button>
+            </div>
+        </div>
+        <div class="row-flex" style="margin-top:.7rem">
+            <button class="btn sm" onclick="demoStepOne()">⏭ 1日進める</button>
+            <button class="btn sm" onclick="demoRunToEnd()">⏩ 最後まで一気に</button>
+            <button class="btn sm danger" onclick="demoReset()">↺ 最初からやり直す</button>
+        </div>
+        <div style="margin-top:.9rem">
+            <div style="height:8px;background:rgba(255,255,255,.06);border-radius:99px;overflow:hidden">
+                <div id="dmBar" style="height:100%;width:0%;background:linear-gradient(90deg,#38bdf8,#818cf8);transition:width .2s"></div>
+            </div>
+            <div class="hint" id="dmProgress" style="margin-top:.4rem">未開始</div>
+        </div>
+        <div id="dmHalt" style="display:none;margin-top:.8rem" class="disclaimer">
+            <span>⛔</span><div id="dmHaltMsg"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2><span class="ic">💰</span>デモ口座の状況</h2>
+        <div class="stat-grid" id="dmStats"></div>
+    </div>
+
+    <div class="card">
+        <h2><span class="ic">📈</span>資産の推移</h2>
+        <canvas id="dmEquity" style="height:230px"></canvas>
+    </div>
+
+    <div class="card">
+        <h2><span class="ic">💼</span>デモ口座の保有ポジション</h2>
+        <div class="table-wrap"><table id="dmPositions"></table></div>
+    </div>
+
+    <div class="card">
+        <h2><span class="ic">📃</span>売買の記録</h2>
+        <div class="log" id="dmLog"></div>
+    </div>
+
+    <div class="card">
+        <h2><span class="ic">🩺</span>設定の自己診断</h2>
+        <p class="hint">デモを始める前に、資金と設定の噛み合わせに問題がないかを点検します。</p>
+        <div class="row-flex" style="margin:.7rem 0">
+            <button class="btn" onclick="runDiagnostics()">🩺 診断する</button>
+        </div>
+        <div id="dmDiag"></div>
+    </div>
+</section>
+
 <!-- ===== 自動売買 ===== -->
 <section id="tab-auto" class="tabsec" style="display:none">
     <div class="card">
@@ -396,10 +491,14 @@
             </div>
         </div>
         <p class="hint" id="execHint"></p>
+        <div id="haltBanner" style="display:none;margin-top:.8rem" class="disclaimer">
+            <span>⛔</span><div id="haltMsg"></div>
+        </div>
         <div class="row-flex" style="margin-top:.9rem">
             <button class="btn green" onclick="runDailyJudge()">⚡ 今すぐシグナル判定</button>
             <button class="btn" onclick="closeAllPaper()">全ポジションを手仕舞い</button>
             <button class="btn danger" onclick="resetPaper()">ペーパー口座をリセット</button>
+            <button class="btn sm" id="haltRelease" style="display:none" onclick="releaseHalt()">安全装置を解除して再開</button>
         </div>
     </div>
 
@@ -464,6 +563,7 @@ const TABS = [
     {id:'data',      label:'📁 銘柄・データ'},
     {id:'strategy',  label:'🧠 戦略設定'},
     {id:'backtest',  label:'⏱️ バックテスト'},
+    {id:'demo',      label:'🎬 デモ運用'},
     {id:'auto',      label:'🤖 自動売買'},
     {id:'history',   label:'🧾 履歴'}
 ];
@@ -486,6 +586,29 @@ const RULE_DEFS = {
                filter:true}
 };
 
+/* 運用プリセット。少額では単元未満株(1株単位)を前提にしないと1銘柄も買えないため、
+   資金規模に応じて単元・投入比率・手数料・安全装置をまとめて切り替える */
+const PRESETS = {
+    yen10k: {
+        label:'1万円', note:'単元未満株・最大2銘柄・1日1回まで',
+        risk:{initialCash:10000, unit:1, allowMinUnit:true, sizing:'ratio', allocPct:45,
+              maxPositions:2, feePct:0.55, slipPct:0.2, stopPct:6, takePct:12, trailPct:0,
+              maxHoldDays:20, maxDailyTrades:1, haltDrawdownPct:20, maxConsecLosses:5, reserveCashPct:5}
+    },
+    yen100k: {
+        label:'10万円', note:'単元未満株・最大3銘柄・1日2回まで',
+        risk:{initialCash:100000, unit:1, allowMinUnit:true, sizing:'ratio', allocPct:30,
+              maxPositions:3, feePct:0.55, slipPct:0.15, stopPct:7, takePct:15, trailPct:0,
+              maxHoldDays:30, maxDailyTrades:2, haltDrawdownPct:20, maxConsecLosses:6, reserveCashPct:5}
+    },
+    yen1m: {
+        label:'100万円', note:'単元株(100株)・最大5銘柄',
+        risk:{initialCash:1000000, unit:100, allowMinUnit:false, sizing:'ratio', allocPct:20,
+              maxPositions:5, feePct:0.1, slipPct:0.05, stopPct:7, takePct:15, trailPct:0,
+              maxHoldDays:0, maxDailyTrades:0, haltDrawdownPct:25, maxConsecLosses:0, reserveCashPct:0}
+    }
+};
+
 function defaultState(){
     return {
         symbols: [],
@@ -506,10 +629,12 @@ function defaultState(){
             initialCash:1000000, sizing:'ratio', allocPct:20, riskPct:2,
             atrPeriod:14, atrMult:2, useAtrStop:false, unit:100, allowMinUnit:false,
             stopPct:7, takePct:15, trailPct:0, maxHoldDays:0,
-            maxPositions:5, feePct:0.1, slipPct:0.05
+            maxPositions:5, feePct:0.1, slipPct:0.05,
+            maxDailyTrades:0, haltDrawdownPct:0, maxConsecLosses:0, reserveCashPct:0
         },
         exec: {mode:'dry', interval:30, url:'', token:''},
-        paper: {cash:1000000, positions:{}, trades:[], equity:[], log:[], lastSignals:[], lastRun:null, lastBarDate:null},
+        paper: {cash:1000000, positions:{}, trades:[], equity:[], log:[], lastSignals:[], lastRun:null,
+                lastBarDate:null, halted:false, haltReason:'', consecLosses:0, dayTrades:0, dayDate:null},
         ui: {tab:'dash'}
     };
 }
@@ -786,11 +911,9 @@ function evalSignal(bars, ind, i, strat){
    バックテストエンジン
    当日終値でシグナル判定 → 翌日始値で約定（先読み防止）
    ============================================================ */
-function backtest(symbols, strat, risk, from, to){
-    const feeRate = risk.feePct / 100;
-    const slipRate = risk.slipPct / 100;
-
-    // 銘柄ごとに指標と日付インデックスを準備
+/* シミュレータを生成する。1日ずつ進められる構造にして、
+   バックテストとデモ運用の再生で同一のロジックを共有する */
+function createSim(symbols, strat, risk, from, to){
     const ctx = symbols.map(s => {
         const bars = s.bars.filter(b => (!from || b.d >= from) && (!to || b.d <= to));
         const idx = {};
@@ -805,122 +928,183 @@ function backtest(symbols, strat, risk, from, to){
     ctx.forEach(c => c.bars.forEach(b => dateSet.add(b.d)));
     const dates = Array.from(dateSet).sort();
 
-    let cash = risk.initialCash;
-    const positions = {};      // code -> {qty, avg, stop, take, peak, entryDate, entryIdx}
-    const trades = [];
-    const equity = [];
-    const marks = {};          // code -> [{d, type, price}]
-    let pending = [];          // 翌営業日に執行する注文
-
-    const openTrade = (c, price, qty, date) => {
-        const p = price * (1 + slipRate);
-        const cost = p * qty * (1 + feeRate);
-        if(cost > cash) return false;
-        cash -= cost;
-        const a = ind => ind;
-        positions[c.sym.code] = {
-            qty, avg:p, entryDate:date, peak:p,
-            stop: calcStop(c, date, p, risk),
-            take: risk.takePct > 0 ? p * (1 + risk.takePct/100) : null
-        };
-        (marks[c.sym.code] = marks[c.sym.code] || []).push({d:date, type:'buy', price:p});
-        return true;
+    return {
+        ctx, dates, strat, risk, t:0,
+        cash: risk.initialCash,
+        positions:{},    // code -> {qty, avg, stop, take, peak, entryDate}
+        trades:[], equity:[], marks:{}, pending:[],
+        halted:false, haltReason:'', consecLosses:0,
+        dayTrades:0, dayDate:null, costs:0,
+        events:[], finished:false
     };
-    const closeTrade = (c, price, date, reason) => {
-        const code = c.sym.code;
-        const pos = positions[code];
-        if(!pos) return;
-        const p = price * (1 - slipRate);
-        const proceeds = p * pos.qty * (1 - feeRate);
-        cash += proceeds;
-        const cost = pos.avg * pos.qty * (1 + feeRate);
-        const pnl = proceeds - cost;
-        trades.push({
-            code, name:c.sym.name, qty:pos.qty,
-            entryDate:pos.entryDate, entryPrice:pos.avg,
-            exitDate:date, exitPrice:p,
-            pnl, pnlPct: cost > 0 ? pnl / cost * 100 : 0, reason,
-            days: daysBetween(pos.entryDate, date)
-        });
-        (marks[code] = marks[code] || []).push({d:date, type:'sell', price:p});
-        delete positions[code];
+}
+function simEvent(sim, msg){
+    sim.events.push({d: sim.dates[Math.min(sim.t, sim.dates.length-1)], m: msg});
+    if(sim.events.length > 500) sim.events.shift();
+}
+/* 発注に使える現金。初期資金の一定割合は常に手元へ残す（使い切りの防止） */
+function usableCash(sim){
+    const reserve = sim.risk.initialCash * (sim.risk.reserveCashPct || 0) / 100;
+    return Math.max(0, sim.cash - reserve);
+}
+function simOpen(sim, c, price, qty, date){
+    const risk = sim.risk;
+    const p = price * (1 + risk.slipPct/100);
+    const cost = p * qty * (1 + risk.feePct/100);
+    // 自己資金の範囲を超える発注は行わない（信用取引・借入は一切行わない）
+    if(cost > usableCash(sim)) return false;
+    sim.cash -= cost;
+    sim.costs += p * qty * (risk.feePct/100) + (p - price) * qty;   // 手数料と滑りの実額
+    sim.positions[c.sym.code] = {
+        qty, avg:p, entryDate:date, peak:p,
+        stop: calcStop(c, date, p, risk),
+        take: risk.takePct > 0 ? p * (1 + risk.takePct/100) : null
     };
-
-    for(let t = 0; t < dates.length; t++){
-        const date = dates[t];
-
-        // 1) 前日に生成された注文を当日始値で執行
-        const orders = pending; pending = [];
-        for(const o of orders){
-            const c = ctx[o.ci];
-            const i = c.idx[date];
-            if(i == null) continue;              // その銘柄に当日足が無ければ見送り
-            const bar = c.bars[i];
-            if(o.side === 'buy'){
-                if(positions[c.sym.code]) continue;
-                if(Object.keys(positions).length >= risk.maxPositions) continue;
-                const equityNow = cash + mtm(ctx, positions, date);
-                const qty = calcQty(c, i, bar.o, equityNow, cash, risk);
-                if(qty > 0) openTrade(c, bar.o, qty, date);
-            }else{
-                if(positions[c.sym.code]) closeTrade(c, bar.o, date, o.reason || 'シグナル');
-            }
+    (sim.marks[c.sym.code] = sim.marks[c.sym.code] || []).push({d:date, type:'buy', price:p});
+    sim.dayTrades++;
+    simEvent(sim, `買い ${c.sym.code} ${num(qty)}株 @${num(p,1)}（${yen(cost)}）`);
+    return true;
+}
+function simClose(sim, c, price, date, reason){
+    const risk = sim.risk;
+    const code = c.sym.code;
+    const pos = sim.positions[code];
+    if(!pos) return;
+    const p = price * (1 - risk.slipPct/100);
+    const proceeds = p * pos.qty * (1 - risk.feePct/100);
+    const cost = pos.avg * pos.qty * (1 + risk.feePct/100);
+    sim.cash += proceeds;
+    sim.costs += p * pos.qty * (risk.feePct/100) + (price - p) * pos.qty;
+    const pnl = proceeds - cost;
+    sim.trades.push({
+        code, name:c.sym.name, qty:pos.qty,
+        entryDate:pos.entryDate, entryPrice:pos.avg,
+        exitDate:date, exitPrice:p,
+        pnl, pnlPct: cost > 0 ? pnl / cost * 100 : 0, reason,
+        days: daysBetween(pos.entryDate, date)
+    });
+    (sim.marks[code] = sim.marks[code] || []).push({d:date, type:'sell', price:p});
+    delete sim.positions[code];
+    sim.consecLosses = pnl > 0 ? 0 : sim.consecLosses + 1;
+    simEvent(sim, `売り ${code} ${num(pos.qty)}株 @${num(p,1)}（${reason} ${pnl >= 0 ? '+' : ''}${yen(pnl)}）`);
+}
+/* 安全装置。停止条件に触れたら新規の買いを止める。
+   既に持っている建玉は損切り・利確・売りシグナルで通常どおり手仕舞う */
+function simSafety(sim, equityNow){
+    if(sim.halted) return;
+    const risk = sim.risk;
+    if(risk.haltDrawdownPct > 0){
+        const floor = risk.initialCash * (1 - risk.haltDrawdownPct/100);
+        if(equityNow <= floor){
+            sim.halted = true;
+            sim.haltReason = `資産が下限 ${yen(floor)}（初期資金の-${risk.haltDrawdownPct}%）に到達したため新規買いを停止しました`;
         }
+    }
+    if(!sim.halted && risk.maxConsecLosses > 0 && sim.consecLosses >= risk.maxConsecLosses){
+        sim.halted = true;
+        sim.haltReason = `${risk.maxConsecLosses}連敗に到達したため新規買いを停止しました`;
+    }
+    if(sim.halted) simEvent(sim, '⛔ ' + sim.haltReason);
+}
+/* 1営業日ぶん進める。最終日まで到達したら true を返す */
+function simStep(sim){
+    if(sim.finished) return true;
+    const ctx = sim.ctx, dates = sim.dates, risk = sim.risk;
+    const date = dates[sim.t];
+    if(sim.dayDate !== date){ sim.dayDate = date; sim.dayTrades = 0; }
 
-        // 2) ザラ場での損切り・利確・トレーリング判定
-        for(const c of ctx){
-            const code = c.sym.code;
-            const pos = positions[code];
-            if(!pos) continue;
-            const i = c.idx[date];
-            if(i == null) continue;
-            const bar = c.bars[i];
-
-            if(pos.stop != null && bar.l <= pos.stop){
-                closeTrade(c, pos.stop, date, '損切り');
-                continue;
-            }
-            if(pos.take != null && bar.h >= pos.take){
-                closeTrade(c, pos.take, date, '利確');
-                continue;
-            }
-            if(risk.trailPct > 0){
-                pos.peak = Math.max(pos.peak, bar.h);
-                const trail = pos.peak * (1 - risk.trailPct/100);
-                if(pos.stop == null || trail > pos.stop) pos.stop = trail;
-            }
-            if(risk.maxHoldDays > 0 && daysBetween(pos.entryDate, date) >= risk.maxHoldDays){
-                closeTrade(c, bar.c, date, '期限到来');
-            }
+    // 1) 前日に生成された注文を当日始値で執行
+    const orders = sim.pending; sim.pending = [];
+    for(const o of orders){
+        const c = ctx[o.ci];
+        const i = c.idx[date];
+        if(i == null) continue;              // その銘柄に当日足が無ければ見送り
+        const bar = c.bars[i];
+        if(o.side === 'buy'){
+            if(sim.halted) continue;
+            if(sim.positions[c.sym.code]) continue;
+            if(Object.keys(sim.positions).length >= risk.maxPositions) continue;
+            if(risk.maxDailyTrades > 0 && sim.dayTrades >= risk.maxDailyTrades) continue;
+            const equityNow = sim.cash + mtm(ctx, sim.positions, date);
+            const qty = calcQty(c, i, bar.o, equityNow, usableCash(sim), risk);
+            if(qty > 0) simOpen(sim, c, bar.o, qty, date);
+        }else{
+            if(sim.positions[c.sym.code]) simClose(sim, c, bar.o, date, o.reason || 'シグナル');
         }
-
-        // 3) 当日終値でシグナルを評価し、翌日の注文を作成
-        for(let ci = 0; ci < ctx.length; ci++){
-            const c = ctx[ci];
-            const i = c.idx[date];
-            if(i == null || i < 30) continue;
-            const sig = evalSignal(c.bars, c.ind, i, strat);
-            const held = !!positions[c.sym.code];
-            if(sig.action === 'buy' && !held) pending.push({ci, side:'buy'});
-            else if(sig.action === 'sell' && held) pending.push({ci, side:'sell', reason:'売りシグナル'});
-        }
-
-        // 4) 時価評価
-        equity.push({d:date, e: cash + mtm(ctx, positions, date)});
     }
 
-    // 最終日に残っているポジションを終値で清算
-    const lastDate = dates[dates.length-1];
+    // 2) ザラ場での損切り・利確・トレーリング判定
     for(const c of ctx){
-        if(positions[c.sym.code]){
-            const i = c.idx[lastDate];
-            if(i != null) closeTrade(c, c.bars[i].c, lastDate, '期末清算');
+        const pos = sim.positions[c.sym.code];
+        if(!pos) continue;
+        const i = c.idx[date];
+        if(i == null) continue;
+        const bar = c.bars[i];
+
+        if(pos.stop != null && bar.l <= pos.stop){
+            simClose(sim, c, pos.stop, date, '損切り');
+            continue;
+        }
+        if(pos.take != null && bar.h >= pos.take){
+            simClose(sim, c, pos.take, date, '利確');
+            continue;
+        }
+        if(risk.trailPct > 0){
+            pos.peak = Math.max(pos.peak, bar.h);
+            const trail = pos.peak * (1 - risk.trailPct/100);
+            if(pos.stop == null || trail > pos.stop) pos.stop = trail;
+        }
+        if(risk.maxHoldDays > 0 && daysBetween(pos.entryDate, date) >= risk.maxHoldDays){
+            simClose(sim, c, bar.c, date, '期限到来');
         }
     }
-    if(equity.length) equity[equity.length-1].e = cash;
 
-    return {equity, trades, marks, ctx, dates,
-            metrics: calcMetrics(equity, trades, risk.initialCash)};
+    // 3) 当日終値でシグナルを評価し、翌日の注文を作成
+    for(let ci = 0; ci < ctx.length; ci++){
+        const c = ctx[ci];
+        const i = c.idx[date];
+        if(i == null || i < 30) continue;
+        const sig = evalSignal(c.bars, c.ind, i, sim.strat);
+        const held = !!sim.positions[c.sym.code];
+        if(sig.action === 'buy' && !held) sim.pending.push({ci, side:'buy'});
+        else if(sig.action === 'sell' && held) sim.pending.push({ci, side:'sell', reason:'売りシグナル'});
+    }
+
+    // 4) 時価評価と安全装置の判定
+    const eq = sim.cash + mtm(ctx, sim.positions, date);
+    sim.equity.push({d:date, e:eq});
+    simSafety(sim, eq);
+
+    sim.t++;
+    if(sim.t >= dates.length){ simFinish(sim); return true; }
+    return false;
+}
+/* 最終日に残っている建玉を終値で清算する */
+function simFinish(sim){
+    if(sim.finished) return;
+    const lastDate = sim.dates[sim.dates.length-1];
+    for(const c of sim.ctx){
+        if(sim.positions[c.sym.code]){
+            const i = c.idx[lastDate];
+            if(i != null) simClose(sim, c, c.bars[i].c, lastDate, '期末清算');
+        }
+    }
+    if(sim.equity.length) sim.equity[sim.equity.length-1].e = sim.cash;
+    sim.finished = true;
+}
+function simResult(sim){
+    return {
+        equity:sim.equity, trades:sim.trades, marks:sim.marks,
+        ctx:sim.ctx, dates:sim.dates,
+        halted:sim.halted, haltReason:sim.haltReason, costs:sim.costs,
+        metrics: calcMetrics(sim.equity, sim.trades, sim.risk.initialCash)
+    };
+}
+function backtest(symbols, strat, risk, from, to){
+    const sim = createSim(symbols, strat, risk, from, to);
+    if(!sim) return null;
+    while(!simStep(sim)){ /* 最終日まで進める */ }
+    return simResult(sim);
 }
 
 function mtm(ctx, positions, date){
@@ -1159,7 +1343,8 @@ function render(){
     const tab = state.ui.tab;
     if(tab === 'dash') renderDash();
     if(tab === 'data') renderSymbolTable();
-    if(tab === 'strategy'){ renderStrategy(); renderRisk(); }
+    if(tab === 'strategy'){ renderStrategy(); renderRisk(); renderPresets(); }
+    if(tab === 'demo') renderDemo();
     if(tab === 'auto'){ renderExec(); renderAutoSignals(); renderLog(); }
     if(tab === 'history') renderHistory();
 }
@@ -1174,7 +1359,7 @@ function renderSymbolSelects(){
         el.innerHTML = opts || '<option value="">銘柄未登録</option>';
         if(cur) el.value = cur;
     });
-    ['btTarget','optTarget'].forEach(id => {
+    ['btTarget','optTarget','dmTarget'].forEach(id => {
         const el = document.getElementById(id);
         if(!el) return;
         const cur = el.value;
@@ -1343,6 +1528,17 @@ function renderRisk(){
     set('rkFee', r.feePct); set('rkSlip', r.slipPct);
     document.getElementById('rkAtrStop').checked = !!r.useAtrStop;
     document.getElementById('rkMinUnit').checked = !!r.allowMinUnit;
+    set('rkHaltDD', r.haltDrawdownPct); set('rkConsec', r.maxConsecLosses);
+    set('rkDaily', r.maxDailyTrades); set('rkReserve', r.reserveCashPct);
+    const parts = [];
+    parts.push(r.haltDrawdownPct > 0
+        ? `資産が ${yen(r.initialCash * (1 - r.haltDrawdownPct/100))} まで減ったら新規買いを止めます`
+        : '資産の下限による停止は無効です');
+    if(r.maxConsecLosses > 0) parts.push(`${r.maxConsecLosses}連敗で新規買いを止めます`);
+    if(r.maxDailyTrades > 0) parts.push(`1日の新規買いは${r.maxDailyTrades}回までです`);
+    if(r.reserveCashPct > 0) parts.push(`${yen(r.initialCash * r.reserveCashPct/100)} は常に現金で残します`);
+    const hintEl = document.getElementById('safetyHint');
+    if(hintEl) hintEl.textContent = parts.join('。') + '。';
     document.getElementById('fldAlloc').style.opacity = r.sizing === 'ratio' ? 1 : .4;
     document.getElementById('fldRisk').style.opacity = r.sizing === 'risk' ? 1 : .4;
 }
@@ -1366,6 +1562,10 @@ function readRisk(){
     r.slipPct = g('rkSlip') || 0;
     r.useAtrStop = document.getElementById('rkAtrStop').checked;
     r.allowMinUnit = document.getElementById('rkMinUnit').checked;
+    r.haltDrawdownPct = Math.max(0, g('rkHaltDD') || 0);
+    r.maxConsecLosses = Math.max(0, g('rkConsec') || 0);
+    r.maxDailyTrades = Math.max(0, g('rkDaily') || 0);
+    r.reserveCashPct = Math.max(0, Math.min(90, g('rkReserve') || 0));
     // 未取引のうちは初期資金の変更をペーパー口座にも反映する
     if(!state.paper.trades.length && !Object.keys(state.paper.positions).length && prevCash !== r.initialCash){
         state.paper.cash = r.initialCash;
@@ -1373,6 +1573,49 @@ function readRisk(){
     }
     save();
     renderRisk();
+    renderPresets();
+}
+
+/* ---------- 運用プリセットと売買コスト ---------- */
+function renderPresets(){
+    const el = document.getElementById('presetBtns');
+    if(!el) return;
+    const cur = state.risk.initialCash;
+    el.innerHTML = Object.keys(PRESETS).map(k => {
+        const p = PRESETS[k];
+        const active = cur === p.risk.initialCash;
+        return `<button class="btn ${active ? 'primary' : ''}" onclick="applyPreset('${k}')">
+            ${p.label}で運用<span style="opacity:.75;font-weight:500"> / ${p.note}</span></button>`;
+    }).join('');
+
+    // 少額運用では手数料が成績を大きく左右するため、往復コストを常に見せる
+    const r = state.risk;
+    const roundTrip = (r.feePct + r.slipPct) * 2;
+    const budget = r.initialCash * r.allocPct / 100;
+    const costYen = budget * roundTrip / 100;
+    const ratio = r.takePct > 0 ? roundTrip / r.takePct * 100 : null;
+    const heavy = ratio != null && ratio >= 33;
+    document.getElementById('costStats').innerHTML = `
+        ${stat('1銘柄あたり投入額', yen(budget), '資金の' + r.allocPct + '%')}
+        ${stat('売買1往復のコスト', roundTrip.toFixed(2) + '%', '手数料' + r.feePct + '%＋滑り' + r.slipPct + '%の往復')}
+        ${stat('コストの目安額', yen(costYen), '1回の売買あたり')}
+        ${stat('損益分岐に必要な上昇', roundTrip.toFixed(2) + '%', 'これ未満の値上がりでは損', heavy ? 'neg' : '')}
+        ${stat('利確幅に占めるコスト', ratio == null ? '—' : ratio.toFixed(0) + '%',
+               heavy ? 'コスト負けしやすい設定です' : '許容範囲です', heavy ? 'neg' : 'pos')}
+    `;
+}
+function applyPreset(key){
+    const p = PRESETS[key];
+    if(!p) return;
+    const dirty = state.paper.trades.length || Object.keys(state.paper.positions).length;
+    if(dirty && !confirm(p.label + 'の設定を適用し、ペーパー口座をリセットします。よろしいですか？')) return;
+    Object.assign(state.risk, p.risk);
+    state.paper = {cash:p.risk.initialCash, positions:{}, trades:[], equity:[], log:[],
+                   lastSignals:[], lastRun:null, lastBarDate:null};
+    demoReset(true);
+    save();
+    renderRisk(); renderPresets(); render();
+    toast(p.label + 'の設定を適用しました');
 }
 
 /* ---------- 実行設定 ---------- */
@@ -1390,6 +1633,12 @@ function renderExec(){
     document.getElementById('execHint').textContent = hints[e.mode];
     document.getElementById('autoToggle').textContent = autoTimer ? '■ 自動実行を停止' : '▶ 自動実行を開始';
     document.getElementById('autoToggle').className = autoTimer ? 'btn danger' : 'btn primary';
+    const halted = !!state.paper.halted;
+    document.getElementById('haltBanner').style.display = halted ? '' : 'none';
+    document.getElementById('haltRelease').style.display = halted ? '' : 'none';
+    if(halted) document.getElementById('haltMsg').innerHTML =
+        '<b>安全装置が作動しました：</b>' + esc(state.paper.haltReason) +
+        '<br>新規の買いは行いません。保有中の建玉は損切り・利確の条件で手仕舞われます。設定を見直したうえで「安全装置を解除して再開」を押してください。';
     document.getElementById('orderSample').value = JSON.stringify({
         version:1, generatedAt:new Date().toISOString(), mode:e.mode,
         orders:[{symbol:'7203', name:'トヨタ自動車', side:'buy', quantity:100,
@@ -1786,7 +2035,11 @@ function renderBacktest(res){
         ${stat('プロフィットファクター', isFinite(m.pf) ? m.pf.toFixed(2) : '∞', '総利益÷総損失')}
         ${stat('勝率', m.winRate.toFixed(1) + '%', m.trades + '取引')}
         ${stat('平均損益', yen(m.expectancy), '平均保有 ' + m.avgDays.toFixed(1) + '日', cls(m.expectancy))}
+        ${stat('支払った売買コスト', yen(res.costs || 0),
+               '元手の' + ((res.costs||0)/state.risk.initialCash*100).toFixed(1) + '%', 'neg')}
     `;
+    if(res.halted) document.getElementById('btStats').insertAdjacentHTML('afterend',
+        '<p class="hint" style="color:var(--amber);margin-top:.7rem">⛔ 期間中に安全装置が作動しました：' + esc(res.haltReason) + '</p>');
     drawEquityChart(document.getElementById('btEquity'), res.equity, m.ddSeries);
 
     const sel = document.getElementById('btChartSym');
@@ -1883,6 +2136,251 @@ function applyOpt(s, l){
 }
 
 /* ============================================================
+   デモ運用（過去データの日次再生）
+   実運用と同じ順序で1日ずつ進め、資産の増減を観察する
+   ============================================================ */
+let demoSim = null, demoTimer = null;
+
+function demoSymbols(){
+    const v = document.getElementById('dmTarget').value;
+    const all = state.symbols.filter(s => s.bars.length > 40);
+    if(v === '__all__' || !v) return all;
+    return all.filter(s => s.code === v);
+}
+function demoBuild(){
+    const syms = demoSymbols();
+    if(!syms.length){ toast('40本以上の価格データを持つ銘柄がありません', true); return false; }
+    const days = Math.max(60, parseInt(document.getElementById('dmDays').value) || 250);
+    // 指標の計算に必要な助走期間を確保したうえで、指定日数ぶんを再生する
+    const longest = Math.max(...syms.map(s => s.bars.length));
+    const span = Math.min(longest, days + 40);
+    const trimmed = syms.map(s => ({
+        code:s.code, name:s.name, unit:s.unit,
+        bars: s.bars.slice(Math.max(0, s.bars.length - span))
+    }));
+    demoSim = createSim(trimmed, state.strategy, state.risk, null, null);
+    if(!demoSim){ toast('再生できるデータが不足しています', true); return false; }
+    return true;
+}
+function demoToggle(){
+    if(demoTimer){ demoPause(); return; }
+    if(!demoSim && !demoBuild()) return;
+    if(demoSim.finished){ toast('再生は完了しています。「最初からやり直す」で再開できます'); return; }
+    const stride = parseInt(document.getElementById('dmSpeed').value) || 3;
+    demoTimer = setInterval(() => {
+        for(let i = 0; i < stride; i++){
+            if(simStep(demoSim)){ demoPause(); break; }
+        }
+        renderDemo();
+    }, 220);
+    renderDemo();
+}
+function demoPause(){
+    if(demoTimer){ clearInterval(demoTimer); demoTimer = null; }
+    renderDemo();
+}
+function demoStepOne(){
+    if(!demoSim && !demoBuild()) return;
+    demoPause();
+    if(!demoSim.finished) simStep(demoSim);
+    renderDemo();
+}
+function demoRunToEnd(){
+    if(!demoSim && !demoBuild()) return;
+    demoPause();
+    let guard = 0;
+    while(!demoSim.finished && guard++ < 20000){ if(simStep(demoSim)) break; }
+    renderDemo();
+    toast('再生が完了しました');
+}
+function demoReset(silent){
+    demoPause();
+    demoSim = null;
+    if(!silent){ renderDemo(); toast('デモをリセットしました'); }
+}
+function renderDemo(){
+    const btn = document.getElementById('dmPlay');
+    if(!btn) return;
+    btn.textContent = demoTimer ? '⏸ 一時停止' : '▶ 再生';
+    btn.className = demoTimer ? 'btn danger' : 'btn primary';
+
+    const sim = demoSim;
+    const prog = document.getElementById('dmProgress');
+    const bar = document.getElementById('dmBar');
+    const haltBox = document.getElementById('dmHalt');
+
+    if(!sim){
+        prog.textContent = '未開始 —「再生」を押すと、過去データを1日ずつ進めながら自動売買を実行します';
+        bar.style.width = '0%';
+        haltBox.style.display = 'none';
+        document.getElementById('dmStats').innerHTML =
+            stat('初期資金', yen(state.risk.initialCash), '1銘柄あたり ' + yen(state.risk.initialCash * state.risk.allocPct/100));
+        document.getElementById('dmPositions').innerHTML =
+            '<tbody><tr><td class="empty">デモを開始すると表示されます</td></tr></tbody>';
+        document.getElementById('dmLog').innerHTML = '<div class="empty">売買の記録はまだありません</div>';
+        drawEquityChart(document.getElementById('dmEquity'), [{d:today(), e:state.risk.initialCash}]);
+        return;
+    }
+
+    const done = sim.t;
+    const total = sim.dates.length;
+    bar.style.width = (done/total*100).toFixed(1) + '%';
+    const curDate = sim.dates[Math.min(done, total-1)];
+    prog.textContent = `${curDate}　（${done} / ${total}営業日${sim.finished ? '・完了' : ''}）`;
+
+    haltBox.style.display = sim.halted ? '' : 'none';
+    if(sim.halted) document.getElementById('dmHaltMsg').innerHTML =
+        '<b>安全装置が作動しました：</b>' + esc(sim.haltReason) +
+        '<br>保有中の建玉は損切り・利確の条件で通常どおり手仕舞われます。設定を見直すか、リセットしてやり直してください。';
+
+    const held = mtm(sim.ctx, sim.positions, curDate);
+    const eq = sim.cash + held;
+    const init = sim.risk.initialCash;
+    const pnl = eq - init;
+    const wins = sim.trades.filter(t => t.pnl > 0).length;
+    let peak = -Infinity, dd = 0;
+    sim.equity.forEach(p => { peak = Math.max(peak, p.e); dd = Math.min(dd, (p.e-peak)/peak*100); });
+
+    document.getElementById('dmStats').innerHTML = `
+        ${stat('デモ資産', yen(eq), '初期 ' + yen(init), cls(pnl))}
+        ${stat('損益', yen(pnl), pct(init > 0 ? pnl/init*100 : 0), cls(pnl))}
+        ${stat('現金', yen(sim.cash), '建玉 ' + yen(held))}
+        ${stat('取引回数', sim.trades.length + '回', wins + '勝 ' + (sim.trades.length-wins) + '敗')}
+        ${stat('勝率', sim.trades.length ? (wins/sim.trades.length*100).toFixed(1) + '%' : '—',
+               '最大下落 ' + dd.toFixed(1) + '%')}
+        ${stat('支払った売買コスト', yen(sim.costs),
+               init > 0 ? '元手の' + (sim.costs/init*100).toFixed(1) + '%' : '', sim.costs > 0 ? 'neg' : '')}
+        ${stat('状態', sim.halted ? '停止中' : (sim.finished ? '完了' : (demoTimer ? '再生中' : '一時停止')),
+               '保有 ' + Object.keys(sim.positions).length + '銘柄', sim.halted ? 'neg' : '')}
+    `;
+
+    const codes = Object.keys(sim.positions);
+    document.getElementById('dmPositions').innerHTML = codes.length ? `
+        <thead><tr><th>銘柄</th><th class="num">数量</th><th class="num">取得</th><th class="num">現在値</th>
+        <th class="num">評価損益</th><th class="num">損切</th><th class="num">利確</th><th>取得日</th></tr></thead>
+        <tbody>${codes.map(code => {
+            const pos = sim.positions[code];
+            const c = sim.ctx.find(x => x.sym.code === code);
+            const i = c ? c.idx[curDate] : null;
+            const price = (c && i != null) ? c.bars[i].c : pos.avg;
+            const p = (price - pos.avg) * pos.qty;
+            return `<tr>
+                <td>${esc(code)} ${esc(c ? c.sym.name : '')}</td>
+                <td class="num">${num(pos.qty)}</td>
+                <td class="num">${num(pos.avg,1)}</td>
+                <td class="num">${num(price,1)}</td>
+                <td class="num ${cls(p)}">${yen(p)}</td>
+                <td class="num">${pos.stop ? num(pos.stop,1) : '—'}</td>
+                <td class="num">${pos.take ? num(pos.take,1) : '—'}</td>
+                <td>${esc(pos.entryDate)}</td>
+            </tr>`;
+        }).join('')}</tbody>`
+        : '<tbody><tr><td class="empty">現在の保有はありません</td></tr></tbody>';
+
+    const ev = sim.events.slice().reverse().slice(0,150);
+    document.getElementById('dmLog').innerHTML = ev.length
+        ? ev.map(e => `<div class="row"><span class="t">${esc(e.d)}</span><span>${esc(e.m)}</span></div>`).join('')
+        : '<div class="empty">まだ売買は発生していません</div>';
+
+    drawEquityChart(document.getElementById('dmEquity'),
+        sim.equity.length > 1 ? sim.equity : [{d:curDate, e:init},{d:curDate, e:eq}]);
+}
+
+/* ---------- 設定の自己診断 ---------- */
+function runDiagnostics(){
+    const r = state.risk, items = [];
+    const add = (level, title, msg) => items.push({level, title, msg});
+
+    // データの充足
+    const usable = state.symbols.filter(s => s.bars.length > 40);
+    if(!state.symbols.length) add('ng','銘柄が未登録です','「銘柄・データ」タブでサンプル5銘柄を生成すると、すぐに試せます');
+    else if(!usable.length) add('ng','価格データが不足しています','判定には最低41本、安定した検証には200本以上の日足を推奨します');
+    else add('ok','価格データ', usable.length + '銘柄が利用可能です（最長 ' +
+        Math.max(...usable.map(s=>s.bars.length)) + '本）');
+
+    // 買えるかどうか
+    const budget = r.initialCash * r.allocPct / 100;
+    const tooBig = [], okBuy = [];
+    usable.forEach(s => {
+        const price = s.bars[s.bars.length-1].c;
+        const lot = price * Math.max(1, r.unit);
+        if(lot > r.initialCash) tooBig.push(s.code + '（1単位' + yen(lot) + '）');
+        else if(lot > budget && !r.allowMinUnit) tooBig.push(s.code + '（1単位' + yen(lot) + '＞枠' + yen(budget) + '）');
+        else okBuy.push(s.code);
+    });
+    if(!usable.length){ /* データ無しの場合は判定しない */ }
+    else if(!okBuy.length) add('ng','どの銘柄も購入できません',
+        '単元' + num(r.unit) + '株では資金が不足しています。単元を1株（単元未満株）にするか、投入比率を上げてください。対象：' + tooBig.join('、'));
+    else if(tooBig.length) add('warn', okBuy.length + '銘柄は購入可能、' + tooBig.length + '銘柄は購入不可',
+        '購入できない銘柄：' + tooBig.join('、'));
+    else add('ok','資金と株価の噛み合わせ','登録銘柄はすべて購入可能です（1銘柄あたり枠 ' + yen(budget) + '）');
+
+    // コスト負け
+    const roundTrip = (r.feePct + r.slipPct) * 2;
+    if(r.takePct > 0 && roundTrip >= r.takePct * 0.5)
+        add('ng','売買コストが利確幅に対して大きすぎます',
+            '往復コスト' + roundTrip.toFixed(2) + '%に対し利確幅は' + r.takePct + '%です。勝っても手数料でほとんど残りません');
+    else if(r.takePct > 0 && roundTrip >= r.takePct * 0.33)
+        add('warn','売買コストの負担が重めです',
+            '往復コスト' + roundTrip.toFixed(2) + '%（利確幅の' + (roundTrip/r.takePct*100).toFixed(0) + '%）。利確幅を広げるか、手数料の安い方法をご検討ください');
+    else add('ok','売買コスト','往復' + roundTrip.toFixed(2) + '%。利確幅' + r.takePct + '%に対して許容範囲です');
+
+    // 損切り幅とボラティリティ
+    if(usable.length){
+        const ratios = usable.map(s => {
+            const a = atr(s.bars, r.atrPeriod);
+            const last = s.bars[s.bars.length-1];
+            const v = a[a.length-1];
+            return (v != null && last.c > 0) ? v / last.c * 100 : null;
+        }).filter(v => v != null);
+        if(ratios.length){
+            const avgAtr = ratios.reduce((a,b)=>a+b,0)/ratios.length;
+            if(r.stopPct > 0 && r.stopPct < avgAtr)
+                add('warn','損切り幅が値動きに対して狭すぎます',
+                    '日々の平均変動幅は約' + avgAtr.toFixed(1) + '%です。損切り' + r.stopPct +
+                    '%では通常の揺れで頻繁に切られます。' + Math.ceil(avgAtr*2) + '%程度が目安です');
+            else add('ok','損切り幅','平均変動幅' + avgAtr.toFixed(1) + '%に対して損切り' + r.stopPct + '%は妥当です');
+        }
+    }
+
+    // 資金配分の整合
+    const totalAlloc = r.allocPct * r.maxPositions;
+    const reserve = r.reserveCashPct;
+    if(totalAlloc > 100 - reserve)
+        add('warn','資金配分が上限を超えています',
+            '投入比率' + r.allocPct + '%×最大' + r.maxPositions + '銘柄＝' + totalAlloc +
+            '%は資金を超えるため、実際には途中で現金が尽きて建てられません（残す現金' + reserve + '%）');
+    else add('ok','資金配分', totalAlloc + '%（' + r.allocPct + '%×' + r.maxPositions + '銘柄）で資金内に収まっています');
+
+    // 安全装置
+    const guards = [];
+    if(r.haltDrawdownPct > 0) guards.push('資産下限-' + r.haltDrawdownPct + '%');
+    if(r.maxConsecLosses > 0) guards.push(r.maxConsecLosses + '連敗停止');
+    if(r.maxDailyTrades > 0) guards.push('1日' + r.maxDailyTrades + '回まで');
+    if(r.reserveCashPct > 0) guards.push('現金' + r.reserveCashPct + '%温存');
+    if(!guards.length) add('warn','安全装置が設定されていません',
+        '「資産の下限で停止」を20%程度に設定しておくと、想定外の下落で損失が広がるのを防げます');
+    else add('ok','安全装置', guards.join(' / ') + ' が有効です');
+
+    // 信用取引を行わないことの確認
+    add('ok','自己資金のみで運用','借入や信用取引は行いません。発注は常に保有現金の範囲内に制限されます');
+
+    const color = {ok:'var(--green)', warn:'var(--amber)', ng:'var(--rose)'};
+    const icon = {ok:'✅', warn:'⚠️', ng:'⛔'};
+    document.getElementById('dmDiag').innerHTML = items.map(i => `
+        <div class="rule" style="margin-bottom:.5rem;border-color:${color[i.level]}40">
+            <div class="rh" style="margin-bottom:.25rem">
+                <span>${icon[i.level]}</span>
+                <span class="name" style="color:${color[i.level]}">${esc(i.title)}</span>
+            </div>
+            <div style="font-size:.78rem;color:var(--muted);line-height:1.7">${esc(i.msg)}</div>
+        </div>`).join('');
+    const ng = items.filter(i => i.level === 'ng').length;
+    const warn = items.filter(i => i.level === 'warn').length;
+    toast(ng ? '要修正 ' + ng + '件、注意 ' + warn + '件' : (warn ? '注意 ' + warn + '件' : '問題は見つかりませんでした'));
+}
+
+/* ============================================================
    自動売買（ペーパートレード）
    ============================================================ */
 function runDailyJudge(){
@@ -1903,6 +2401,27 @@ function runDailyJudge(){
     }, '');
     const isNewBar = p.lastBarDate !== latestBar;
     const canExecute = state.exec.mode !== 'dry' && isNewBar;
+
+    // 1日の売買回数は営業日ごとに数え直す
+    if(p.dayDate !== latestBar){ p.dayDate = latestBar; p.dayTrades = 0; }
+
+    // 安全装置の判定（資産の下限・連敗）
+    const equityCheck = p.cash + positionsValue();
+    if(!p.halted && risk.haltDrawdownPct > 0){
+        const floor = risk.initialCash * (1 - risk.haltDrawdownPct/100);
+        if(equityCheck <= floor){
+            p.halted = true;
+            p.haltReason = '資産が下限 ' + yen(floor) + '（初期資金の-' + risk.haltDrawdownPct + '%）に到達しました';
+        }
+    }
+    if(!p.halted && risk.maxConsecLosses > 0 && (p.consecLosses||0) >= risk.maxConsecLosses){
+        p.halted = true;
+        p.haltReason = risk.maxConsecLosses + '連敗に到達しました';
+    }
+    if(p.halted){
+        log('⛔ 安全装置が作動中のため新規買いを行いません：' + p.haltReason);
+        if(autoTimer){ clearInterval(autoTimer); autoTimer = null; log('自動実行を停止しました'); }
+    }
 
     // 1) 保有中のポジションの手仕舞い判定（損切り・利確・トレーリング・期限）
     if(canExecute) for(const sym of syms){
@@ -1974,6 +2493,15 @@ function runDailyJudge(){
                 log('見送り：' + s.code + ' ' + s.note);
                 continue;
             }
+            if(p.halted){
+                s.note = '安全装置が作動中のため新規買いを見送り（' + p.haltReason + '）';
+                continue;
+            }
+            if(risk.maxDailyTrades > 0 && (p.dayTrades||0) >= risk.maxDailyTrades){
+                s.note = '1日の最大買い回数(' + risk.maxDailyTrades + '回)に到達したため見送り';
+                log('見送り：' + s.code + ' ' + s.note);
+                continue;
+            }
             orders.push({symbol:s.code, name:s.name, side:'buy', quantity:s.qty,
                          orderType:'market', price:null,
                          stopLoss: s.stop ? Math.round(s.stop*10)/10 : null,
@@ -2006,11 +2534,14 @@ function executeBuy(sym, price, qty, date, stop, take){
     const p = state.paper, risk = state.risk;
     const px = price * (1 + risk.slipPct/100);
     const cost = px * qty * (1 + risk.feePct/100);
-    if(cost > p.cash){
-        log('資金不足のため見送り：' + sym.code + ' 必要 ' + yen(cost));
+    // 常に残す現金を差し引いた範囲でのみ発注する（借入は行わない）
+    const usable = Math.max(0, p.cash - risk.initialCash * (risk.reserveCashPct||0)/100);
+    if(cost > usable){
+        log('資金不足のため見送り：' + sym.code + ' 必要 ' + yen(cost) + ' / 使用可能 ' + yen(usable));
         return false;
     }
     p.cash -= cost;
+    p.dayTrades = (p.dayTrades || 0) + 1;
     p.positions[sym.code] = {qty, avg:px, entryDate:date, peak:px, stop:stop || null, take:take || null};
     log('買い約定：' + sym.code + ' ' + num(qty) + '株 @' + num(px,1) + '（' + yen(cost) + '）');
     return true;
@@ -2032,6 +2563,7 @@ function executeSell(sym, price, date, reason){
         days: daysBetween(pos.entryDate, date)
     });
     delete p.positions[sym.code];
+    p.consecLosses = pnl > 0 ? 0 : (p.consecLosses || 0) + 1;
     log('売り約定：' + sym.code + ' ' + num(pos.qty) + '株 @' + num(px,1) + '（' + reason + ' 損益 ' + yen(pnl) + '）');
 }
 function stampEquity(){
@@ -2055,9 +2587,20 @@ function closeAllPaper(){
     if(!confirm(codes.length + '銘柄すべてを最新終値で手仕舞いします。よろしいですか？')) return;
     codes.forEach(c => manualClose(c));
 }
+function releaseHalt(){
+    if(!confirm('安全装置を解除して新規買いを再開します。設定は見直しましたか？')) return;
+    state.paper.halted = false;
+    state.paper.haltReason = '';
+    state.paper.consecLosses = 0;
+    log('安全装置を解除しました');
+    save(); render();
+    toast('安全装置を解除しました');
+}
 function resetPaper(){
     if(!confirm('ペーパー口座の残高・保有・履歴をすべてリセットします。よろしいですか？')) return;
-    state.paper = {cash:state.risk.initialCash, positions:{}, trades:[], equity:[], log:[], lastSignals:[], lastRun:null};
+    state.paper = {cash:state.risk.initialCash, positions:{}, trades:[], equity:[], log:[],
+                   lastSignals:[], lastRun:null, lastBarDate:null,
+                   halted:false, haltReason:'', consecLosses:0, dayTrades:0, dayDate:null};
     save(); render();
     toast('ペーパー口座をリセットしました');
 }
@@ -2196,6 +2739,7 @@ function init(){
     });
     renderStrategy();
     renderRisk();
+    renderPresets();
     renderExec();
     render();
     window.addEventListener('resize', () => {
