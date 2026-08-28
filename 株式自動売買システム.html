@@ -211,11 +211,18 @@
         </div>
         <div class="sep"></div>
         <h2><span class="ic">🧪</span>デモデータ生成</h2>
-        <p class="hint">実データが無くても動作確認できるよう、幾何ブラウン運動で擬似的な日足を生成します。シード値を固定すれば同じ系列を再現できます。</p>
+        <p class="hint">
+            実データが無くても動作確認できるよう、擬似的な日足を生成します。シード値を固定すれば同じ系列を再現できます。
+            <b>トレンド持続性を0にすると完全なランダムウォーク</b>になり、この場合はどんなテクニカル戦略も理論上「買って持ち続ける」に勝てません
+            （相場から降りている間は上昇分を取り逃し、さらに売買コストが引かれるため）。
+            実際の相場にはある程度の持続性があるので、20〜40%を指定すると順張り戦略が機能する状況を再現できます。
+        </p>
         <div class="grid g4" style="margin-top:.6rem">
             <div class="field"><label>生成日数</label><input type="number" id="demoDays" value="500" min="80"></div>
             <div class="field"><label>初期価格(円)</label><input type="number" id="demoPrice" value="2500" min="1"></div>
             <div class="field"><label>年率ボラティリティ(%)</label><input type="number" id="demoVol" value="28" min="1"></div>
+            <div class="field"><label>想定年率(%)<br><span style="opacity:.7">相場全体の傾き</span></label><input type="number" id="demoDrift" value="6" step="1"></div>
+            <div class="field"><label>トレンド持続性(%)<br><span style="opacity:.7">0=完全ランダム</span></label><input type="number" id="demoTrend" value="0" step="5" min="0" max="60"></div>
             <div class="field"><label>シード</label><input type="number" id="demoSeed" value="42"></div>
         </div>
         <div class="row-flex" style="margin-top:.7rem">
@@ -290,6 +297,13 @@
             </div>
             <div class="field"><label>買いスコア閾値</label><input type="number" id="stBuyTh" step="0.5" onchange="readStrategy()"></div>
             <div class="field"><label>売りスコア閾値</label><input type="number" id="stSellTh" step="0.5" onchange="readStrategy()"></div>
+            <div class="field">
+                <label>決済の方針</label>
+                <select id="stExit" onchange="readStrategy();renderStrategy()">
+                    <option value="signal">売りシグナルで決済（短期売買）</option>
+                    <option value="trend">長期トレンドが崩れるまで保有</option>
+                </select>
+            </div>
         </div>
         <p class="hint" id="modeHint"></p>
     </div>
@@ -344,6 +358,8 @@
             <div class="field"><label>連敗で停止(回)<br><span style="opacity:.7">0で無効</span></label><input type="number" id="rkConsec" step="1" onchange="readRisk()"></div>
             <div class="field"><label>1日の最大買い回数<br><span style="opacity:.7">0で無制限</span></label><input type="number" id="rkDaily" step="1" onchange="readRisk()"></div>
             <div class="field"><label>常に残す現金(%)<br><span style="opacity:.7">初期資金に対する割合</span></label><input type="number" id="rkReserve" step="1" onchange="readRisk()"></div>
+            <div class="field"><label>最低保有日数<br><span style="opacity:.7">短期の往復売買を抑制</span></label><input type="number" id="rkMinHold" step="1" onchange="readRisk()"></div>
+            <div class="field"><label>再購入までの日数<br><span style="opacity:.7">売却直後の買い直しを防止</span></label><input type="number" id="rkCooldown" step="1" onchange="readRisk()"></div>
         </div>
         <p class="hint" id="safetyHint"></p>
     </div>
@@ -368,6 +384,12 @@
             <div class="stat-grid" id="btStats"></div>
         </div>
         <div class="card">
+            <h2><span class="ic">🧭</span>堅実さの評価</h2>
+            <div id="btVerdict"></div>
+            <div class="stat-grid" id="btSteady" style="margin-top:.9rem"></div>
+            <div class="table-wrap" style="margin-top:.9rem"><table id="btMonthly"></table></div>
+        </div>
+        <div class="card">
             <h2><span class="ic">📈</span>資産曲線とドローダウン</h2>
             <canvas id="btEquity" style="height:240px"></canvas>
         </div>
@@ -383,6 +405,24 @@
             <h2><span class="ic">🧾</span>取引履歴</h2>
             <div class="table-wrap"><table id="btTrades"></table></div>
         </div>
+    </div>
+
+    <div class="card">
+        <h2><span class="ic">🧪</span>ウォークフォワード検証（過剰最適化の点検）</h2>
+        <p class="hint">
+            過去データに合わせ込んだ設定は、その期間だけ良く見えるのが普通です。ここでは期間を区切り、
+            <b>前半で最適化した設定を、それより後の「見ていない期間」で運用</b>して成績を測ります。
+            検証期間の成績が学習期間より大きく劣るなら、その設定は過去に合わせ込んだだけで実運用では通用しません。
+        </p>
+        <div class="row-flex" style="margin-top:.7rem">
+            <div class="field" style="min-width:180px"><label>対象</label><select id="wfTarget"></select></div>
+            <div class="field" style="min-width:130px"><label>分割数</label>
+                <select id="wfFolds"><option value="2">2分割</option><option value="3" selected>3分割</option><option value="4">4分割</option></select>
+            </div>
+            <button class="btn" onclick="runWalkForward()">🧪 検証する</button>
+        </div>
+        <div id="wfVerdict" style="margin-top:.9rem"></div>
+        <div class="table-wrap" style="margin-top:.7rem"><table id="wfTable"></table></div>
     </div>
 
     <div class="card">
@@ -569,6 +609,10 @@ const TABS = [
 ];
 
 const RULE_DEFS = {
+    regime:   {name:'トレンドフィルタ（下降相場では買わない）',
+               desc:'終値が長期移動平均を下回っている間は新規買いを一切行いません。相場全体が下向きのときに買い向かうのを避けるための、最も効果の大きい安全弁です。保有中の建玉の手仕舞いは通常どおり行われます。',
+               params:[{k:'period',label:'期間',min:20}],
+               filter:true},
     smaCross: {name:'移動平均クロス', desc:'短期線が長期線の上＝買い方向。クロス当日は重みを2倍で評価。',
                params:[{k:'short',label:'短期',min:2},{k:'long',label:'長期',min:3}]},
     emaTrend: {name:'EMAトレンド', desc:'終値が長期EMAより上なら買い方向（順張りフィルタ）。',
@@ -589,23 +633,47 @@ const RULE_DEFS = {
 /* 運用プリセット。少額では単元未満株(1株単位)を前提にしないと1銘柄も買えないため、
    資金規模に応じて単元・投入比率・手数料・安全装置をまとめて切り替える */
 const PRESETS = {
+    yen500k: {
+        label:'50万円・堅実型', note:'上昇トレンドを持ち切り、崩れたら降りる（推奨）', recommended:true,
+        risk:{initialCash:500000, unit:1, allowMinUnit:true, sizing:'ratio', allocPct:18,
+              maxPositions:5, feePct:0.55, slipPct:0.1,
+              useAtrStop:true, atrPeriod:14, atrMult:3.5, stopPct:10, takePct:0, trailPct:0,
+              maxHoldDays:0, minHoldDays:5, cooldownDays:10,
+              maxDailyTrades:2, haltDrawdownPct:15, maxConsecLosses:6, reserveCashPct:10},
+        strategy:{
+            mode:'score', buyTh:3, sellTh:3, exitPolicy:'trend',
+            rules:{
+                regime:  {on:true,  w:0, period:200},
+                smaCross:{on:true,  w:2, short:20, long:60},
+                emaTrend:{on:true,  w:2, period:100},
+                rsi:     {on:false, w:1, period:14, low:30, high:75},
+                macd:    {on:true,  w:1, fast:12, slow:26, signal:9},
+                boll:    {on:false, w:1, period:20, k:2},
+                breakout:{on:true,  w:2, period:40},
+                volume:  {on:true,  w:1, period:20, mult:1.0}
+            }
+        }
+    },
     yen10k: {
         label:'1万円', note:'単元未満株・最大2銘柄・1日1回まで',
         risk:{initialCash:10000, unit:1, allowMinUnit:true, sizing:'ratio', allocPct:45,
               maxPositions:2, feePct:0.55, slipPct:0.2, stopPct:6, takePct:12, trailPct:0,
-              maxHoldDays:20, maxDailyTrades:1, haltDrawdownPct:20, maxConsecLosses:5, reserveCashPct:5}
+              useAtrStop:false, maxHoldDays:20, minHoldDays:3, cooldownDays:5,
+              maxDailyTrades:1, haltDrawdownPct:20, maxConsecLosses:5, reserveCashPct:5}
     },
     yen100k: {
         label:'10万円', note:'単元未満株・最大3銘柄・1日2回まで',
         risk:{initialCash:100000, unit:1, allowMinUnit:true, sizing:'ratio', allocPct:30,
               maxPositions:3, feePct:0.55, slipPct:0.15, stopPct:7, takePct:15, trailPct:0,
-              maxHoldDays:30, maxDailyTrades:2, haltDrawdownPct:20, maxConsecLosses:6, reserveCashPct:5}
+              useAtrStop:false, maxHoldDays:30, minHoldDays:3, cooldownDays:7,
+              maxDailyTrades:2, haltDrawdownPct:20, maxConsecLosses:6, reserveCashPct:5}
     },
     yen1m: {
         label:'100万円', note:'単元株(100株)・最大5銘柄',
         risk:{initialCash:1000000, unit:100, allowMinUnit:false, sizing:'ratio', allocPct:20,
               maxPositions:5, feePct:0.1, slipPct:0.05, stopPct:7, takePct:15, trailPct:0,
-              maxHoldDays:0, maxDailyTrades:0, haltDrawdownPct:25, maxConsecLosses:0, reserveCashPct:0}
+              useAtrStop:false, maxHoldDays:0, minHoldDays:0, cooldownDays:0,
+              maxDailyTrades:0, haltDrawdownPct:25, maxConsecLosses:0, reserveCashPct:0}
     }
 };
 
@@ -614,8 +682,9 @@ function defaultState(){
         symbols: [],
         activeSymbol: null,
         strategy: {
-            mode:'score', buyTh:2, sellTh:2,
+            mode:'score', buyTh:2, sellTh:2, exitPolicy:'signal',
             rules:{
+                regime:  {on:true,  w:0, period:200},
                 smaCross:{on:true,  w:2, short:5,  long:25},
                 emaTrend:{on:true,  w:1, period:75},
                 rsi:     {on:true,  w:1, period:14, low:30, high:70},
@@ -630,7 +699,8 @@ function defaultState(){
             atrPeriod:14, atrMult:2, useAtrStop:false, unit:100, allowMinUnit:false,
             stopPct:7, takePct:15, trailPct:0, maxHoldDays:0,
             maxPositions:5, feePct:0.1, slipPct:0.05,
-            maxDailyTrades:0, haltDrawdownPct:0, maxConsecLosses:0, reserveCashPct:0
+            maxDailyTrades:0, haltDrawdownPct:0, maxConsecLosses:0, reserveCashPct:0,
+            minHoldDays:0, cooldownDays:0
         },
         exec: {mode:'dry', interval:30, url:'', token:''},
         paper: {cash:1000000, positions:{}, trades:[], equity:[], log:[], lastSignals:[], lastRun:null,
@@ -828,6 +898,7 @@ function buildIndicators(bars, strat, risk){
         hh:   highestPrev(bars.map(b => b.h), Math.max(3, r.breakout.period)),
         ll:   lowestPrev(bars.map(b => b.l), Math.max(3, r.breakout.period)),
         volMa: sma(bars.map(b => b.v || 0), Math.max(3, r.volume.period)),
+        regime: sma(closes, Math.max(20, (r.regime || {period:200}).period)),
         atr:  atr(bars, Math.max(2, risk.atrPeriod))
     };
 }
@@ -891,6 +962,11 @@ function evalSignal(bars, ind, i, strat){
     if(r.volume.on && ind.volMa[i] != null && ind.volMa[i] > 0){
         volumeOK = (b.v || 0) >= ind.volMa[i] * r.volume.mult;
     }
+    // トレンドフィルタ。長期移動平均を下回る局面では新規買いを行わない
+    let regimeOK = true;
+    if(r.regime && r.regime.on && ind.regime && ind.regime[i] != null){
+        regimeOK = b.c >= ind.regime[i];
+    }
 
     // 判定
     let action = 'hold';
@@ -902,9 +978,21 @@ function evalSignal(bars, ind, i, strat){
         if(score >= strat.buyTh) action = 'buy';
         else if(score <= -strat.sellTh) action = 'sell';
     }
-    if(action === 'buy' && !volumeOK) action = 'hold';
+    // 決済方針。'trend' では短期の売りシグナルでは降りず、
+    // 長期トレンドが崩れたときだけ手仕舞う。上昇局面を持ち切るための設定
+    if(strat.exitPolicy === 'trend'){
+        if(action === 'sell'){
+            action = (ind.regime && ind.regime[i] != null && b.c < ind.regime[i]) ? 'sell' : 'hold';
+        }else if(ind.regime && ind.regime[i] != null && b.c < ind.regime[i]){
+            action = 'sell';
+        }
+    }
 
-    return {action, score, votes, volumeOK};
+    let blocked = '';
+    if(action === 'buy' && !regimeOK){ action = 'hold'; blocked = '長期トレンドが下向きのため見送り'; }
+    else if(action === 'buy' && !volumeOK){ action = 'hold'; blocked = '出来高が不足しているため見送り'; }
+
+    return {action, score, votes, volumeOK, regimeOK, blocked};
 }
 
 /* ============================================================
@@ -914,8 +1002,10 @@ function evalSignal(bars, ind, i, strat){
 /* シミュレータを生成する。1日ずつ進められる構造にして、
    バックテストとデモ運用の再生で同一のロジックを共有する */
 function createSim(symbols, strat, risk, from, to){
+    // 開始日より前の足も指標の計算には使う。ここを切ってしまうと移動平均が
+    // 立ち上がらず、期間を変えるだけで判定内容が変わってしまうため
     const ctx = symbols.map(s => {
-        const bars = s.bars.filter(b => (!from || b.d >= from) && (!to || b.d <= to));
+        const bars = to ? s.bars.filter(b => b.d <= to) : s.bars.slice();
         const idx = {};
         bars.forEach((b, i) => { idx[b.d] = i; });
         return {sym:s, bars, idx, ind: buildIndicators(bars, strat, risk)};
@@ -928,13 +1018,23 @@ function createSim(symbols, strat, risk, from, to){
     ctx.forEach(c => c.bars.forEach(b => dateSet.add(b.d)));
     const dates = Array.from(dateSet).sort();
 
+    // 売買を開始する位置。これより前は指標の助走にのみ使う
+    let startT = 0;
+    if(from){
+        const k = dates.findIndex(d => d >= from);
+        if(k < 0) return null;
+        startT = k;
+    }
+    if(startT >= dates.length) return null;
+
     return {
-        ctx, dates, strat, risk, t:0,
+        ctx, dates, strat, risk, t:startT, startT,
+        tradeDates: dates.slice(startT),
         cash: risk.initialCash,
         positions:{},    // code -> {qty, avg, stop, take, peak, entryDate}
         trades:[], equity:[], marks:{}, pending:[],
         halted:false, haltReason:'', consecLosses:0,
-        dayTrades:0, dayDate:null, costs:0,
+        dayTrades:0, dayDate:null, costs:0, lastExit:{},
         events:[], finished:false
     };
 }
@@ -985,6 +1085,7 @@ function simClose(sim, c, price, date, reason){
     });
     (sim.marks[code] = sim.marks[code] || []).push({d:date, type:'sell', price:p});
     delete sim.positions[code];
+    sim.lastExit[code] = date;
     sim.consecLosses = pnl > 0 ? 0 : sim.consecLosses + 1;
     simEvent(sim, `売り ${code} ${num(pos.qty)}株 @${num(p,1)}（${reason} ${pnl >= 0 ? '+' : ''}${yen(pnl)}）`);
 }
@@ -1065,9 +1166,19 @@ function simStep(sim){
         const i = c.idx[date];
         if(i == null || i < 30) continue;
         const sig = evalSignal(c.bars, c.ind, i, sim.strat);
-        const held = !!sim.positions[c.sym.code];
-        if(sig.action === 'buy' && !held) sim.pending.push({ci, side:'buy'});
-        else if(sig.action === 'sell' && held) sim.pending.push({ci, side:'sell', reason:'売りシグナル'});
+        const code = c.sym.code;
+        const pos = sim.positions[code];
+        if(sig.action === 'buy' && !pos){
+            // 直前に売った銘柄をすぐ買い直さない（往復コストの浪費と往復売買の防止）
+            const last = sim.lastExit[code];
+            if(risk.cooldownDays > 0 && last && daysBetween(last, date) < risk.cooldownDays) continue;
+            sim.pending.push({ci, side:'buy'});
+        }else if(sig.action === 'sell' && pos){
+            // 最低保有日数に満たないうちはシグナルでの手仕舞いを見送る。
+            // 損切りはこの制限を受けないため、リスク管理は損なわれない
+            if(risk.minHoldDays > 0 && daysBetween(pos.entryDate, date) < risk.minHoldDays) continue;
+            sim.pending.push({ci, side:'sell', reason:'売りシグナル'});
+        }
     }
 
     // 4) 時価評価と安全装置の判定
@@ -1097,7 +1208,9 @@ function simResult(sim){
         equity:sim.equity, trades:sim.trades, marks:sim.marks,
         ctx:sim.ctx, dates:sim.dates,
         halted:sim.halted, haltReason:sim.haltReason, costs:sim.costs,
-        metrics: calcMetrics(sim.equity, sim.trades, sim.risk.initialCash)
+        metrics: calcMetrics(sim.equity, sim.trades, sim.risk.initialCash),
+        buyHold: calcMetrics(buyHoldCurve(sim.ctx, sim.tradeDates, sim.risk), [], sim.risk.initialCash),
+        steady: steadiness(sim.equity, sim.trades, sim.risk.initialCash)
     };
 }
 function backtest(symbols, strat, risk, from, to){
@@ -1158,6 +1271,79 @@ function daysBetween(a, b){
     return Math.round((new Date(b) - new Date(a)) / 86400000);
 }
 
+/* 同じ資金で全銘柄を初日に等金額で買い、最終日まで持ち続けた場合の資産推移。
+   自動売買がこれを上回れないなら、売買する意味そのものが薄いという基準になる */
+function buyHoldCurve(ctx, dates, risk){
+    const per = risk.initialCash / ctx.length;
+    const unit = Math.max(1, risk.unit);
+    let cash = risk.initialCash;
+    const holds = [];
+    const d0 = dates[0];
+    ctx.forEach(c => {
+        const i0 = c.idx[d0];
+        if(i0 == null) return;
+        const b0 = c.bars[i0];
+        const qty = Math.floor(per / b0.o / unit) * unit;
+        const cost = qty * b0.o * (1 + risk.feePct/100);
+        if(qty > 0 && cost <= cash){ cash -= cost; holds.push({c, qty, last:b0.o}); }
+    });
+    return dates.map(d => {
+        let v = cash;
+        holds.forEach(h => {
+            const i = h.c.idx[d];
+            if(i != null) h.last = h.c.bars[i].c;
+            v += h.last * h.qty;
+        });
+        return {d, e:v};
+    });
+}
+
+/* 月次リターン。着実に増えているかは、月ごとの積み上がりを見るのが分かりやすい */
+function monthlyReturns(equity){
+    if(!equity.length) return [];
+    const byMonth = {};
+    equity.forEach(p => { byMonth[p.d.slice(0,7)] = p.e; });
+    const keys = Object.keys(byMonth).sort();
+    const out = [];
+    let prev = equity[0].e;
+    keys.forEach(k => {
+        out.push({m:k, r: prev > 0 ? (byMonth[k]/prev - 1) * 100 : 0, e:byMonth[k]});
+        prev = byMonth[k];
+    });
+    return out;
+}
+
+/* 堅実さの評価。増え方が安定しているか、落ち込みから戻れるかを見る */
+function steadiness(equity, trades, initial){
+    const months = monthlyReturns(equity);
+    const winMonths = months.filter(m => m.r > 0).length;
+    const worstMonth = months.length ? Math.min(...months.map(m => m.r)) : 0;
+
+    let streak = 0, maxStreak = 0;
+    trades.forEach(t => { streak = t.pnl > 0 ? 0 : streak + 1; maxStreak = Math.max(maxStreak, streak); });
+
+    // 最大ドローダウンの谷から、以前の高値を取り戻すまでにかかった日数
+    let peak = -Infinity, peakDate = null, worstDD = 0, troughDate = null, ddPeakDate = null;
+    equity.forEach(p => {
+        if(p.e > peak){ peak = p.e; peakDate = p.d; }
+        const dd = peak > 0 ? (p.e - peak) / peak * 100 : 0;
+        if(dd < worstDD){ worstDD = dd; troughDate = p.d; ddPeakDate = peakDate; }
+    });
+    let recoveryDays = null;
+    if(troughDate != null){
+        const peakVal = equity.find(p => p.d === ddPeakDate);
+        const rec = equity.find(p => p.d > troughDate && peakVal && p.e >= peakVal.e);
+        if(rec) recoveryDays = daysBetween(troughDate, rec.d);
+    }
+    return {
+        months, winMonths,
+        monthCount: months.length,
+        winMonthRate: months.length ? winMonths / months.length * 100 : 0,
+        worstMonth, maxLoseStreak: maxStreak,
+        recoveryDays, stillUnderwater: troughDate != null && recoveryDays == null
+    };
+}
+
 function calcMetrics(equity, trades, initial){
     if(!equity.length) return null;
     const last = equity[equity.length-1].e;
@@ -1214,16 +1400,21 @@ function mulberry32(seed){
         return ((t ^ t >>> 14) >>> 0) / 4294967296;
     };
 }
-function genBars(days, start, volPct, seed){
+/* trendPct: トレンドの持続性(0〜60程度)。前日の値動きを翌日へどれだけ引き継ぐか。
+   0だと完全なランダムウォークとなり、理論上どんなテクニカル戦略も買い持ちに勝てない。
+   実際の相場にはある程度の持続性があるため、それを再現して戦略の有効性を確かめる */
+function genBars(days, start, volPct, seed, driftPct, trendPct){
     const rnd = mulberry32(seed);
     const gauss = () => {
         const u = Math.max(rnd(), 1e-9), v = rnd();
         return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v);
     };
     const dailyVol = (volPct/100) / Math.sqrt(252);
-    const drift = 0.06/252;
+    const drift = (driftPct == null ? 6 : driftPct) / 100 / 252;
+    const phi = Math.max(0, Math.min(0.6, (trendPct == null ? 0 : trendPct) / 100));
     const bars = [];
     let price = start;
+    let prevRet = 0;
     const d = new Date();
     d.setDate(d.getDate() - Math.ceil(days * 1.45));
     let cursor = new Date(d);
@@ -1232,7 +1423,11 @@ function genBars(days, start, volPct, seed){
         const wd = cursor.getDay();
         if(wd === 0 || wd === 6) continue;
         const o = price;
-        price = price * Math.exp(drift - 0.5*dailyVol*dailyVol + dailyVol*gauss());
+        // 前日の値動きを一部引き継ぐことでトレンドの持続性を表現する
+        const shock = dailyVol * Math.sqrt(1 - phi*phi) * gauss();
+        const ret = drift - 0.5*dailyVol*dailyVol + phi*prevRet + shock;
+        prevRet = ret - drift;
+        price = price * Math.exp(ret);
         const c = Math.max(1, price);
         const range = Math.abs(c - o) + c * dailyVol * (0.4 + rnd());
         const h = Math.max(o, c) + range * rnd() * 0.6;
@@ -1359,7 +1554,7 @@ function renderSymbolSelects(){
         el.innerHTML = opts || '<option value="">銘柄未登録</option>';
         if(cur) el.value = cur;
     });
-    ['btTarget','optTarget','dmTarget'].forEach(id => {
+    ['btTarget','optTarget','dmTarget','wfTarget'].forEach(id => {
         const el = document.getElementById(id);
         if(!el) return;
         const cur = el.value;
@@ -1477,12 +1672,16 @@ function renderStrategy(){
     document.getElementById('stMode').value = st.mode;
     document.getElementById('stBuyTh').value = st.buyTh;
     document.getElementById('stSellTh').value = st.sellTh;
+    document.getElementById('stExit').value = st.exitPolicy || 'signal';
     const scoreMode = st.mode === 'score';
     document.getElementById('stBuyTh').disabled = !scoreMode;
     document.getElementById('stSellTh').disabled = !scoreMode;
-    document.getElementById('modeHint').textContent = scoreMode
+    document.getElementById('modeHint').innerHTML = (scoreMode
         ? '有効なルールの重み付き合計が買い閾値以上で買い、売り閾値以上のマイナスで売りと判定します。'
-        : '有効なルールがすべて同じ方向を向いたときのみ発注します。取引回数は減りますが、精度重視の設定です。';
+        : '有効なルールがすべて同じ方向を向いたときのみ発注します。取引回数は減りますが、精度重視の設定です。')
+        + '<br>' + ((st.exitPolicy === 'trend')
+        ? '<b>決済は長期トレンドが崩れたときだけ</b>行います。上昇が続く限り持ち続けるため売買回数が大きく減り、上昇分を取りこぼしにくくなります（損切りは常に有効）。'
+        : '売りシグナルが出るたびに決済します。細かく利益を確定できますが、売買回数とコストが増え、上昇局面を早く降りてしまう傾向があります。');
 
     document.getElementById('ruleList').innerHTML = Object.keys(RULE_DEFS).map(key => {
         const def = RULE_DEFS[key], r = st.rules[key];
@@ -1515,6 +1714,7 @@ function readStrategy(){
     state.strategy.mode = document.getElementById('stMode').value;
     state.strategy.buyTh = parseFloat(document.getElementById('stBuyTh').value) || 1;
     state.strategy.sellTh = parseFloat(document.getElementById('stSellTh').value) || 1;
+    state.strategy.exitPolicy = document.getElementById('stExit').value;
     save();
 }
 
@@ -1530,6 +1730,7 @@ function renderRisk(){
     document.getElementById('rkMinUnit').checked = !!r.allowMinUnit;
     set('rkHaltDD', r.haltDrawdownPct); set('rkConsec', r.maxConsecLosses);
     set('rkDaily', r.maxDailyTrades); set('rkReserve', r.reserveCashPct);
+    set('rkMinHold', r.minHoldDays); set('rkCooldown', r.cooldownDays);
     const parts = [];
     parts.push(r.haltDrawdownPct > 0
         ? `資産が ${yen(r.initialCash * (1 - r.haltDrawdownPct/100))} まで減ったら新規買いを止めます`
@@ -1537,6 +1738,8 @@ function renderRisk(){
     if(r.maxConsecLosses > 0) parts.push(`${r.maxConsecLosses}連敗で新規買いを止めます`);
     if(r.maxDailyTrades > 0) parts.push(`1日の新規買いは${r.maxDailyTrades}回までです`);
     if(r.reserveCashPct > 0) parts.push(`${yen(r.initialCash * r.reserveCashPct/100)} は常に現金で残します`);
+    if(r.minHoldDays > 0) parts.push(`買ってから${r.minHoldDays}日間はシグナルでは売りません（損切りは常に有効）`);
+    if(r.cooldownDays > 0) parts.push(`売却後${r.cooldownDays}日間は同じ銘柄を買い直しません`);
     const hintEl = document.getElementById('safetyHint');
     if(hintEl) hintEl.textContent = parts.join('。') + '。';
     document.getElementById('fldAlloc').style.opacity = r.sizing === 'ratio' ? 1 : .4;
@@ -1566,6 +1769,8 @@ function readRisk(){
     r.maxConsecLosses = Math.max(0, g('rkConsec') || 0);
     r.maxDailyTrades = Math.max(0, g('rkDaily') || 0);
     r.reserveCashPct = Math.max(0, Math.min(90, g('rkReserve') || 0));
+    r.minHoldDays = Math.max(0, g('rkMinHold') || 0);
+    r.cooldownDays = Math.max(0, g('rkCooldown') || 0);
     // 未取引のうちは初期資金の変更をペーパー口座にも反映する
     if(!state.paper.trades.length && !Object.keys(state.paper.positions).length && prevCash !== r.initialCash){
         state.paper.cash = r.initialCash;
@@ -1584,8 +1789,8 @@ function renderPresets(){
     el.innerHTML = Object.keys(PRESETS).map(k => {
         const p = PRESETS[k];
         const active = cur === p.risk.initialCash;
-        return `<button class="btn ${active ? 'primary' : ''}" onclick="applyPreset('${k}')">
-            ${p.label}で運用<span style="opacity:.75;font-weight:500"> / ${p.note}</span></button>`;
+        return `<button class="btn ${active ? 'primary' : (p.recommended ? 'green' : '')}" onclick="applyPreset('${k}')">
+            ${p.label}<span style="opacity:.75;font-weight:500"> / ${p.note}</span></button>`;
     }).join('');
 
     // 少額運用では手数料が成績を大きく左右するため、往復コストを常に見せる
@@ -1610,11 +1815,20 @@ function applyPreset(key){
     const dirty = state.paper.trades.length || Object.keys(state.paper.positions).length;
     if(dirty && !confirm(p.label + 'の設定を適用し、ペーパー口座をリセットします。よろしいですか？')) return;
     Object.assign(state.risk, p.risk);
+    if(p.strategy){
+        state.strategy.mode = p.strategy.mode;
+        state.strategy.buyTh = p.strategy.buyTh;
+        state.strategy.sellTh = p.strategy.sellTh;
+        state.strategy.exitPolicy = p.strategy.exitPolicy || 'signal';
+        Object.keys(p.strategy.rules).forEach(k => {
+            state.strategy.rules[k] = Object.assign({}, state.strategy.rules[k], p.strategy.rules[k]);
+        });
+    }
     state.paper = {cash:p.risk.initialCash, positions:{}, trades:[], equity:[], log:[],
                    lastSignals:[], lastRun:null, lastBarDate:null};
     demoReset(true);
     save();
-    renderRisk(); renderPresets(); render();
+    renderRisk(); renderPresets(); renderStrategy(); render();
     toast(p.label + 'の設定を適用しました');
 }
 
@@ -1982,7 +2196,9 @@ function genDemoForActive(){
     const price = parseFloat(document.getElementById('demoPrice').value) || 2500;
     const vol = parseFloat(document.getElementById('demoVol').value) || 28;
     const seed = parseInt(document.getElementById('demoSeed').value) || 42;
-    sym.bars = genBars(days, price, vol, seed);
+    const drift = parseFloat(document.getElementById('demoDrift').value);
+    const trend = parseFloat(document.getElementById('demoTrend').value);
+    sym.bars = genBars(days, price, vol, seed, isFinite(drift) ? drift : 6, isFinite(trend) ? trend : 0);
     save(); render();
     toast(sym.code + ' に ' + days + '本のデモデータを生成しました');
 }
@@ -1995,10 +2211,14 @@ function genDemoPortfolio(){
         {code:'4063', name:'サンプル化学',   price:5200, vol:32, seed:55}
     ];
     const days = parseInt(document.getElementById('demoDays').value) || 500;
+    const drift = parseFloat(document.getElementById('demoDrift').value);
+    const trend = parseFloat(document.getElementById('demoTrend').value);
+    const dr = isFinite(drift) ? drift : 6;
+    const tp = isFinite(trend) ? trend : 0;
     samples.forEach(s => {
         let sym = state.symbols.find(x => x.code === s.code);
         if(!sym){ sym = {code:s.code, name:s.name, unit:100, bars:[]}; state.symbols.push(sym); }
-        sym.bars = genBars(days, s.price, s.vol, s.seed);
+        sym.bars = genBars(days, s.price, s.vol, s.seed, dr, tp);
     });
     save(); render();
     toast('サンプル5銘柄を生成しました');
@@ -2040,6 +2260,7 @@ function renderBacktest(res){
     `;
     if(res.halted) document.getElementById('btStats').insertAdjacentHTML('afterend',
         '<p class="hint" style="color:var(--amber);margin-top:.7rem">⛔ 期間中に安全装置が作動しました：' + esc(res.haltReason) + '</p>');
+    renderVerdict(res);
     drawEquityChart(document.getElementById('btEquity'), res.equity, m.ddSeries);
 
     const sel = document.getElementById('btChartSym');
@@ -2070,6 +2291,97 @@ function renderBacktest(res){
             </tr>`).join('')}</tbody>`
         : '<tbody><tr><td class="empty">条件を満たす取引が発生しませんでした。閾値やルールを緩めてお試しください。</td></tr></tbody>';
 }
+/* 「着実に増えているか」を数字ではなく言葉で判定する。
+   自動売買が単純な買い持ちに負けているなら、売買する意味そのものが無い */
+function renderVerdict(res){
+    const m = res.metrics, bh = res.buyHold, st = res.steady;
+    const checks = [];
+    const beatBH = m.totalRet > bh.totalRet;
+    checks.push({
+        ok: beatBH,
+        t: beatBH ? '買い持ちを上回っています' : '買い持ちに負けています',
+        d: `自動売買 ${pct(m.totalRet)} に対し、同じ資金でただ買って持ち続けた場合は ${pct(bh.totalRet)}。` +
+           (beatBH ? '売買する価値が出ています。' : 'この設定で売買する意味はありません。設定を見直すか、買って持ち続ける方が有利です。')
+    });
+    checks.push({
+        ok: m.totalRet > 0,
+        t: m.totalRet > 0 ? '資産が増えています' : '資産が減っています',
+        d: `${yen(state.risk.initialCash)} → ${yen(m.finalEquity)}（年率 ${pct(m.cagr)}）。` +
+           `うち売買コストの支払いは ${yen(res.costs||0)} です。`
+    });
+    checks.push({
+        ok: st.winMonthRate >= 50,
+        t: `勝った月は ${st.winMonths} / ${st.monthCount} か月（${st.winMonthRate.toFixed(0)}%）`,
+        d: st.winMonthRate >= 50
+            ? '月単位で見て半分以上の月がプラスです。増え方が安定しています。'
+            : 'プラスの月が半分未満です。増える月と減る月の波が大きく、着実とは言えません。'
+    });
+    checks.push({
+        ok: m.maxDD > -20,
+        t: `最大の落ち込みは ${m.maxDD.toFixed(1)}%`,
+        d: `一時的に ${yen(state.risk.initialCash * (1 + m.maxDD/100))} まで減る場面がありました。` +
+           (st.stillUnderwater ? '期間内に元の高値へは戻っていません。'
+            : (st.recoveryDays != null ? `そこから ${st.recoveryDays} 日で高値を回復しています。` : ''))
+    });
+    checks.push({
+        ok: st.maxLoseStreak <= 5,
+        t: `最長 ${st.maxLoseStreak} 連敗`,
+        d: st.maxLoseStreak <= 5 ? '連敗は許容範囲です。'
+            : '連敗が長く、資金と気持ちの両方に負担がかかります。安全装置の連敗停止を活用してください。'
+    });
+    checks.push({
+        ok: m.trades > 0 && (res.costs||0) < Math.abs(m.totalPnl) * 0.5,
+        t: `売買 ${m.trades} 回、コストは元手の ${((res.costs||0)/state.risk.initialCash*100).toFixed(1)}%`,
+        d: (res.costs||0) > Math.abs(m.totalPnl) * 0.5 && m.trades > 0
+            ? '損益に対してコストの比重が大きすぎます。最低保有日数や再購入までの日数を延ばして売買回数を減らしてください。'
+            : '売買回数に対してコストは抑えられています。'
+    });
+
+    const ngCount = checks.filter(c => !c.ok).length;
+    const head = ngCount === 0
+        ? {c:'var(--green)', t:'この設定は堅実に機能しています', s:'買い持ちを上回り、増え方も安定しています'}
+        : ngCount <= 2
+        ? {c:'var(--amber)', t:'部分的に課題があります', s:ngCount + '項目が基準を満たしていません'}
+        : {c:'var(--rose)', t:'この設定での運用は勧められません', s:ngCount + '項目が基準を満たしていません'};
+
+    document.getElementById('btVerdict').innerHTML = `
+        <div class="rule" style="border-color:${head.c}55;background:${head.c}12">
+            <div class="rh"><span class="name" style="color:${head.c};font-size:1rem">${esc(head.t)}</span></div>
+            <div style="font-size:.8rem;color:var(--muted)">${esc(head.s)}</div>
+        </div>
+        <div class="grid g2" style="margin-top:.7rem">
+        ${checks.map(c => `
+            <div class="rule" style="border-color:${c.ok ? 'rgba(34,197,94,.3)' : 'rgba(251,113,133,.3)'}">
+                <div class="rh" style="margin-bottom:.3rem">
+                    <span>${c.ok ? '✅' : '⚠️'}</span>
+                    <span class="name" style="font-size:.83rem">${esc(c.t)}</span>
+                </div>
+                <div style="font-size:.76rem;color:var(--muted);line-height:1.7">${esc(c.d)}</div>
+            </div>`).join('')}
+        </div>`;
+
+    document.getElementById('btSteady').innerHTML = `
+        ${stat('買い持ちとの差', pct(m.totalRet - bh.totalRet),
+               '買い持ち ' + pct(bh.totalRet), cls(m.totalRet - bh.totalRet))}
+        ${stat('勝ち月率', st.winMonthRate.toFixed(0) + '%', st.winMonths + '/' + st.monthCount + 'か月')}
+        ${stat('最悪の月', pct(st.worstMonth), '1か月の最大下落', 'neg')}
+        ${stat('最長連敗', st.maxLoseStreak + '回', '連続で負けた回数')}
+        ${stat('高値回復', st.stillUnderwater ? '未回復' : (st.recoveryDays != null ? st.recoveryDays + '日' : '—'),
+               '最大下落からの戻り', st.stillUnderwater ? 'neg' : '')}
+        ${stat('買い持ちの最大DD', bh.maxDD.toFixed(1) + '%',
+               '自動売買は ' + m.maxDD.toFixed(1) + '%', m.maxDD > bh.maxDD ? 'pos' : 'neg')}
+    `;
+
+    // 月次リターンの一覧（着実に積み上がっているかを月単位で確認する）
+    const ms = st.months;
+    document.getElementById('btMonthly').innerHTML = ms.length ? `
+        <thead><tr><th>月</th>${ms.map(x => `<th class="num">${esc(x.m.slice(2))}</th>`).join('')}</tr></thead>
+        <tbody><tr><td>損益率</td>${ms.map(x =>
+            `<td class="num ${cls(x.r)}">${x.r.toFixed(1)}</td>`).join('')}</tr>
+        <tr><td>資産</td>${ms.map(x =>
+            `<td class="num" style="color:var(--muted)">${Math.round(x.e/1000)}k</td>`).join('')}</tr></tbody>`
+        : '';
+}
 function drawBtChart(){
     if(!btLast) return;
     const code = document.getElementById('btChartSym').value;
@@ -2077,6 +2389,114 @@ function drawBtChart(){
     if(!c) return;
     const count = parseInt(document.getElementById('btChartBars').value) || 160;
     drawPriceChart(document.getElementById('btPrice'), c.bars, c.ind, btLast.marks[code] || [], count);
+}
+
+/* ---------- ウォークフォワード検証 ----------
+   期間を分割し、前の区間で最適化した設定を次の区間へ持ち込んで運用する。
+   学習と検証の落差が、その設定が過去に合わせ込まれている度合いを表す */
+function runWalkForward(){
+    const syms = targetSymbols('wfTarget');
+    if(!syms.length){ toast('対象銘柄がありません', true); return; }
+    const folds = parseInt(document.getElementById('wfFolds').value) || 3;
+
+    const dateSet = new Set();
+    syms.forEach(s => s.bars.forEach(b => dateSet.add(b.d)));
+    const all = Array.from(dateSet).sort();
+    const seg = Math.floor(all.length / (folds + 1));
+    if(seg < 60){
+        toast('検証には ' + (60*(folds+1)) + '本以上の日足が必要です（現在 ' + all.length + '本）', true);
+        return;
+    }
+
+    const shorts = [5,10,15,20,25];
+    const longs  = [40,60,75,100];
+    const base = state.strategy;
+    const rows = [];
+
+    for(let k = 0; k < folds; k++){
+        const trainFrom = all[k*seg], trainTo = all[(k+1)*seg - 1];
+        const testFrom  = all[(k+1)*seg], testTo = all[Math.min((k+2)*seg - 1, all.length - 1)];
+
+        let best = null;
+        for(const sh of shorts){
+            for(const lo of longs){
+                if(sh >= lo) continue;
+                const st = JSON.parse(JSON.stringify(base));
+                st.rules.smaCross.short = sh; st.rules.smaCross.long = lo;
+                const r = backtest(syms, st, state.risk, trainFrom, trainTo);
+                if(r && r.metrics && (!best || r.metrics.totalRet > best.ret))
+                    best = {sh, lo, ret:r.metrics.totalRet};
+            }
+        }
+        if(!best) continue;
+
+        const st = JSON.parse(JSON.stringify(base));
+        st.rules.smaCross.short = best.sh; st.rules.smaCross.long = best.lo;
+        const test = backtest(syms, st, state.risk, testFrom, testTo);
+        rows.push({
+            k:k+1, param: best.sh + '/' + best.lo,
+            trainRange: trainFrom.slice(2) + '〜' + trainTo.slice(2),
+            testRange: testFrom.slice(2) + '〜' + testTo.slice(2),
+            trainRet: best.ret,
+            testRet: test && test.metrics ? test.metrics.totalRet : null,
+            testBH: test && test.buyHold ? test.buyHold.totalRet : null,
+            testDD: test && test.metrics ? test.metrics.maxDD : null,
+            trades: test && test.metrics ? test.metrics.trades : 0
+        });
+    }
+
+    const el = document.getElementById('wfTable');
+    if(!rows.length){
+        el.innerHTML = '<tbody><tr><td class="empty">検証できる区間がありませんでした</td></tr></tbody>';
+        return;
+    }
+    el.innerHTML = `
+        <thead><tr><th>回</th><th>学習期間</th><th class="num">最適値</th><th class="num">学習成績</th>
+        <th>検証期間</th><th class="num">検証成績</th><th class="num">買い持ち</th>
+        <th class="num">検証時DD</th><th class="num">取引</th></tr></thead>
+        <tbody>${rows.map(r => `
+            <tr>
+                <td>${r.k}</td>
+                <td style="color:var(--muted)">${esc(r.trainRange)}</td>
+                <td class="num">${esc(r.param)}</td>
+                <td class="num ${cls(r.trainRet)}">${pct(r.trainRet)}</td>
+                <td style="color:var(--muted)">${esc(r.testRange)}</td>
+                <td class="num ${cls(r.testRet)}"><b>${r.testRet == null ? '—' : pct(r.testRet)}</b></td>
+                <td class="num" style="color:var(--muted)">${r.testBH == null ? '—' : pct(r.testBH)}</td>
+                <td class="num neg">${r.testDD == null ? '—' : r.testDD.toFixed(1) + '%'}</td>
+                <td class="num">${r.trades}</td>
+            </tr>`).join('')}</tbody>`;
+
+    const valid = rows.filter(r => r.testRet != null);
+    const avgTrain = valid.reduce((a,r) => a + r.trainRet, 0) / (valid.length || 1);
+    const avgTest = valid.reduce((a,r) => a + r.testRet, 0) / (valid.length || 1);
+    const avgBH = valid.reduce((a,r) => a + (r.testBH || 0), 0) / (valid.length || 1);
+    const posCount = valid.filter(r => r.testRet > 0).length;
+    const gap = avgTrain - avgTest;
+
+    let level, title, msg;
+    if(avgTest > 0 && avgTest > avgBH && posCount >= Math.ceil(valid.length/2)){
+        level = 'ok'; title = '見ていない期間でも通用しています';
+        msg = `検証期間の平均リターンは ${pct(avgTest)}（買い持ち ${pct(avgBH)}）。${valid.length}回中${posCount}回がプラスでした。この設定は過去への合わせ込みだけではない可能性が高いです。`;
+    }else if(avgTest > 0){
+        level = 'warn'; title = 'プラスだが優位性は限定的です';
+        msg = `検証期間の平均は ${pct(avgTest)} ですが、買い持ち ${pct(avgBH)} と比べて明確な差がありません。手間とコストに見合うか検討してください。`;
+    }else{
+        level = 'ng'; title = '見ていない期間では通用していません';
+        msg = `学習期間では平均 ${pct(avgTrain)} でしたが、検証期間では ${pct(avgTest)} です。過去に合わせ込んだだけの設定と考えられます。この設定での実運用は避けてください。`;
+    }
+    if(gap > 30 && level !== 'ng'){
+        msg += ` なお学習と検証の差が ${gap.toFixed(0)}ポイントあり、成績のぶれは大きめです。`;
+    }
+    const color = {ok:'var(--green)', warn:'var(--amber)', ng:'var(--rose)'};
+    const icon = {ok:'✅', warn:'⚠️', ng:'⛔'};
+    document.getElementById('wfVerdict').innerHTML = `
+        <div class="rule" style="border-color:${color[level]}55;background:${color[level]}12">
+            <div class="rh"><span>${icon[level]}</span>
+                <span class="name" style="color:${color[level]}">${esc(title)}</span></div>
+            <div style="font-size:.79rem;color:var(--muted);line-height:1.7">${esc(msg)}</div>
+        </div>`;
+    toast('ウォークフォワード検証が完了しました');
 }
 
 /* ---------- パラメータ最適化 ---------- */
@@ -2222,8 +2642,8 @@ function renderDemo(){
         return;
     }
 
-    const done = sim.t;
-    const total = sim.dates.length;
+    const done = sim.t - sim.startT;
+    const total = sim.tradeDates.length;
     bar.style.width = (done/total*100).toFixed(1) + '%';
     const curDate = sim.dates[Math.min(done, total-1)];
     prog.textContent = `${curDate}　（${done} / ${total}営業日${sim.finished ? '・完了' : ''}）`;
