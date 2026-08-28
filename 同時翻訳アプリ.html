@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>同時翻訳アプリ</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+    :root{
+        --primary:#38bdf8;
+        --primary-hover:#0ea5e9;
+        --bg:#0b1220;
+        --card-bg:rgba(22,34,54,0.72);
+        --card-solid:#16223a;
+        --text:#f1f5f9;
+        --muted:#8ea3bf;
+        --border:rgba(255,255,255,0.10);
+        --sky:#38bdf8;
+        --indigo:#818cf8;
+        --amber:#f59e0b;
+        --rose:#fb7185;
+        --teal:#2dd4bf;
+        --green:#22c55e;
+        --violet:#a78bfa;
+    }
+    *{box-sizing:border-box}
+    body{
+        margin:0;font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+        background:linear-gradient(140deg,#0b1220 0%,#101a33 55%,#0d1728 100%);
+        background-attachment:fixed;color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;
+    }
+    .container{max-width:1080px;margin:0 auto;padding:1.6rem 1rem 4rem}
+
+    /* Header */
+    header{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.4rem;flex-wrap:wrap}
+    .brand{display:flex;align-items:center;gap:.8rem}
+    .brand .logo{
+        width:48px;height:48px;border-radius:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.6rem;
+        background:linear-gradient(135deg,#38bdf8,#818cf8);box-shadow:0 6px 20px rgba(56,189,248,.35);
+    }
+    .brand h1{font-size:1.5rem;margin:0;line-height:1.2;font-weight:800;letter-spacing:.02em}
+    .brand .sub{color:var(--muted);font-size:.8rem;margin-top:2px}
+    .header-actions{display:flex;gap:.5rem;flex-wrap:wrap}
+
+    .btn{
+        border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);
+        padding:.55rem .9rem;border-radius:10px;font-size:.85rem;font-weight:600;cursor:pointer;
+        transition:all .18s ease;display:inline-flex;align-items:center;gap:.4rem;font-family:inherit;
+    }
+    .btn:hover{background:rgba(255,255,255,.12);transform:translateY(-1px)}
+    .btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+    .btn.primary{background:var(--primary);border-color:transparent;color:#042232}
+    .btn.primary:hover{background:var(--primary-hover);color:#fff}
+    .btn.ghost{background:transparent}
+    .btn.danger{color:var(--rose);border-color:rgba(251,113,133,.35)}
+    .btn.danger:hover{background:rgba(251,113,133,.15)}
+    .btn.sm{padding:.35rem .6rem;font-size:.78rem}
+
+    .card{
+        background:var(--card-bg);border:1px solid var(--border);border-radius:18px;
+        padding:1.1rem;backdrop-filter:blur(10px);margin-bottom:1.1rem;
+    }
+    .card h2{margin:0 0 .8rem;font-size:1rem;font-weight:700;display:flex;align-items:center;gap:.45rem}
+    .card h2 .tag{margin-left:auto;font-size:.72rem;color:var(--muted);font-weight:600}
+
+    /* 言語バー */
+    .langbar{display:flex;align-items:center;gap:.6rem;flex-wrap:nowrap}
+    .lang-select{
+        flex:1;min-width:0;appearance:none;background:rgba(255,255,255,.05);color:var(--text);
+        border:1px solid var(--border);border-radius:12px;padding:.7rem .9rem;font-size:.95rem;font-weight:600;
+        font-family:inherit;cursor:pointer;text-align:center;
+    }
+    .lang-select:focus{outline:none;border-color:var(--primary)}
+    .lang-select option{background:var(--card-solid);color:var(--text)}
+    .swap-btn{
+        flex-shrink:0;width:42px;height:42px;border-radius:12px;border:1px solid var(--border);
+        background:rgba(255,255,255,.05);color:var(--sky);font-size:1.1rem;cursor:pointer;transition:all .18s ease;
+    }
+    .swap-btn:hover{background:rgba(56,189,248,.18);transform:rotate(180deg)}
+
+    /* ヒーロー（ライブ翻訳） */
+    .live-hero{
+        background:radial-gradient(120% 140% at 15% 0%,rgba(56,189,248,.16),transparent 55%),
+                   radial-gradient(120% 140% at 100% 100%,rgba(129,140,248,.16),transparent 55%),
+                   var(--card-bg);
+        border:1px solid var(--border);border-radius:22px;padding:1.2rem;margin-bottom:1.1rem;backdrop-filter:blur(10px);
+    }
+    .status-row{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.9rem}
+    .pill{
+        display:inline-flex;align-items:center;gap:.4rem;padding:.32rem .7rem;border-radius:999px;
+        font-size:.76rem;font-weight:700;background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--muted);
+    }
+    .pill .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+    .pill.on{color:var(--green);border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.12)}
+    .pill.on .dot{background:var(--green);animation:pulse 1.2s infinite}
+    .pill.busy{color:var(--amber);border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.12)}
+    .pill.busy .dot{background:var(--amber)}
+    .pill.err{color:var(--rose);border-color:rgba(251,113,133,.4);background:rgba(251,113,133,.12)}
+    .pill.err .dot{background:var(--rose)}
+    @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(1.35)}}
+
+    .live-panes{display:grid;grid-template-columns:1fr 1fr;gap:.9rem}
+    .pane{
+        background:rgba(9,16,30,.55);border:1px solid var(--border);border-radius:16px;padding:.9rem 1rem;min-height:130px;
+        display:flex;flex-direction:column;
+    }
+    .pane .pane-head{display:flex;align-items:center;gap:.4rem;font-size:.75rem;color:var(--muted);font-weight:700;margin-bottom:.5rem}
+    .pane .pane-head .badge{margin-left:auto;font-size:.68rem;padding:.12rem .45rem;border-radius:6px;background:rgba(255,255,255,.07)}
+    .pane .body{font-size:1.35rem;line-height:1.55;font-weight:600;word-break:break-word;flex:1}
+    .pane.target .body{color:var(--sky)}
+    .pane .interim{opacity:.5;font-weight:500}
+    .pane .placeholder{color:var(--muted);font-size:.95rem;font-weight:500}
+    .pane-actions{display:flex;gap:.4rem;margin-top:.6rem}
+
+    /* マイクボタン */
+    .mic-row{display:flex;gap:.8rem;margin-top:1rem;flex-wrap:wrap}
+    .mic-btn{
+        flex:1;min-width:180px;border:1px solid var(--border);border-radius:16px;cursor:pointer;
+        background:rgba(255,255,255,.05);color:var(--text);padding:.9rem 1rem;font-family:inherit;
+        display:flex;align-items:center;gap:.7rem;transition:all .2s ease;text-align:left;
+    }
+    .mic-btn:hover{background:rgba(255,255,255,.1);transform:translateY(-1px)}
+    .mic-btn .icon{
+        width:44px;height:44px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+        font-size:1.3rem;background:rgba(255,255,255,.08);transition:all .2s ease;
+    }
+    .mic-btn .txt{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+    .mic-btn .txt strong{font-size:1rem;font-weight:700}
+    .mic-btn .txt span{font-size:.76rem;color:var(--muted)}
+    .mic-btn.active{border-color:rgba(34,197,94,.5);background:rgba(34,197,94,.14);box-shadow:0 0 0 3px rgba(34,197,94,.12)}
+    .mic-btn.active .icon{background:var(--green);color:#04220f;animation:mic 1.4s infinite}
+    @keyframes mic{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.55)}70%{box-shadow:0 0 0 14px rgba(34,197,94,0)}}
+
+    /* 手入力 */
+    .manual-row{display:flex;gap:.6rem;align-items:stretch}
+    textarea.input{
+        flex:1;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:12px;color:var(--text);
+        padding:.7rem .9rem;font-size:.95rem;font-family:inherit;resize:vertical;min-height:52px;line-height:1.5;
+    }
+    textarea.input:focus{outline:none;border-color:var(--primary)}
+
+    /* 履歴 */
+    .history{display:flex;flex-direction:column;gap:.7rem;max-height:520px;overflow-y:auto;padding-right:.2rem}
+    .msg{
+        background:rgba(9,16,30,.5);border:1px solid var(--border);border-left:3px solid var(--sky);
+        border-radius:12px;padding:.75rem .9rem;
+    }
+    .msg.b{border-left-color:var(--violet)}
+    .msg .meta{display:flex;align-items:center;gap:.45rem;font-size:.7rem;color:var(--muted);font-weight:700;margin-bottom:.35rem;flex-wrap:wrap}
+    .msg .meta .time{margin-left:auto;font-weight:500}
+    .msg .src{font-size:.95rem;line-height:1.5;color:var(--muted);margin-bottom:.3rem;word-break:break-word}
+    .msg .tgt{font-size:1.1rem;line-height:1.55;font-weight:600;word-break:break-word}
+    .msg .row-actions{display:flex;gap:.35rem;margin-top:.5rem;opacity:0;transition:opacity .15s}
+    .msg:hover .row-actions{opacity:1}
+    .empty{color:var(--muted);text-align:center;padding:2rem 1rem;font-size:.9rem}
+
+    /* モーダル */
+    .modal-bg{
+        position:fixed;inset:0;background:rgba(4,9,18,.72);backdrop-filter:blur(4px);
+        display:none;align-items:center;justify-content:center;padding:1rem;z-index:60;
+    }
+    .modal-bg.show{display:flex}
+    .modal{
+        background:var(--card-solid);border:1px solid var(--border);border-radius:18px;width:100%;max-width:560px;
+        max-height:88vh;overflow-y:auto;padding:1.3rem;
+    }
+    .modal h3{margin:0 0 1rem;font-size:1.1rem;font-weight:800}
+    .field{margin-bottom:1rem}
+    .field label{display:block;font-size:.78rem;color:var(--muted);font-weight:700;margin-bottom:.35rem}
+    .field input[type=text],.field input[type=password],.field select{
+        width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;
+        color:var(--text);padding:.6rem .8rem;font-size:.9rem;font-family:inherit;
+    }
+    .field input:focus,.field select:focus{outline:none;border-color:var(--primary)}
+    .field select option{background:var(--card-solid)}
+    .field .hint{font-size:.72rem;color:var(--muted);margin-top:.35rem;line-height:1.5}
+    .switch-row{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.6rem 0;border-bottom:1px solid var(--border)}
+    .switch-row:last-of-type{border-bottom:none}
+    .switch-row .label{font-size:.88rem;font-weight:600}
+    .switch-row .label small{display:block;color:var(--muted);font-weight:500;font-size:.72rem;margin-top:2px}
+    .switch{position:relative;width:46px;height:26px;flex-shrink:0}
+    .switch input{opacity:0;width:0;height:0}
+    .slider{position:absolute;inset:0;background:rgba(255,255,255,.14);border-radius:999px;cursor:pointer;transition:.2s}
+    .slider:before{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+    .switch input:checked+.slider{background:var(--primary)}
+    .switch input:checked+.slider:before{transform:translateX(20px)}
+    .modal-actions{display:flex;gap:.6rem;justify-content:flex-end;margin-top:1.2rem}
+    input[type=range]{width:100%;accent-color:var(--primary)}
+
+    /* 字幕モード */
+    .subtitle-mode{
+        position:fixed;inset:0;background:#05070d;z-index:80;display:none;flex-direction:column;
+    }
+    .subtitle-mode.show{display:flex}
+    .sub-half{flex:1;display:flex;align-items:center;justify-content:center;padding:1.5rem;overflow:hidden}
+    .sub-half.flip{transform:rotate(180deg)}
+    .sub-half .inner{max-width:900px;width:100%;text-align:center}
+    .sub-half .lbl{font-size:.8rem;color:var(--muted);font-weight:700;margin-bottom:.6rem;letter-spacing:.08em}
+    .sub-half .text{font-size:clamp(1.5rem,4.5vw,3.2rem);font-weight:700;line-height:1.4;word-break:break-word}
+    .sub-half.src .text{color:#cbd5e1}
+    .sub-half.tgt .text{color:var(--sky)}
+    .sub-divider{height:1px;background:var(--border)}
+    .sub-bar{display:flex;gap:.6rem;align-items:center;justify-content:center;padding:.9rem;border-top:1px solid var(--border);flex-wrap:wrap}
+
+    .toast{
+        position:fixed;bottom:1.4rem;left:50%;transform:translateX(-50%) translateY(120%);
+        background:var(--card-solid);border:1px solid var(--border);color:var(--text);
+        padding:.7rem 1.1rem;border-radius:12px;font-size:.85rem;font-weight:600;z-index:120;
+        transition:transform .25s ease;box-shadow:0 10px 30px rgba(0,0,0,.4);max-width:90vw;text-align:center;
+    }
+    .toast.show{transform:translateX(-50%) translateY(0)}
+    .toast.err{border-color:rgba(251,113,133,.5);color:var(--rose)}
+
+    .notice{
+        background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);color:#fcd34d;
+        border-radius:12px;padding:.8rem 1rem;font-size:.85rem;line-height:1.6;margin-bottom:1.1rem;display:none;
+    }
+    .notice.show{display:block}
+
+    @media (max-width:720px){
+        .live-panes{grid-template-columns:1fr}
+        .pane .body{font-size:1.15rem}
+        .brand h1{font-size:1.25rem}
+        .container{padding:1rem .8rem 3rem}
+    }
+</style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <div class="brand">
+            <div class="logo">🌐</div>
+            <div>
+                <h1>同時翻訳アプリ</h1>
+                <div class="sub">話すそばから翻訳・読み上げ（Web Speech API）</div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn" id="btnSubtitle">🖥️ 字幕モード</button>
+            <button class="btn" id="btnExport">⬇️ 書き出し</button>
+            <button class="btn" id="btnSettings">⚙️ 設定</button>
+        </div>
+    </header>
+
+    <div class="notice" id="notice"></div>
+
+    <!-- 言語選択 -->
+    <div class="card">
+        <div class="langbar">
+            <select class="lang-select" id="langA"></select>
+            <button class="swap-btn" id="btnSwap" title="言語を入れ替え">⇄</button>
+            <select class="lang-select" id="langB"></select>
+        </div>
+    </div>
+
+    <!-- ライブ翻訳 -->
+    <div class="live-hero">
+        <div class="status-row">
+            <span class="pill" id="pillStatus"><span class="dot"></span><span id="statusText">待機中</span></span>
+            <span class="pill" id="pillDirection">🎙️ 日本語 → English</span>
+            <span class="pill" id="pillEngine">エンジン: 自動</span>
+        </div>
+
+        <div class="live-panes">
+            <div class="pane source">
+                <div class="pane-head">🗣️ 原文 <span class="badge" id="srcBadge">日本語</span></div>
+                <div class="body" id="srcBody"><span class="placeholder">マイクボタンを押して話してください</span></div>
+                <div class="pane-actions">
+                    <button class="btn sm ghost" id="btnCopySrc">📋 コピー</button>
+                    <button class="btn sm ghost" id="btnSpeakSrc">🔊 読み上げ</button>
+                </div>
+            </div>
+            <div class="pane target">
+                <div class="pane-head">✨ 訳文 <span class="badge" id="tgtBadge">English</span></div>
+                <div class="body" id="tgtBody"><span class="placeholder">ここに翻訳が表示されます</span></div>
+                <div class="pane-actions">
+                    <button class="btn sm ghost" id="btnCopyTgt">📋 コピー</button>
+                    <button class="btn sm ghost" id="btnSpeakTgt">🔊 読み上げ</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="mic-row">
+            <button class="mic-btn" id="micA">
+                <div class="icon">🎙️</div>
+                <div class="txt"><strong id="micALabel">日本語で話す</strong><span id="micASub">→ English に翻訳</span></div>
+            </button>
+            <button class="mic-btn" id="micB">
+                <div class="icon">🎙️</div>
+                <div class="txt"><strong id="micBLabel">English で話す</strong><span id="micBSub">→ 日本語 に翻訳</span></div>
+            </button>
+        </div>
+    </div>
+
+    <!-- 手入力翻訳 -->
+    <div class="card">
+        <h2>⌨️ 手入力で翻訳 <span class="tag">Ctrl+Enter で翻訳</span></h2>
+        <div class="manual-row">
+            <textarea class="input" id="manualText" placeholder="翻訳したい文章を入力…"></textarea>
+            <button class="btn primary" id="btnManual">翻訳</button>
+        </div>
+    </div>
+
+    <!-- 履歴 -->
+    <div class="card">
+        <h2>💬 会話履歴 <span class="tag" id="histCount">0 件</span>
+            <button class="btn sm danger" id="btnClear" style="margin-left:.6rem">クリア</button>
+        </h2>
+        <div class="history" id="history"></div>
+    </div>
+</div>
+
+<!-- 設定モーダル -->
+<div class="modal-bg" id="settingsModal">
+    <div class="modal">
+        <h3>⚙️ 設定</h3>
+
+        <div class="field">
+            <label>翻訳エンジン</label>
+            <select id="setEngine">
+                <option value="auto">自動（無料・キー不要／失敗時に自動切替）</option>
+                <option value="gtx">Google 翻訳（無料エンドポイント）</option>
+                <option value="mymemory">MyMemory（無料・1日の文字数制限あり）</option>
+                <option value="gcloud">Google Cloud Translation API（APIキー）</option>
+                <option value="libre">LibreTranslate 互換サーバー</option>
+            </select>
+            <div class="hint">無料エンドポイントは非公式のため、混雑時に失敗することがあります。業務で常用する場合は APIキー方式を推奨します。</div>
+        </div>
+
+        <div class="field" id="fieldGcloud" style="display:none">
+            <label>Google Cloud Translation APIキー</label>
+            <input type="password" id="setGcloudKey" placeholder="AIza...">
+            <div class="hint">キーはこの端末のブラウザ（localStorage）にのみ保存されます。HTTPリファラー制限の設定を推奨します。</div>
+        </div>
+
+        <div class="field" id="fieldLibre" style="display:none">
+            <label>LibreTranslate サーバーURL</label>
+            <input type="text" id="setLibreUrl" placeholder="https://example.com/translate">
+            <label style="margin-top:.6rem">APIキー（任意）</label>
+            <input type="password" id="setLibreKey" placeholder="任意">
+            <div class="hint">自前サーバーの場合は CORS 許可が必要です。</div>
+        </div>
+
+        <div class="switch-row">
+            <div class="label">訳文を自動で読み上げる<small>翻訳が終わったら音声で再生します</small></div>
+            <label class="switch"><input type="checkbox" id="setAutoSpeak"><span class="slider"></span></label>
+        </div>
+        <div class="switch-row">
+            <div class="label">話しながら翻訳（逐次プレビュー）<small>確定前の音声も随時翻訳します。通信量が増えます</small></div>
+            <label class="switch"><input type="checkbox" id="setInterim"><span class="slider"></span></label>
+        </div>
+        <div class="switch-row">
+            <div class="label">読み上げ中はマイクを止める<small>スピーカーの音を拾う誤認識を防ぎます</small></div>
+            <label class="switch"><input type="checkbox" id="setPauseMic"><span class="slider"></span></label>
+        </div>
+        <div class="switch-row">
+            <div class="label">連続モード<small>1文ごとに止めず、マイクを開いたままにします</small></div>
+            <label class="switch"><input type="checkbox" id="setContinuous"><span class="slider"></span></label>
+        </div>
+
+        <div class="field" style="margin-top:1rem">
+            <label>読み上げ速度：<span id="rateVal">1.0</span> 倍</label>
+            <input type="range" id="setRate" min="0.5" max="2" step="0.1">
+        </div>
+
+        <div class="field">
+            <label>字幕モードの上段を180°回転（対面表示）</label>
+            <select id="setFlip">
+                <option value="0">回転しない</option>
+                <option value="1">上段を回転（向かい合って使う）</option>
+            </select>
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn ghost" id="btnCloseSettings">閉じる</button>
+            <button class="btn primary" id="btnSaveSettings">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 字幕モード -->
+<div class="subtitle-mode" id="subtitleMode">
+    <div class="sub-half src" id="subTop">
+        <div class="inner">
+            <div class="lbl" id="subTopLbl">原文</div>
+            <div class="text" id="subTopText">…</div>
+        </div>
+    </div>
+    <div class="sub-divider"></div>
+    <div class="sub-half tgt">
+        <div class="inner">
+            <div class="lbl" id="subBottomLbl">訳文</div>
+            <div class="text" id="subBottomText">…</div>
+        </div>
+    </div>
+    <div class="sub-bar">
+        <button class="btn" id="subMicA">🎙️ <span id="subMicALabel">日本語</span></button>
+        <button class="btn" id="subMicB">🎙️ <span id="subMicBLabel">English</span></button>
+        <button class="btn ghost" id="btnCloseSubtitle">✕ 閉じる</button>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+/* ============================================================
+   同時翻訳アプリ
+   - 音声認識: Web Speech API (SpeechRecognition)
+   - 翻訳    : 無料エンドポイント / APIキー方式を切替可能
+   - 読み上げ: SpeechSynthesis
+   すべてブラウザ内で完結（履歴・設定は localStorage に保存）
+   ============================================================ */
+
+const LANGS = [
+    {code:'ja', name:'日本語',        speech:'ja-JP', flag:'🇯🇵'},
+    {code:'en', name:'English',       speech:'en-US', flag:'🇺🇸'},
+    {code:'zh-CN', name:'中文（簡体）', speech:'zh-CN', flag:'🇨🇳'},
+    {code:'zh-TW', name:'中文（繁体）', speech:'zh-TW', flag:'🇹🇼'},
+    {code:'ko', name:'한국어',        speech:'ko-KR', flag:'🇰🇷'},
+    {code:'vi', name:'Tiếng Việt',    speech:'vi-VN', flag:'🇻🇳'},
+    {code:'th', name:'ไทย',           speech:'th-TH', flag:'🇹🇭'},
+    {code:'id', name:'Indonesia',     speech:'id-ID', flag:'🇮🇩'},
+    {code:'tl', name:'Filipino',      speech:'fil-PH', flag:'🇵🇭'},
+    {code:'my', name:'မြန်မာ',        speech:'my-MM', flag:'🇲🇲'},
+    {code:'km', name:'ភាសាខ្មែរ',       speech:'km-KH', flag:'🇰🇭'},
+    {code:'ne', name:'नेपाली',         speech:'ne-NP', flag:'🇳🇵'},
+    {code:'hi', name:'हिन्दी',          speech:'hi-IN', flag:'🇮🇳'},
+    {code:'pt', name:'Português',     speech:'pt-BR', flag:'🇧🇷'},
+    {code:'es', name:'Español',       speech:'es-ES', flag:'🇪🇸'},
+    {code:'fr', name:'Français',      speech:'fr-FR', flag:'🇫🇷'},
+    {code:'de', name:'Deutsch',       speech:'de-DE', flag:'🇩🇪'},
+    {code:'it', name:'Italiano',      speech:'it-IT', flag:'🇮🇹'},
+    {code:'ru', name:'Русский',       speech:'ru-RU', flag:'🇷🇺'},
+    {code:'ar', name:'العربية',        speech:'ar-SA', flag:'🇸🇦'},
+    {code:'nl', name:'Nederlands',    speech:'nl-NL', flag:'🇳🇱'},
+    {code:'tr', name:'Türkçe',        speech:'tr-TR', flag:'🇹🇷'}
+];
+const langOf = c => LANGS.find(l => l.code === c) || LANGS[0];
+
+const DEFAULTS = {
+    langA:'ja', langB:'en',
+    engine:'auto', gcloudKey:'', libreUrl:'', libreKey:'',
+    autoSpeak:true, interim:true, pauseMic:true, continuous:true,
+    rate:1.0, flip:0
+};
+const S_KEY = 'trans_settings_v1';
+const H_KEY = 'trans_history_v1';
+
+let settings = Object.assign({}, DEFAULTS);
+let history = [];
+let recognition = null;
+let activeSide = null;      // 'A' | 'B' | null
+let wantListening = false;
+let restartTimer = null;
+let interimTimer = null;
+let seq = 0;                // 翻訳リクエストの世代管理
+let lastPair = {src:'', tgt:'', srcLang:'ja', tgtLang:'en'};
+const cache = new Map();
+
+/* ---------- ユーティリティ ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+let toastTimer = null;
+function toast(msg, isErr){
+    const t = $('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (isErr ? ' err' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.className = 'toast'; }, 3200);
+}
+function notice(msg){
+    const n = $('notice');
+    if(!msg){ n.className = 'notice'; return; }
+    n.innerHTML = msg;
+    n.className = 'notice show';
+}
+
+/* ---------- 設定の保存・読込 ---------- */
+function loadSettings(){
+    try{
+        const raw = localStorage.getItem(S_KEY);
+        if(raw) settings = Object.assign({}, DEFAULTS, JSON.parse(raw));
+    }catch(e){ console.warn('設定の読込に失敗', e); }
+}
+function saveSettings(){
+    try{ localStorage.setItem(S_KEY, JSON.stringify(settings)); }
+    catch(e){ console.warn('設定の保存に失敗', e); }
+}
+function loadHistory(){
+    try{
+        const raw = localStorage.getItem(H_KEY);
+        if(raw) history = JSON.parse(raw) || [];
+    }catch(e){ history = []; }
+}
+function saveHistory(){
+    try{ localStorage.setItem(H_KEY, JSON.stringify(history.slice(-200))); }
+    catch(e){ console.warn('履歴の保存に失敗', e); }
+}
+
+/* ---------- 翻訳エンジン ---------- */
+async function engineGtx(text, from, to){
+    const url = 'https://translate.googleapis.com/translate_a/single?client=gtx'
+        + '&sl=' + encodeURIComponent(from) + '&tl=' + encodeURIComponent(to)
+        + '&dt=t&q=' + encodeURIComponent(text);
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if(!Array.isArray(data) || !Array.isArray(data[0])) throw new Error('形式エラー');
+    return data[0].map(seg => (seg && seg[0]) ? seg[0] : '').join('');
+}
+async function engineMyMemory(text, from, to){
+    const url = 'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(text)
+        + '&langpair=' + encodeURIComponent(from + '|' + to);
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const out = data && data.responseData && data.responseData.translatedText;
+    if(!out) throw new Error(data && data.responseDetails ? data.responseDetails : '応答なし');
+    return out;
+}
+async function engineGCloud(text, from, to){
+    if(!settings.gcloudKey) throw new Error('APIキーが未設定です');
+    const url = 'https://translation.googleapis.com/language/translate/v2?key=' + encodeURIComponent(settings.gcloudKey);
+    const res = await fetch(url, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({q:text, source:from, target:to, format:'text'})
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
+    return data.data.translations[0].translatedText;
+}
+async function engineLibre(text, from, to){
+    if(!settings.libreUrl) throw new Error('サーバーURLが未設定です');
+    const body = {q:text, source:from, target:to, format:'text'};
+    if(settings.libreKey) body.api_key = settings.libreKey;
+    const res = await fetch(settings.libreUrl, {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error((data && data.error) || ('HTTP ' + res.status));
+    return data.translatedText;
+}
+
+const ENGINES = {gtx:engineGtx, mymemory:engineMyMemory, gcloud:engineGCloud, libre:engineLibre};
+
+async function translate(text, from, to){
+    text = (text || '').trim();
+    if(!text) return '';
+    if(from === to) return text;
+
+    const key = from + '|' + to + '|' + text;
+    if(cache.has(key)) return cache.get(key);
+
+    const chain = settings.engine === 'auto' ? ['gtx','mymemory'] : [settings.engine];
+    let lastErr = null;
+    for(const name of chain){
+        try{
+            const out = await ENGINES[name](text, from, to);
+            if(out && out.trim()){
+                const clean = out.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+                cache.set(key, clean);
+                if(cache.size > 400) cache.delete(cache.keys().next().value);
+                return clean;
+            }
+            throw new Error('空の応答');
+        }catch(e){
+            lastErr = e;
+            console.warn('翻訳失敗 [' + name + ']', e);
+        }
+    }
+    throw lastErr || new Error('翻訳に失敗しました');
+}
+
+/* ---------- 読み上げ ---------- */
+let voices = [];
+function refreshVoices(){ try{ voices = window.speechSynthesis.getVoices() || []; }catch(e){ voices = []; } }
+if('speechSynthesis' in window){
+    refreshVoices();
+    window.speechSynthesis.onvoiceschanged = refreshVoices;
+}
+function pickVoice(speechLang){
+    if(!voices.length) refreshVoices();
+    const base = speechLang.split('-')[0].toLowerCase();
+    return voices.find(v => v.lang && v.lang.toLowerCase() === speechLang.toLowerCase())
+        || voices.find(v => v.lang && v.lang.toLowerCase().replace('_','-').startsWith(base))
+        || null;
+}
+function speak(text, langCode){
+    if(!text || !('speechSynthesis' in window)) return;
+    const lang = langOf(langCode);
+    const wasListening = wantListening;
+    try{ window.speechSynthesis.cancel(); }catch(e){}
+
+    if(settings.pauseMic && wasListening) stopRecognition(true);
+
+    const resume = () => {
+        if(settings.pauseMic && wasListening && activeSide) startRecognition(activeSide);
+    };
+    try{
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = lang.speech;
+        u.rate = Number(settings.rate) || 1;
+        const v = pickVoice(lang.speech);
+        if(v) u.voice = v;
+        u.onend = u.onerror = resume;
+        window.speechSynthesis.speak(u);
+    }catch(e){
+        console.warn('読み上げに失敗', e);
+        resume();
+    }
+}
+
+/* ---------- 方向・表示 ---------- */
+function dirFor(side){
+    return side === 'B'
+        ? {from: settings.langB, to: settings.langA}
+        : {from: settings.langA, to: settings.langB};
+}
+function currentDir(){ return dirFor(activeSide || 'A'); }
+
+function setStatus(text, cls){
+    $('statusText').textContent = text;
+    $('pillStatus').className = 'pill' + (cls ? ' ' + cls : '');
+}
+function renderLangUI(){
+    const a = langOf(settings.langA), b = langOf(settings.langB);
+    $('langA').value = settings.langA;
+    $('langB').value = settings.langB;
+    $('micALabel').textContent = a.name + ' で話す';
+    $('micASub').textContent = '→ ' + b.name + ' に翻訳';
+    $('micBLabel').textContent = b.name + ' で話す';
+    $('micBSub').textContent = '→ ' + a.name + ' に翻訳';
+    $('subMicALabel').textContent = a.name;
+    $('subMicBLabel').textContent = b.name;
+    const d = currentDir();
+    $('pillDirection').textContent = '🎙️ ' + langOf(d.from).name + ' → ' + langOf(d.to).name;
+    $('srcBadge').textContent = langOf(d.from).name;
+    $('tgtBadge').textContent = langOf(d.to).name;
+    const engineLabel = {auto:'自動', gtx:'Google（無料）', mymemory:'MyMemory', gcloud:'Google Cloud', libre:'LibreTranslate'};
+    $('pillEngine').textContent = 'エンジン: ' + (engineLabel[settings.engine] || settings.engine);
+}
+function setPane(which, text, isInterim){
+    const el = $(which === 'src' ? 'srcBody' : 'tgtBody');
+    if(!text){
+        el.innerHTML = '<span class="placeholder">' +
+            (which === 'src' ? 'マイクボタンを押して話してください' : 'ここに翻訳が表示されます') + '</span>';
+    }else{
+        el.innerHTML = isInterim ? '<span class="interim">' + esc(text) + '</span>' : esc(text);
+    }
+    if(which === 'src'){ $('subTopText').textContent = text || '…'; lastPair.src = isInterim ? lastPair.src : (text || ''); }
+    else { $('subBottomText').textContent = text || '…'; if(!isInterim) lastPair.tgt = text || ''; }
+}
+
+/* ---------- 履歴 ---------- */
+function addHistory(src, tgt, from, to, side){
+    const item = {id: Date.now() + '_' + Math.random().toString(36).slice(2,7),
+                  ts: Date.now(), src, tgt, from, to, side};
+    history.push(item);
+    if(history.length > 200) history = history.slice(-200);
+    saveHistory();
+    renderHistory();
+    return item;
+}
+function renderHistory(){
+    const box = $('history');
+    $('histCount').textContent = history.length + ' 件';
+    if(!history.length){
+        box.innerHTML = '<div class="empty">まだ翻訳がありません。マイクを押して話しかけてみてください。</div>';
+        return;
+    }
+    box.innerHTML = history.map(h => {
+        const t = new Date(h.ts);
+        const time = ('0'+t.getHours()).slice(-2) + ':' + ('0'+t.getMinutes()).slice(-2);
+        return '<div class="msg' + (h.side === 'B' ? ' b' : '') + '" data-id="' + h.id + '">' +
+            '<div class="meta">' + langOf(h.from).flag + ' ' + esc(langOf(h.from).name) +
+            ' → ' + langOf(h.to).flag + ' ' + esc(langOf(h.to).name) +
+            '<span class="time">' + time + '</span></div>' +
+            '<div class="src">' + esc(h.src) + '</div>' +
+            '<div class="tgt">' + esc(h.tgt) + '</div>' +
+            '<div class="row-actions">' +
+                '<button class="btn sm ghost" data-act="speak">🔊 再生</button>' +
+                '<button class="btn sm ghost" data-act="copy">📋 コピー</button>' +
+                '<button class="btn sm ghost" data-act="del">🗑️</button>' +
+            '</div></div>';
+    }).join('');
+    box.scrollTop = box.scrollHeight;
+}
+$('history').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-act]');
+    if(!btn) return;
+    const id = btn.closest('.msg').dataset.id;
+    const item = history.find(h => h.id === id);
+    if(!item) return;
+    const act = btn.dataset.act;
+    if(act === 'speak') speak(item.tgt, item.to);
+    else if(act === 'copy') copyText(item.tgt);
+    else if(act === 'del'){
+        history = history.filter(h => h.id !== id);
+        saveHistory(); renderHistory();
+    }
+});
+
+function copyText(text){
+    if(!text){ toast('コピーする文字がありません', true); return; }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(() => toast('コピーしました'))
+            .catch(() => fallbackCopy(text));
+    }else fallbackCopy(text);
+}
+function fallbackCopy(text){
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); toast('コピーしました'); }
+    catch(e){ toast('コピーできませんでした', true); }
+    document.body.removeChild(ta);
+}
+
+/* ---------- 翻訳の実行 ---------- */
+async function runTranslate(text, from, to, side, record){
+    const my = ++seq;
+    setStatus('翻訳中…', 'busy');
+
+    let out;
+    try{
+        out = await translate(text, from, to);
+    }catch(e){
+        if(my === seq){
+            setStatus('翻訳エラー', 'err');
+            setPane('tgt', '', false);
+        }
+        toast('翻訳に失敗しました：' + (e && e.message ? e.message : e), true);
+        if(record) addHistory(text, '（翻訳失敗）', from, to, side);
+        return '';
+    }
+
+    // 翻訳自体は成功しているので、表示・読み上げが失敗しても履歴は必ず残す
+    if(record) addHistory(text, out, from, to, side);
+    if(my === seq){                          // 新しい発話が来ていたら表示は更新しない
+        setPane('tgt', out, false);
+        setStatus(wantListening ? '認識中' : '待機中', wantListening ? 'on' : '');
+        if(settings.autoSpeak) speak(out, to);
+    }
+    return out;
+}
+
+/* ---------- 音声認識 ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+function buildRecognition(side){
+    const d = dirFor(side);
+    const rec = new SR();
+    rec.lang = langOf(d.from).speech;
+    rec.continuous = !!settings.continuous;
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
+
+    rec.onstart = () => { setStatus('認識中', 'on'); };
+
+    rec.onresult = ev => {
+        let interim = '', finalText = '';
+        for(let i = ev.resultIndex; i < ev.results.length; i++){
+            const r = ev.results[i];
+            if(r.isFinal) finalText += r[0].transcript;
+            else interim += r[0].transcript;
+        }
+        if(interim){
+            setPane('src', interim, true);
+            if(settings.interim && interim.trim().length >= 2){
+                clearTimeout(interimTimer);
+                const snapshot = interim.trim();
+                interimTimer = setTimeout(async () => {
+                    const my = ++seq;
+                    try{
+                        const out = await translate(snapshot, d.from, d.to);
+                        if(my === seq) setPane('tgt', out, true);
+                    }catch(e){ /* プレビューの失敗は黙って無視 */ }
+                }, 700);
+            }
+        }
+        if(finalText.trim()){
+            clearTimeout(interimTimer);
+            const text = finalText.trim();
+            setPane('src', text, false);
+            lastPair.srcLang = d.from; lastPair.tgtLang = d.to;
+            runTranslate(text, d.from, d.to, side, true);
+            if(!settings.continuous) stopRecognition();
+        }
+    };
+
+    rec.onerror = ev => {
+        const err = ev.error;
+        if(err === 'no-speech' || err === 'aborted') return;   // 無音・停止は無視して再起動へ
+        if(err === 'not-allowed' || err === 'service-not-allowed'){
+            wantListening = false;
+            setStatus('マイク未許可', 'err');
+            toast('マイクの使用が許可されていません。ブラウザの設定を確認してください。', true);
+        }else if(err === 'network'){
+            setStatus('通信エラー', 'err');
+            toast('音声認識サーバーに接続できませんでした。', true);
+        }else{
+            setStatus('エラー: ' + err, 'err');
+        }
+    };
+
+    rec.onend = () => {
+        if(wantListening && activeSide){
+            clearTimeout(restartTimer);
+            restartTimer = setTimeout(() => {
+                if(wantListening && activeSide){
+                    try{ recognition.start(); }
+                    catch(e){ /* すでに開始済みなら無視 */ }
+                }
+            }, 250);
+        }else{
+            setStatus('待機中', '');
+            updateMicUI();
+        }
+    };
+    return rec;
+}
+
+function startRecognition(side, clearPanes){
+    if(!SR){ toast('このブラウザは音声認識に対応していません（Chrome / Edge を推奨）', true); return; }
+    stopRecognition(true);
+    activeSide = side;
+    wantListening = true;
+    renderLangUI();
+    if(clearPanes){                          // 再開時（読み上げ後・言語変更後）は結果を残す
+        setPane('src', '', false);
+        setPane('tgt', '', false);
+    }
+    recognition = buildRecognition(side);
+    try{ recognition.start(); }
+    catch(e){ toast('音声認識を開始できませんでした：' + e.message, true); wantListening = false; }
+    updateMicUI();
+}
+function stopRecognition(silent){
+    wantListening = false;
+    clearTimeout(restartTimer);
+    clearTimeout(interimTimer);
+    if(recognition){
+        try{ recognition.onend = null; recognition.stop(); }catch(e){}
+        recognition = null;
+    }
+    if(!silent){
+        activeSide = null;
+        setStatus('待機中', '');
+    }
+    updateMicUI();
+}
+function toggleMic(side){
+    if(wantListening && activeSide === side) stopRecognition();
+    else startRecognition(side, true);
+}
+function updateMicUI(){
+    $('micA').classList.toggle('active', wantListening && activeSide === 'A');
+    $('micB').classList.toggle('active', wantListening && activeSide === 'B');
+    $('subMicA').classList.toggle('primary', wantListening && activeSide === 'A');
+    $('subMicB').classList.toggle('primary', wantListening && activeSide === 'B');
+}
+
+/* ---------- イベント登録 ---------- */
+$('micA').addEventListener('click', () => toggleMic('A'));
+$('micB').addEventListener('click', () => toggleMic('B'));
+$('subMicA').addEventListener('click', () => toggleMic('A'));
+$('subMicB').addEventListener('click', () => toggleMic('B'));
+
+$('btnSwap').addEventListener('click', () => {
+    const t = settings.langA; settings.langA = settings.langB; settings.langB = t;
+    saveSettings(); renderLangUI();
+    if(wantListening) startRecognition(activeSide);
+    toast(langOf(settings.langA).name + ' ⇄ ' + langOf(settings.langB).name);
+});
+$('langA').addEventListener('change', e => {
+    if(e.target.value === settings.langB){ toast('同じ言語は選べません', true); e.target.value = settings.langA; return; }
+    settings.langA = e.target.value; saveSettings(); renderLangUI();
+    if(wantListening) startRecognition(activeSide);
+});
+$('langB').addEventListener('change', e => {
+    if(e.target.value === settings.langA){ toast('同じ言語は選べません', true); e.target.value = settings.langB; return; }
+    settings.langB = e.target.value; saveSettings(); renderLangUI();
+    if(wantListening) startRecognition(activeSide);
+});
+
+$('btnCopySrc').addEventListener('click', () => copyText(lastPair.src));
+$('btnCopyTgt').addEventListener('click', () => copyText(lastPair.tgt));
+$('btnSpeakSrc').addEventListener('click', () => speak(lastPair.src, lastPair.srcLang));
+$('btnSpeakTgt').addEventListener('click', () => speak(lastPair.tgt, lastPair.tgtLang));
+
+async function manualTranslate(){
+    const text = $('manualText').value.trim();
+    if(!text){ toast('文章を入力してください', true); return; }
+    const d = dirFor(activeSide || 'A');
+    setPane('src', text, false);
+    lastPair.srcLang = d.from; lastPair.tgtLang = d.to;
+    await runTranslate(text, d.from, d.to, activeSide || 'A', true);
+    $('manualText').value = '';
+}
+$('btnManual').addEventListener('click', manualTranslate);
+$('manualText').addEventListener('keydown', e => {
+    if((e.ctrlKey || e.metaKey) && e.key === 'Enter'){ e.preventDefault(); manualTranslate(); }
+});
+
+$('btnClear').addEventListener('click', () => {
+    if(!history.length) return;
+    if(confirm('会話履歴をすべて削除しますか？')){
+        history = []; saveHistory(); renderHistory(); toast('履歴を削除しました');
+    }
+});
+$('btnExport').addEventListener('click', () => {
+    if(!history.length){ toast('書き出す履歴がありません', true); return; }
+    const lines = history.map(h => {
+        const t = new Date(h.ts);
+        const stamp = t.toLocaleString('ja-JP');
+        return '[' + stamp + '] ' + langOf(h.from).name + ' → ' + langOf(h.to).name +
+               '\n  原文: ' + h.src + '\n  訳文: ' + h.tgt;
+    });
+    const blob = new Blob(['同時翻訳アプリ 会話履歴\n\n' + lines.join('\n\n') + '\n'], {type:'text/plain;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const d = new Date();
+    a.href = url;
+    a.download = '翻訳履歴_' + d.getFullYear() + ('0'+(d.getMonth()+1)).slice(-2) + ('0'+d.getDate()).slice(-2) + '.txt';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast('テキストファイルを書き出しました');
+});
+
+/* ---------- 設定モーダル ---------- */
+function openSettings(){
+    $('setEngine').value = settings.engine;
+    $('setGcloudKey').value = settings.gcloudKey;
+    $('setLibreUrl').value = settings.libreUrl;
+    $('setLibreKey').value = settings.libreKey;
+    $('setAutoSpeak').checked = settings.autoSpeak;
+    $('setInterim').checked = settings.interim;
+    $('setPauseMic').checked = settings.pauseMic;
+    $('setContinuous').checked = settings.continuous;
+    $('setRate').value = settings.rate;
+    $('rateVal').textContent = Number(settings.rate).toFixed(1);
+    $('setFlip').value = String(settings.flip);
+    toggleEngineFields();
+    $('settingsModal').classList.add('show');
+}
+function toggleEngineFields(){
+    const v = $('setEngine').value;
+    $('fieldGcloud').style.display = v === 'gcloud' ? 'block' : 'none';
+    $('fieldLibre').style.display = v === 'libre' ? 'block' : 'none';
+}
+$('btnSettings').addEventListener('click', openSettings);
+$('setEngine').addEventListener('change', toggleEngineFields);
+$('setRate').addEventListener('input', e => { $('rateVal').textContent = Number(e.target.value).toFixed(1); });
+$('btnCloseSettings').addEventListener('click', () => $('settingsModal').classList.remove('show'));
+$('settingsModal').addEventListener('click', e => { if(e.target === $('settingsModal')) $('settingsModal').classList.remove('show'); });
+$('btnSaveSettings').addEventListener('click', () => {
+    settings.engine = $('setEngine').value;
+    settings.gcloudKey = $('setGcloudKey').value.trim();
+    settings.libreUrl = $('setLibreUrl').value.trim();
+    settings.libreKey = $('setLibreKey').value.trim();
+    settings.autoSpeak = $('setAutoSpeak').checked;
+    settings.interim = $('setInterim').checked;
+    settings.pauseMic = $('setPauseMic').checked;
+    settings.continuous = $('setContinuous').checked;
+    settings.rate = Number($('setRate').value);
+    settings.flip = Number($('setFlip').value);
+    saveSettings();
+    renderLangUI();
+    applyFlip();
+    $('settingsModal').classList.remove('show');
+    toast('設定を保存しました');
+    if(wantListening) startRecognition(activeSide);
+});
+
+/* ---------- 字幕モード ---------- */
+function applyFlip(){ $('subTop').classList.toggle('flip', settings.flip === 1); }
+$('btnSubtitle').addEventListener('click', () => {
+    const d = currentDir();
+    $('subTopLbl').textContent = '原文 / ' + langOf(d.from).name;
+    $('subBottomLbl').textContent = '訳文 / ' + langOf(d.to).name;
+    applyFlip();
+    $('subtitleMode').classList.add('show');
+    if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
+});
+$('btnCloseSubtitle').addEventListener('click', () => {
+    $('subtitleMode').classList.remove('show');
+    if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+});
+document.addEventListener('keydown', e => {
+    if(e.key === 'Escape') $('subtitleMode').classList.remove('show');
+    if(e.code === 'Space' && e.target === document.body){ e.preventDefault(); toggleMic(activeSide || 'A'); }
+});
+
+/* ---------- 初期化 ---------- */
+function init(){
+    loadSettings();
+    loadHistory();
+
+    const opts = LANGS.map(l => '<option value="' + l.code + '">' + l.flag + ' ' + l.name + '</option>').join('');
+    $('langA').innerHTML = opts;
+    $('langB').innerHTML = opts;
+
+    renderLangUI();
+    renderHistory();
+    applyFlip();
+    setStatus('待機中', '');
+
+    const warn = [];
+    if(!SR) warn.push('このブラウザは<strong>音声認識に未対応</strong>です。Google Chrome または Microsoft Edge でお使いください（手入力での翻訳は利用できます）。');
+    if(location.protocol === 'file:') warn.push('<strong>ファイルを直接開いています。</strong>音声認識はマイク権限の関係で HTTPS 経由（またはローカルサーバー）でないと動作しません。');
+    else if(location.protocol !== 'https:' && location.hostname !== 'localhost') warn.push('HTTPS でないため、マイクが使えない場合があります。');
+    if(!('speechSynthesis' in window)) warn.push('このブラウザは音声読み上げに未対応です。');
+    notice(warn.length ? warn.join('<br>') : '');
+}
+init();
+</script>
+</body>
+</html>
