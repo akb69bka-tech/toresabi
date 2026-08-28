@@ -451,6 +451,7 @@ let recognition = null;
 let activeSide = null;      // 'A' | 'B' | null
 let wantListening = false;
 let restartTimer = null;
+let recFatalError = false;
 let interimTimer = null;
 let seq = 0;                // 翻訳リクエストの世代管理
 let lastPair = {src:'', tgt:'', srcLang:'ja', tgtLang:'en'};
@@ -509,6 +510,7 @@ async function engineGtx(text, from, to){
     return data[0].map(seg => (seg && seg[0]) ? seg[0] : '').join('');
 }
 async function engineMyMemory(text, from, to){
+    if(text.length > 500) throw new Error('MyMemoryは500文字までです');
     const url = 'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(text)
         + '&langpair=' + encodeURIComponent(from + '|' + to);
     const res = await fetch(url);
@@ -586,16 +588,26 @@ function pickVoice(speechLang){
         || voices.find(v => v.lang && v.lang.toLowerCase().replace('_','-').startsWith(base))
         || null;
 }
+let speakSeq = 0;
+let ttsPausedSide = null;                   // 読み上げのためにマイクを止めた話者（読み上げ完了時に再開する）
 function speak(text, langCode){
     if(!text || !('speechSynthesis' in window)) return;
     const lang = langOf(langCode);
-    const wasListening = wantListening;
+    const mySpeak = ++speakSeq;             // cancel() で割り込まれた古い utterance の onend/onerror を無効化する
     try{ window.speechSynthesis.cancel(); }catch(e){}
 
-    if(settings.pauseMic && wasListening) stopRecognition(true);
+    if(settings.pauseMic && wantListening){
+        ttsPausedSide = activeSide;
+        stopRecognition(true);
+    }
+    if(ttsPausedSide) setStatus('読み上げ中', 'busy');
 
     const resume = () => {
-        if(settings.pauseMic && wasListening && activeSide) startRecognition(activeSide);
+        if(mySpeak !== speakSeq) return;
+        const side = ttsPausedSide;
+        ttsPausedSide = null;
+        if(side) startRecognition(side);
+        else if(!wantListening) setStatus('待機中', '');
     };
     try{
         const u = new SpeechSynthesisUtterance(text);
@@ -794,8 +806,11 @@ function buildRecognition(side){
         if(err === 'no-speech' || err === 'aborted') return;   // 無音・停止は無視して再起動へ
         if(err === 'not-allowed' || err === 'service-not-allowed'){
             wantListening = false;
+            recFatalError = true;
+            activeSide = null;
             setStatus('マイク未許可', 'err');
             toast('マイクの使用が許可されていません。ブラウザの設定を確認してください。', true);
+            updateMicUI();
         }else if(err === 'network'){
             setStatus('通信エラー', 'err');
             toast('音声認識サーバーに接続できませんでした。', true);
@@ -814,7 +829,7 @@ function buildRecognition(side){
                 }
             }, 250);
         }else{
-            setStatus('待機中', '');
+            if(!recFatalError) setStatus('待機中', '');   // エラー表示は上書きしない
             updateMicUI();
         }
     };
@@ -824,6 +839,8 @@ function buildRecognition(side){
 function startRecognition(side, clearPanes){
     if(!SR){ toast('このブラウザは音声認識に対応していません（Chrome / Edge を推奨）', true); return; }
     stopRecognition(true);
+    recFatalError = false;
+    ttsPausedSide = null;
     activeSide = side;
     wantListening = true;
     renderLangUI();
@@ -846,7 +863,9 @@ function stopRecognition(silent){
     }
     if(!silent){
         activeSide = null;
+        ttsPausedSide = null;
         setStatus('待機中', '');
+        renderLangUI();
     }
     updateMicUI();
 }
@@ -988,7 +1007,10 @@ $('btnCloseSubtitle').addEventListener('click', () => {
     if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
 });
 document.addEventListener('keydown', e => {
-    if(e.key === 'Escape') $('subtitleMode').classList.remove('show');
+    if(e.key === 'Escape' && $('subtitleMode').classList.contains('show')){
+        $('subtitleMode').classList.remove('show');
+        if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+    }
     if(e.code === 'Space' && e.target === document.body){ e.preventDefault(); toggleMic(activeSide || 'A'); }
 });
 
