@@ -1,0 +1,1790 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>台風進路予測システム</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230b1220'/%3E%3Cpath d='M50 50C50 22 22 14 14 36c10-8 30-4 36 14z' fill='%2338bdf8'/%3E%3Cpath d='M50 50c0 28 28 36 36 14-10 8-30 4-36-14z' fill='%23a78bfa'/%3E%3Ccircle cx='50' cy='50' r='7' fill='%23fff'/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<style>
+:root{
+    --bg:#070d18;
+    --panel:rgba(13,22,38,.82);
+    --panel-solid:#101c31;
+    --text:#eef4ff;
+    --muted:#8ea3bf;
+    --border:rgba(255,255,255,.10);
+    --cyan:#38bdf8;
+    --green:#22c55e;
+    --amber:#f59e0b;
+    --rose:#fb7185;
+    --violet:#a78bfa;
+    --red:#ef4444;
+    --shadow:0 10px 34px rgba(0,0,0,.45);
+    --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+    margin:0;overflow:hidden;background:var(--bg);color:var(--text);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+    -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;
+}
+#map{position:absolute;inset:0;background:#070d18;z-index:0}
+#windCanvas,#fillCanvas{position:absolute;inset:0;pointer-events:none;z-index:401}
+#fillCanvas{z-index:400;opacity:.62}
+.leaflet-container{background:#070d18;font-family:inherit}
+.leaflet-control-attribution{background:rgba(7,13,24,.7)!important;color:#6f83a0!important;font-size:10px}
+.leaflet-control-attribution a{color:#8ea3bf!important}
+
+/* ---------- shared bits ---------- */
+.glass{
+    background:var(--panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);
+}
+.btn{
+    border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--text);
+    padding:.45rem .7rem;border-radius:9px;font-size:.78rem;font-weight:600;cursor:pointer;
+    transition:.15s ease;display:inline-flex;align-items:center;gap:.35rem;font-family:inherit;white-space:nowrap;
+}
+.btn:hover{background:rgba(255,255,255,.14)}
+.btn.on{background:var(--cyan);color:#04222f;border-color:transparent}
+.btn.primary{background:var(--cyan);color:#04222f;border-color:transparent}
+.btn.primary:hover{background:#7dd3fc;color:#04222f}
+.btn.sm{padding:.28rem .5rem;font-size:.72rem;border-radius:7px}
+.btn.icon{padding:.42rem .5rem}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.chip{font-size:.66rem;padding:.14rem .45rem;border-radius:999px;background:rgba(255,255,255,.09);color:var(--muted);font-weight:600}
+.chip.warn{background:rgba(245,158,11,.18);color:#fcd34d}
+.chip.danger{background:rgba(239,68,68,.2);color:#fca5a5}
+.chip.ok{background:rgba(34,197,94,.18);color:#86efac}
+label.f{display:block;font-size:.7rem;color:var(--muted);margin:.5rem 0 .2rem;font-weight:600}
+input[type=text],input[type=number],textarea,select{
+    width:100%;background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text);
+    border-radius:8px;padding:.42rem .55rem;font-size:.8rem;font-family:inherit;outline:none;
+}
+input:focus,textarea:focus,select:focus{border-color:var(--cyan)}
+textarea{resize:vertical;min-height:130px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.74rem;line-height:1.5}
+select option{background:var(--panel-solid)}
+input[type=range]{width:100%;accent-color:var(--cyan);height:20px}
+.row{display:flex;gap:.4rem;align-items:center}
+.row.wrap{flex-wrap:wrap}
+.spread{justify-content:space-between}
+hr.sep{border:none;border-top:1px solid var(--border);margin:.7rem 0}
+
+/* ---------- topbar ---------- */
+#topbar{
+    position:absolute;top:.6rem;left:.6rem;right:.6rem;z-index:1000;
+    display:flex;align-items:center;gap:.5rem;padding:.5rem .65rem;
+}
+.brand{display:flex;align-items:center;gap:.55rem;min-width:0}
+.brand .logo{
+    width:36px;height:36px;border-radius:11px;display:grid;place-items:center;font-size:1.15rem;flex:0 0 auto;
+    background:linear-gradient(135deg,#0ea5e9,#a78bfa);box-shadow:0 6px 18px rgba(14,165,233,.4);
+}
+.brand h1{margin:0;font-size:.95rem;font-weight:800;letter-spacing:.02em;line-height:1.15;white-space:nowrap}
+.brand .sub{font-size:.65rem;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#topActions{margin-left:auto;display:flex;gap:.4rem;align-items:center;flex-wrap:nowrap;overflow:hidden}
+
+/* ---------- panels ---------- */
+.side{position:absolute;z-index:900;width:302px;max-height:calc(100% - 10.6rem);overflow-y:auto;padding:.8rem;top:4.1rem}
+#leftPanel{left:.6rem}
+#rightPanel{right:.6rem}
+.side::-webkit-scrollbar{width:6px}
+.side::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:3px}
+.sec-title{font-size:.7rem;font-weight:800;letter-spacing:.06em;color:var(--muted);margin:0 0 .5rem}
+.big-num{font-size:1.85rem;font-weight:800;line-height:1;letter-spacing:-.01em}
+.big-num small{font-size:.72rem;font-weight:600;color:var(--muted);margin-left:.15rem;letter-spacing:0}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:.28rem .6rem;font-size:.78rem;margin-top:.55rem}
+.kv .k{color:var(--muted);white-space:nowrap}
+.kv .v{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.cat-badge{display:inline-block;padding:.2rem .55rem;border-radius:7px;font-size:.72rem;font-weight:800;margin-top:.35rem}
+.toggles{display:grid;grid-template-columns:1fr 1fr;gap:.35rem}
+.toggles .btn{justify-content:center;padding:.38rem .3rem;font-size:.72rem}
+
+/* impact */
+.impact-line{display:flex;align-items:baseline;gap:.4rem;margin:.3rem 0}
+.impact-line .lbl{font-size:.72rem;color:var(--muted);min-width:5.4em}
+.impact-line .val{font-weight:800;font-variant-numeric:tabular-nums}
+#impactChart{width:100%;height:96px;display:block;margin-top:.5rem;border-radius:8px;background:rgba(255,255,255,.04)}
+.prob-bar{height:7px;border-radius:4px;background:rgba(255,255,255,.09);overflow:hidden;margin-top:.2rem}
+.prob-bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#38bdf8,#f59e0b,#ef4444)}
+
+/* legend */
+#legend{margin-top:.55rem}
+.legend-bar{height:9px;border-radius:5px;margin:.3rem 0 .15rem}
+.legend-ticks{display:flex;justify-content:space-between;font-size:.6rem;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* ---------- timeline ---------- */
+#timeline{
+    position:absolute;left:.6rem;right:.6rem;bottom:calc(.6rem + var(--safe-b));z-index:1000;
+    padding:.55rem .75rem .5rem;
+}
+#tlHead{display:flex;align-items:center;gap:.6rem;margin-bottom:.15rem}
+#tlTime{font-size:.85rem;font-weight:800;font-variant-numeric:tabular-nums}
+#tlLead{font-size:.7rem;color:var(--muted);font-weight:700}
+#tlMarks{position:relative;height:13px;margin-top:.1rem}
+#tlMarks span{position:absolute;transform:translateX(-50%);font-size:.6rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+#tlSlider{margin:0}
+
+/* ---------- modal ---------- */
+.modal{position:absolute;inset:0;z-index:2000;background:rgba(4,8,16,.72);display:none;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(3px)}
+.modal.show{display:flex}
+.modal-box{width:min(660px,100%);max-height:86vh;overflow-y:auto;padding:1.1rem;background:var(--panel-solid);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow)}
+.modal-box h2{margin:0 0 .1rem;font-size:1.05rem;font-weight:800}
+.modal-box .lead{font-size:.75rem;color:var(--muted);margin:0 0 .8rem}
+.tabs{display:flex;gap:.3rem;margin-bottom:.7rem;flex-wrap:wrap}
+.tab{padding:.35rem .65rem;border-radius:8px;font-size:.76rem;font-weight:700;cursor:pointer;border:1px solid var(--border);background:rgba(255,255,255,.05)}
+.tab.on{background:var(--cyan);color:#04222f;border-color:transparent}
+.tabpane{display:none}
+.tabpane.on{display:block}
+.note{font-size:.7rem;color:var(--muted);line-height:1.65}
+.note b{color:#cfe0f5}
+.warnbox{border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.1);border-radius:10px;padding:.55rem .7rem;font-size:.72rem;color:#fcd34d;line-height:1.6}
+table.mini{width:100%;border-collapse:collapse;font-size:.72rem;margin-top:.4rem}
+table.mini th,table.mini td{border-bottom:1px solid var(--border);padding:.28rem .3rem;text-align:right}
+table.mini th:first-child,table.mini td:first-child{text-align:left}
+table.mini th{color:var(--muted);font-weight:700}
+
+/* toast */
+#toast{position:absolute;left:50%;bottom:6.5rem;transform:translateX(-50%);z-index:3000;display:flex;flex-direction:column;gap:.35rem;align-items:center;pointer-events:none}
+.toast{padding:.5rem .85rem;border-radius:10px;font-size:.78rem;font-weight:600;background:rgba(16,28,49,.95);border:1px solid var(--border);box-shadow:var(--shadow);animation:tin .25s ease}
+.toast.err{border-color:rgba(239,68,68,.5);color:#fca5a5}
+.toast.ok{border-color:rgba(34,197,94,.5);color:#86efac}
+@keyframes tin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* map markers */
+.eye-marker{filter:drop-shadow(0 0 8px rgba(255,255,255,.55))}
+.spin{animation:spin 6s linear infinite;transform-origin:50% 50%}
+@keyframes spin{to{transform:rotate(-360deg)}}
+.pt-label{background:rgba(13,22,38,.9);border:1px solid var(--border);border-radius:6px;padding:1px 5px;font-size:.65rem;font-weight:700;color:#eef4ff;white-space:nowrap}
+.leaflet-popup-content-wrapper{background:var(--panel-solid);color:var(--text);border-radius:12px;border:1px solid var(--border)}
+.leaflet-popup-tip{background:var(--panel-solid)}
+.leaflet-popup-content{margin:.6rem .8rem;font-size:.76rem;line-height:1.6}
+
+/* mobile */
+#mobBar{display:none;position:absolute;z-index:1000;left:.6rem;right:.6rem;bottom:calc(6.9rem + var(--safe-b));gap:.4rem}
+#mobBar .btn{flex:1;justify-content:center}
+@media (max-width:860px){
+    .side{
+        position:absolute;left:.6rem!important;right:.6rem!important;width:auto;
+        top:auto;bottom:calc(10.9rem + var(--safe-b));max-height:48vh;display:none;
+    }
+    .side.open{display:block}
+    #mobBar{display:flex}
+    .brand .sub{display:none}
+    .brand h1{font-size:.85rem}
+    #topActions .lbl-hide{display:none}
+}
+@media (max-width:420px){
+    .brand .logo{width:31px;height:31px;font-size:1rem}
+}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<canvas id="fillCanvas"></canvas>
+<canvas id="windCanvas"></canvas>
+
+<!-- ===== TOP BAR ===== -->
+<div id="topbar" class="glass">
+    <div class="brand">
+        <div class="logo">🌀</div>
+        <div style="min-width:0">
+            <h1 id="stormName">台風進路予測システム</h1>
+            <div class="sub" id="stormSub">データ未読込 — 「データ」から取得または入力してください</div>
+        </div>
+    </div>
+    <div id="topActions">
+        <button class="btn" id="btnData">📡 <span class="lbl-hide">データ</span></button>
+        <button class="btn" id="btnSettings">⚙️ <span class="lbl-hide">予測設定</span></button>
+        <button class="btn icon" id="btnHelp" title="使い方・免責">❔</button>
+    </div>
+</div>
+
+<!-- ===== LEFT PANEL : storm info ===== -->
+<div id="leftPanel" class="side glass">
+    <p class="sec-title">中心情報 <span id="infoWhen" class="chip">—</span></p>
+    <div class="row spread" style="align-items:flex-end">
+        <div>
+            <div class="big-num"><span id="infoPres">—</span><small>hPa</small></div>
+            <div style="font-size:.68rem;color:var(--muted);margin-top:2px">中心気圧</div>
+        </div>
+        <div style="text-align:right">
+            <div class="big-num"><span id="infoWind">—</span><small>m/s</small></div>
+            <div style="font-size:.68rem;color:var(--muted);margin-top:2px">最大風速（推定）</div>
+        </div>
+    </div>
+    <div id="infoCat" class="cat-badge" style="background:rgba(255,255,255,.08)">階級 —</div>
+    <div class="kv">
+        <div class="k">中心位置</div><div class="v" id="infoPos">—</div>
+        <div class="k">進行方向・速度</div><div class="v" id="infoMove">—</div>
+        <div class="k">最大瞬間風速</div><div class="v" id="infoGust">—</div>
+        <div class="k">暴風域(25m/s)半径</div><div class="v" id="infoR25">—</div>
+        <div class="k">強風域(15m/s)半径</div><div class="v" id="infoR15">—</div>
+        <div class="k">予報円半径(70%)</div><div class="v" id="infoCircle">—</div>
+    </div>
+
+    <hr class="sep">
+    <p class="sec-title">表示レイヤー</p>
+    <div class="toggles">
+        <button class="btn on" data-layer="particles">🌬 風の流れ</button>
+        <button class="btn on" data-layer="fill">🎨 風速塗り</button>
+        <button class="btn on" data-layer="circle">⭕ 予報円</button>
+        <button class="btn on" data-layer="ensemble">🕸 アンサンブル</button>
+        <button class="btn on" data-layer="storm">🔴 暴風域</button>
+        <button class="btn on" data-layer="past">〰 実況経路</button>
+    </div>
+    <label class="f">地図スタイル</label>
+    <select id="baseSel">
+        <option value="dark">ダーク（標準）</option>
+        <option value="light">ライト</option>
+        <option value="sat">衛星写真</option>
+        <option value="none">地図なし（黒）</option>
+    </select>
+
+    <div id="legend">
+        <p class="sec-title" style="margin-top:.8rem">風速スケール (m/s)</p>
+        <div class="legend-bar" id="legendBar"></div>
+        <div class="legend-ticks"><span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60+</span></div>
+    </div>
+</div>
+
+<!-- ===== RIGHT PANEL : point impact ===== -->
+<div id="rightPanel" class="side glass">
+    <div class="row spread">
+        <p class="sec-title" style="margin:0">地点への影響予測</p>
+        <button class="btn sm" id="btnPickPoint">📍 地点指定</button>
+    </div>
+    <div style="font-size:.68rem;color:var(--muted);margin:.35rem 0 .1rem" id="ptName">地点未設定（地図をクリック）</div>
+    <div class="row" style="margin-top:.35rem">
+        <input type="text" id="ptLat" placeholder="緯度" style="flex:1">
+        <input type="text" id="ptLon" placeholder="経度" style="flex:1">
+        <button class="btn sm" id="btnPtApply">設定</button>
+    </div>
+    <div class="row" style="margin-top:.35rem">
+        <button class="btn sm" id="btnGeo" style="flex:1">🛰 現在地を使う</button>
+        <button class="btn sm" id="btnPtSave" style="flex:1">💾 この地点を記憶</button>
+    </div>
+
+    <hr class="sep">
+    <div class="impact-line"><span class="lbl">最接近</span><span class="val" id="imTime">—</span></div>
+    <div class="impact-line"><span class="lbl">最接近距離</span><span class="val" id="imDist">—</span></div>
+    <div class="impact-line"><span class="lbl">推定最大風速</span><span class="val" id="imWind">—</span></div>
+    <div class="impact-line"><span class="lbl">推定最大瞬間</span><span class="val" id="imGust">—</span></div>
+    <div class="impact-line"><span class="lbl">警戒レベル</span><span class="val" id="imLevel">—</span></div>
+
+    <p class="sec-title" style="margin:.7rem 0 .1rem">接近確率（アンサンブル）</p>
+    <div style="font-size:.7rem;display:flex;justify-content:space-between"><span>中心が 100km 以内</span><b id="pr100">—</b></div>
+    <div class="prob-bar"><i id="bar100" style="width:0"></i></div>
+    <div style="font-size:.7rem;display:flex;justify-content:space-between;margin-top:.35rem"><span>中心が 300km 以内</span><b id="pr300">—</b></div>
+    <div class="prob-bar"><i id="bar300" style="width:0"></i></div>
+    <div style="font-size:.7rem;display:flex;justify-content:space-between;margin-top:.35rem"><span>暴風域(25m/s)に入る</span><b id="prStorm">—</b></div>
+    <div class="prob-bar"><i id="barStorm" style="width:0"></i></div>
+
+    <p class="sec-title" style="margin:.75rem 0 0">風速の時間変化（推定）</p>
+    <canvas id="impactChart" width="560" height="192"></canvas>
+    <div class="note" style="margin-top:.3rem">灰線＝暴風(25m/s) / 橙線＝強風(15m/s)。縦の白線が現在のタイムライン位置。</div>
+</div>
+
+<!-- ===== MOBILE BAR ===== -->
+<div id="mobBar">
+    <button class="btn" data-side="leftPanel">🌀 台風情報</button>
+    <button class="btn" data-side="rightPanel">📍 地点影響</button>
+</div>
+
+<!-- ===== TIMELINE ===== -->
+<div id="timeline" class="glass">
+    <div id="tlHead">
+        <button class="btn icon primary" id="btnPlay" title="再生 / 停止">▶</button>
+        <div>
+            <div id="tlTime">—</div>
+        </div>
+        <div id="tlLead" style="margin-left:auto">—</div>
+        <button class="btn sm" id="btnNow">現在</button>
+    </div>
+    <input type="range" id="tlSlider" min="0" max="120" step="1" value="0">
+    <div id="tlMarks"></div>
+</div>
+
+<div id="toast"></div>
+
+<!-- ===== DATA MODAL ===== -->
+<div class="modal" id="dataModal">
+  <div class="modal-box">
+    <h2>台風データ</h2>
+    <p class="lead">実況（過去の中心位置）を入力すると、そこから進路を予測します。</p>
+    <div class="tabs">
+        <div class="tab on" data-tab="tabAuto">自動取得</div>
+        <div class="tab" data-tab="tabManual">手入力 / CSV</div>
+        <div class="tab" data-tab="tabPreset">サンプル</div>
+    </div>
+
+    <div class="tabpane on" id="tabAuto">
+        <div class="warnbox" style="margin-bottom:.7rem">
+            気象庁の防災情報JSON（<code>www.jma.go.jp/bosai/typhoon/</code>）を直接読みに行きます。
+            ブラウザのCORS制限で失敗する場合があります。その場合は下のプロキシ欄を使うか、「手入力 / CSV」タブをご利用ください。
+            <b>この機能の疎通は開発環境の制約により未検証です。</b>
+        </div>
+        <div class="row">
+            <button class="btn primary" id="btnFetchJma">🌐 気象庁から取得</button>
+            <select id="jmaList" style="flex:1"><option value="">— 台風を選択 —</option></select>
+        </div>
+        <label class="f">CORSプロキシ（任意・空欄可 / 例: https://corsproxy.io/?）</label>
+        <input type="text" id="proxyUrl" placeholder="空欄なら直接アクセス">
+        <div class="note" style="margin-top:.4rem">
+            プロキシを設定すると通信内容が第三者サービスを経由します。信頼できるものだけを指定してください。
+        </div>
+        <div id="jmaRaw" class="note" style="margin-top:.6rem;max-height:150px;overflow:auto;font-family:ui-monospace,monospace"></div>
+    </div>
+
+    <div class="tabpane" id="tabManual">
+        <label class="f">台風名 / 番号</label>
+        <input type="text" id="mName" placeholder="例: 台風15号 (KAJIKI)">
+        <label class="f">実況経路（1行1レコード：日時, 緯度, 経度, 中心気圧[, 最大風速m/s]）</label>
+        <textarea id="mCsv" placeholder="2026-09-01 09:00, 21.4, 135.8, 975, 30
+2026-09-01 15:00, 22.0, 134.6, 970, 33
+2026-09-01 21:00, 22.7, 133.5, 960, 38"></textarea>
+        <div class="note" style="margin-top:.35rem">
+            日時はローカル時刻として解釈します（<code>2026-09-01 09:00</code> 形式、または <code>2026-09-01T09:00+09:00</code>）。
+            最終行が最新（＝解析時刻）になります。最低2点、精度を出すには6〜12時間間隔で4点以上を推奨。
+        </div>
+        <div class="row wrap" style="margin-top:.6rem">
+            <button class="btn primary" id="btnLoadCsv">読み込んで予測</button>
+            <button class="btn" id="btnExportCsv">⬇ CSV書き出し</button>
+            <button class="btn" id="btnExportJson">⬇ JSON書き出し</button>
+            <button class="btn" id="btnClearData">クリア</button>
+        </div>
+    </div>
+
+    <div class="tabpane" id="tabPreset">
+        <div class="note" style="margin-bottom:.6rem">動作確認用のサンプルです。<b>いずれも実際の予報ではありません。</b></div>
+        <div class="row wrap">
+            <button class="btn primary" id="btnDemo1">🌀 デモA：南西諸島へ北上（架空）</button>
+            <button class="btn" id="btnDemo2">🌀 デモB：本州直撃コース（架空）</button>
+        </div>
+        <div class="row wrap" style="margin-top:.5rem">
+            <button class="btn" id="btnDemo3">📚 2019年台風19号（概略値・検証用）</button>
+        </div>
+        <div class="note" style="margin-top:.5rem">
+            デモBは「予測が当たるか」を見るためのもので、実在の台風ではありません。
+            2019年台風19号プリセットの座標は<b>概略の近似値</b>で、気象庁ベストトラックの正確な値ではありません（出典未確認）。
+        </div>
+    </div>
+
+    <div class="row" style="margin-top:1rem;justify-content:flex-end">
+        <button class="btn" data-close>閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SETTINGS MODAL ===== -->
+<div class="modal" id="setModal">
+  <div class="modal-box">
+    <h2>予測設定</h2>
+    <p class="lead">自前の外挿モデルのパラメータです。数値を変えると即座に再計算されます。</p>
+
+    <label class="f">予測時間 <b id="lbHorizon">120</b> 時間</label>
+    <input type="range" id="spHorizon" min="24" max="168" step="12" value="120">
+
+    <label class="f">気候値（転向）の効き <b id="lbClim">50</b> %</label>
+    <input type="range" id="spClim" min="0" max="100" step="5" value="50">
+    <div class="note">0%＝現在の進行方向をそのまま直進。100%＝緯度に応じて偏西風による転向を強く反映。</div>
+
+    <label class="f">旋回の持続 <b id="lbTurn">100</b> %</label>
+    <input type="range" id="spTurn" min="0" max="200" step="10" value="100">
+    <div class="note">直近の進路の曲がり具合を、この先どれだけ続くとみなすか。</div>
+
+    <label class="f">不確実性（予報円）スケール <b id="lbUnc">100</b> %</label>
+    <input type="range" id="spUnc" min="40" max="200" step="10" value="100">
+
+    <label class="f">アンサンブル本数 <b id="lbEns">40</b> 本</label>
+    <input type="range" id="spEns" min="10" max="120" step="10" value="40">
+
+    <label class="f">風の粒子密度 <b id="lbParts">2200</b></label>
+    <input type="range" id="spParts" min="400" max="6000" step="200" value="2200">
+
+    <hr class="sep">
+    <p class="sec-title">モデルの中身（要約）</p>
+    <div class="note">
+        <b>①進行ベクトル</b>：直近24時間の中心位置に時間重み付き最小二乗を当てて移動速度・方位を推定。<br>
+        <b>②旋回の持続</b>：直近24hと24〜48h前のベクトル差から旋回率(°/h)を求め、時定数36hで減衰させながら適用。<br>
+        <b>③気候値</b>：緯度22〜34°Nで西進(WNW)→転向(ENE)へ方位を、速度を20→55km/hへ、リードタイムに応じて漸近ブレンド。<br>
+        <b>④強度</b>：海面水温の代理として緯度を使い、低緯度＝緩やかに発達、高緯度・上陸＝充填（気圧上昇）。<br>
+        <b>⑤風速</b>：Atkinson–Holliday型の 風速≒6.7×(1010−P)^0.644 [kt] と、修正ランキン渦（内側は線形、外側は r^−0.55）で分布を生成。<br>
+        <b>⑥アンサンブル</b>：方位・速度・旋回率・気候値の効きを乱数で振り、70%の広がりが予報円半径と一致するよう再スケール。
+    </div>
+    <div class="row" style="margin-top:1rem;justify-content:flex-end">
+        <button class="btn" id="btnResetSet">初期値に戻す</button>
+        <button class="btn primary" data-close>閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== HELP MODAL ===== -->
+<div class="modal" id="helpModal">
+  <div class="modal-box">
+    <h2>使い方と免責</h2>
+    <p class="lead">Windy 風のインターフェースで、台風の進路と自分の地点への影響を確認します。</p>
+    <div class="warnbox" style="margin-bottom:.8rem">
+        <b>重要：</b>本アプリの進路・強度・風速はすべて<b>簡易な外挿モデルによる推定値</b>です。
+        気象庁など公的機関の予報とは異なります。<b>防災上の判断は必ず気象庁の発表</b>
+        （<code>https://www.jma.go.jp/bosai/map.html</code>）<b>に従ってください。</b>
+    </div>
+    <div class="note">
+        <b>1. データを入れる</b> — 「📡 データ」→ 気象庁から自動取得、または実況の中心位置をCSVで貼り付け。まず「サンプル」で挙動を確認するのが早いです。<br><br>
+        <b>2. タイムラインを動かす</b> — 下部のスライダー／▶ボタンで予測時刻を進めると、中心位置・予報円・風の場が連動して変化します。<br><br>
+        <b>3. 地点を指定する</b> — 「📍 地点指定」を押して地図をクリック（または現在地・緯度経度入力）。最接近時刻、推定風速、暴風域に入る確率が出ます。地点は端末内に保存されます。<br><br>
+        <b>4. レイヤー</b> — 風の流れ（粒子アニメーション）、風速の色塗り、予報円、アンサンブル（複数シナリオ）、暴風域を個別に切り替えられます。<br><br>
+        <b>用語</b>：<b>予報円</b>＝中心が入る確率が約70%の円。<b>暴風警戒域</b>＝予報円＋暴風域半径。<b>階級</b>は最大風速で 台風(17.2〜)／強い(33〜)／非常に強い(44〜)／猛烈な(54m/s〜)。
+    </div>
+    <hr class="sep">
+    <p class="sec-title">データの扱い</p>
+    <div class="note">
+        入力した経路・地点・設定はこの端末の <code>localStorage</code> にのみ保存されます。サーバーへは送信しません。
+        ただしCORSプロキシを設定した場合、取得リクエストはそのプロキシ事業者を経由します。
+    </div>
+    <div class="row" style="margin-top:1rem;justify-content:flex-end">
+        <button class="btn primary" data-close>閉じる</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+"use strict";
+/* =========================================================================
+   台風進路予測システム
+   - 進路予測：実況の中心位置から外挿（持続＋気候値ブレンド）
+   - 風の場  ：修正ランキン渦 ＋ 移動による非対称 ＋ 環境流
+   - すべてクライアント完結。外部通信は地図タイルと（任意の）気象庁JSONのみ。
+   ========================================================================= */
+
+/* ---------------- 汎用ユーティリティ ---------------- */
+const EARTH_R = 6371.0;                       // km
+const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+const clamp = (v, a, b) => v < a ? a : (v > b ? b : v);
+const lerp  = (a, b, t) => a + (b - a) * t;
+const $  = id => document.getElementById(id);
+const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+function haversine(lat1, lon1, lat2, lon2){
+    const dLat = (lat2 - lat1) * D2R, dLon = (lon2 - lon1) * D2R;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*D2R)*Math.cos(lat2*D2R)*Math.sin(dLon/2)**2;
+    return 2 * EARTH_R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+function bearingDeg(lat1, lon1, lat2, lon2){
+    const y = Math.sin((lon2-lon1)*D2R) * Math.cos(lat2*D2R);
+    const x = Math.cos(lat1*D2R)*Math.sin(lat2*D2R) - Math.sin(lat1*D2R)*Math.cos(lat2*D2R)*Math.cos((lon2-lon1)*D2R);
+    return (Math.atan2(y, x) * R2D + 360) % 360;
+}
+function destPoint(lat, lon, brg, distKm){
+    const d = distKm / EARTH_R, b = brg * D2R, p1 = lat * D2R, l1 = lon * D2R;
+    const p2 = Math.asin(Math.sin(p1)*Math.cos(d) + Math.cos(p1)*Math.sin(d)*Math.cos(b));
+    const l2 = l1 + Math.atan2(Math.sin(b)*Math.sin(d)*Math.cos(p1), Math.cos(d) - Math.sin(p1)*Math.sin(p2));
+    return [p2 * R2D, ((l2 * R2D + 540) % 360) - 180];
+}
+/* 角度の平均・ブレンド（円環を跨いでも壊れないように） */
+function blendAngle(a, b, t){
+    let d = ((b - a + 540) % 360) - 180;
+    return (a + d * t + 360) % 360;
+}
+const angDiff = (a, b) => ((b - a + 540) % 360) - 180;
+
+function fmtDateTime(ms){
+    const d = new Date(ms), w = '日月火水木金土'[d.getDay()];
+    const p = n => String(n).padStart(2, '0');
+    return `${d.getMonth()+1}/${d.getDate()}(${w}) ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function fmtLatLon(lat, lon){
+    return `${Math.abs(lat).toFixed(1)}°${lat>=0?'N':'S'} ${Math.abs(lon).toFixed(1)}°${lon>=0?'E':'W'}`;
+}
+const compass16 = ['北','北北東','北東','東北東','東','東南東','南東','南南東','南','南南西','南西','西南西','西','西北西','北西','北北西'];
+const dirName = deg => compass16[Math.round(((deg%360)+360)%360 / 22.5) % 16];
+
+/* 決定論的乱数（同じ入力なら同じアンサンブルになるように） */
+function mulberry32(seed){
+    let a = seed >>> 0;
+    return function(){
+        a |= 0; a = (a + 0x6D2B79F5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+function gauss(rnd){                            // Box-Muller
+    let u = 0, v = 0;
+    while (u === 0) u = rnd();
+    while (v === 0) v = rnd();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+/* ---------------- 気象まわりの換算 ---------------- */
+const MET = {
+    /* Atkinson & Holliday (1977) 型の 気圧-風速 関係（西部北太平洋・10分平均） */
+    presToWind(p){                              // hPa -> m/s
+        const d = Math.max(0, 1010 - p);
+        return 6.7 * Math.pow(d, 0.644) * 0.5144;
+    },
+    windToPres(v){                              // m/s -> hPa
+        const kt = v / 0.5144;
+        return 1010 - Math.pow(Math.max(0, kt) / 6.7, 1 / 0.644);
+    },
+    /* 最大風速半径の目安：強い台風ほど小さい */
+    rmax(p){ return clamp(18 + 0.62 * (p - 900), 18, 110); },
+    /* 修正ランキン渦：中心からの距離 r[km] における接線風速 [m/s] */
+    tangential(r, vmax, rmax){
+        if (r <= 0.5) return 0;
+        return r <= rmax ? vmax * (r / rmax) : vmax * Math.pow(rmax / r, 0.55);
+    },
+    /* 指定風速に達する半径 [km]（外側解） */
+    radiusOf(v, vmax, rmax){
+        if (vmax <= v) return 0;
+        return rmax * Math.pow(vmax / v, 1 / 0.55);
+    },
+    gustFactor: 1.5,
+    category(v){
+        if (v < 17.2) return { name: '熱帯低気圧 / 温帯低気圧', color: '#64748b', tone: 'rgba(100,116,139,.22)' };
+        if (v < 33)   return { name: '台風', color: '#38bdf8', tone: 'rgba(56,189,248,.18)' };
+        if (v < 44)   return { name: '強い台風', color: '#f59e0b', tone: 'rgba(245,158,11,.18)' };
+        if (v < 54)   return { name: '非常に強い台風', color: '#fb7185', tone: 'rgba(251,113,133,.2)' };
+        return { name: '猛烈な台風', color: '#c084fc', tone: 'rgba(192,132,252,.22)' };
+    },
+    sizeClass(r15){
+        if (!r15) return '';
+        if (r15 >= 800) return '超大型';
+        if (r15 >= 500) return '大型';
+        return '';
+    }
+};
+
+/* 風速 -> 色（Windy 風のスケール） */
+const WIND_STOPS = [
+    [0,  [ 40, 60, 92]], [ 5, [ 32, 92,160]], [10, [ 26,150,158]],
+    [15, [ 88,196,104]], [20, [214,206, 84]], [25, [240,161, 69]],
+    [30, [239,106, 61]], [40, [224, 64, 90]], [50, [184, 63,168]],
+    [65, [235,225,255]]
+];
+function windColor(v){
+    const S = WIND_STOPS;
+    if (v <= S[0][0]) return S[0][1];
+    for (let i = 0; i < S.length - 1; i++){
+        if (v <= S[i+1][0]){
+            const t = (v - S[i][0]) / (S[i+1][0] - S[i][0]);
+            return [0,1,2].map(k => Math.round(lerp(S[i][1][k], S[i+1][1][k], t)));
+        }
+    }
+    return S[S.length-1][1];
+}
+const windCss = v => { const c = windColor(v); return `rgb(${c[0]},${c[1]},${c[2]})`; };
+
+/* ---------------- 簡易陸地マスク（上陸減衰の判定用・かなり粗い） ---------------- */
+/* 目的は「陸に乗ったら弱まる」を表現することだけ。地形図としての精度はありません。 */
+const LAND_BOXES = [
+    // [lat0, lat1, lon0, lon1]
+    [30.9, 34.9, 129.3, 132.1],   // 九州
+    [32.6, 34.6, 132.0, 134.9],   // 四国
+    [33.4, 41.6, 130.8, 142.1],   // 本州（粗い外接）
+    [41.3, 45.6, 139.3, 145.9],   // 北海道
+    [24.0, 24.9, 123.6, 125.5],   // 八重山・宮古
+    [26.0, 26.9, 127.6, 128.4],   // 沖縄本島
+    [21.9, 25.3, 120.0, 122.0],   // 台湾
+    [33.0, 38.7, 126.0, 129.6],   // 朝鮮半島
+    [20.0, 41.0, 105.0, 122.0],   // 中国大陸東部（大きめ）
+    [12.5, 18.6, 120.0, 124.2]    // ルソン島
+];
+function isLand(lat, lon){
+    for (const b of LAND_BOXES)
+        if (lat >= b[0] && lat <= b[1] && lon >= b[2] && lon <= b[3]) return true;
+    return false;
+}
+
+/* ---------------- 予報円半径（70%確率円）の目安 ---------------- */
+/* 気象庁の予報円半径の実運用オーダーに合わせた概算。公式値ではありません。 */
+const CIRCLE_TABLE = [[0,25],[12,65],[24,110],[48,185],[72,265],[96,350],[120,440],[168,620]];
+function circleRadius(leadH){
+    const T = CIRCLE_TABLE;
+    if (leadH <= 0) return T[0][1];
+    for (let i = 0; i < T.length - 1; i++){
+        if (leadH <= T[i+1][0]){
+            const t = (leadH - T[i][0]) / (T[i+1][0] - T[i][0]);
+            return lerp(T[i][1], T[i+1][1], t);
+        }
+    }
+    return T[T.length-1][1];
+}
+
+/* =========================================================================
+   進路予測モデル
+   ========================================================================= */
+const Model = {
+    /* 実況点列から現在の移動ベクトル(u:東向き, v:北向き [km/h])を時間重み付き最小二乗で推定 */
+    motion(track, endIdx, windowH = 24){
+        const last = track[endIdx];
+        const pts = [];
+        for (let i = endIdx; i >= 0; i--){
+            const dtH = (last.t - track[i].t) / 3.6e6;
+            if (dtH > windowH + 1e-6) break;
+            pts.push({ dtH, p: track[i] });
+        }
+        if (pts.length < 2){
+            return null;
+        }
+        const lat0 = last.lat, kx = 111.32 * Math.cos(lat0 * D2R), ky = 110.57;
+        let sw = 0, sx = 0, sy = 0, st = 0, stt = 0, stx = 0, sty = 0;
+        for (const q of pts){
+            const w = Math.exp(-q.dtH / 18);                 // 新しい点ほど重い
+            const t = -q.dtH;                                 // 現在=0, 過去=負
+            const x = (q.p.lon - last.lon) * kx, y = (q.p.lat - lat0) * ky;
+            sw += w; st += w*t; stt += w*t*t; sx += w*x; sy += w*y; stx += w*t*x; sty += w*t*y;
+        }
+        const den = sw * stt - st * st;
+        if (Math.abs(den) < 1e-9) return null;
+        const u = (sw * stx - st * sx) / den;                 // km/h 東向き
+        const v = (sw * sty - st * sy) / den;                 // km/h 北向き
+        const spd = Math.hypot(u, v);
+        return { u, v, spd, dir: (Math.atan2(u, v) * R2D + 360) % 360 };
+    },
+
+    /* 直近の旋回率 [°/h] */
+    turnRate(track){
+        const n = track.length;
+        if (n < 4) return 0;
+        const recent = this.motion(track, n - 1, 24);
+        // 24時間前に最も近い点を基準に、その時点のベクトルを取る
+        const tRef = track[n-1].t - 24 * 3.6e6;
+        let idx = -1, best = Infinity;
+        for (let i = 0; i < n; i++){
+            const d = Math.abs(track[i].t - tRef);
+            if (d < best){ best = d; idx = i; }
+        }
+        if (idx < 1 || !recent) return 0;
+        const prev = this.motion(track, idx, 24);
+        if (!prev) return 0;
+        const dtH = (track[n-1].t - track[idx].t) / 3.6e6;
+        if (dtH < 6) return 0;
+        return clamp(angDiff(prev.dir, recent.dir) / dtH, -1.5, 1.5);
+    },
+
+    /* 予測経路を1時間刻みで生成
+       opts: { horizon, climWeight, turnWeight, seed, jitter } */
+    forecast(track, opts){
+        const o = Object.assign({ horizon: 120, climWeight: .5, turnWeight: 1, jitter: null }, opts);
+        const n = track.length, last = track[n-1];
+        const mot = this.motion(track, n-1, 24) || { spd: 20, dir: 315, u: 0, v: 0 };
+        let dir = mot.dir;
+        let spd = clamp(mot.spd, 3, 90);
+        let turn0 = this.turnRate(track) * o.turnWeight;
+
+        /* アンサンブル用の初期擾乱 */
+        let climW = o.climWeight, dirBias = 0, spdFac = 1;
+        if (o.jitter){
+            dir  += o.jitter.dir;
+            spd  *= o.jitter.spd;
+            turn0 += o.jitter.turn;
+            climW = clamp(climW * o.jitter.clim, 0, 1.6);
+            dirBias = o.jitter.drift;               // 1時間あたりの追加旋回 [°/h]
+        }
+
+        let lat = last.lat, lon = last.lon;
+        let pres = last.pres != null ? last.pres : MET.windToPres(last.wind || 25);
+
+        /* 実況から求めた気圧の変化傾向 [hPa/h]（発達中か衰弱中か） */
+        let dPdt0 = 0;
+        for (let i = n - 2; i >= 0; i--){
+            const dtH = (last.t - track[i].t) / 3.6e6;
+            if (dtH >= 12){
+                dPdt0 = clamp((pres - track[i].pres) / dtH, -1.2, 1.0);
+                break;
+            }
+        }
+        if (o.jitter) dPdt0 += o.jitter.dp || 0;
+
+        const out = [{ t: last.t, lead: 0, lat, lon, pres, wind: MET.presToWind(pres), dir, spd }];
+
+        const dt = 1; // hour
+        for (let h = dt; h <= o.horizon; h += dt){
+            /* --- 旋回の持続（時定数36hで減衰） --- */
+            const turn = turn0 * Math.exp(-h / 36) + dirBias;
+            dir = (dir + turn * dt + 360) % 360;
+
+            /* --- 気候値へのブレンド（緯度が上がるほど転向・加速） --- */
+            const wLat  = clamp((lat - 22) / 12, 0, 1);       // 22N以下:0 / 34N以上:1
+            const dirClim = blendAngle(300, 60, wLat);        // WNW -> ENE
+            const spdClim = lerp(18, 55, wLat);               // km/h
+            const blend = climW * (1 - Math.exp(-h / 60)) * (0.25 + 0.75 * wLat);
+            const kb = clamp(blend * dt / 24, 0, 0.35);
+            dir = blendAngle(dir, dirClim, kb);
+            spd = lerp(spd, spdClim, kb);
+            spd = clamp(spd, 3, 95);
+
+            const np = destPoint(lat, lon, dir, spd * dt);
+            lat = np[0]; lon = np[1];
+
+            /* --- 強度の時間変化 ---
+               緯度を海面水温の代理として「均衡気圧 Peq」を決め、そこへ緩和させる。
+               直近24時間は実況の発達／衰弱トレンドを優先し、時定数24hで気候値へ移行。 */
+            const warm = clamp((30 - lat) / 8, 0, 1);         // 1: 低緯度の暖かい海 / 0: 高緯度
+            const land = isLand(lat, lon);
+            const Peq  = land ? 1004 : lerp(1002, 920, warm);
+            const rate = land ? 0.075
+                       : (pres > Peq ? 0.002 + 0.010 * warm            // 発達
+                                     : 0.006 + 0.010 * (1 - warm));    // 充填
+            const dPclim = (Peq - pres) * rate;
+            const wTrend = Math.exp(-h / 24);
+            pres += ((1 - wTrend) * dPclim + wTrend * dPdt0) * dt;
+            pres = clamp(pres, 895, 1010);
+
+            out.push({ t: last.t + h * 3.6e6, lead: h, lat, lon, pres, wind: MET.presToWind(pres), dir, spd });
+        }
+        return out;
+    },
+
+    /* アンサンブル：70%の広がりが予報円半径に一致するよう再スケールして返す */
+    ensemble(track, opts, count, uncScale){
+        const rnd = mulberry32(Math.floor(track[track.length-1].t / 6e5) ^ (count * 2654435761));
+        const members = [];
+        for (let i = 0; i < count; i++){
+            members.push(this.forecast(track, Object.assign({}, opts, {
+                jitter: {
+                    dir  : gauss(rnd) * 7,
+                    spd  : clamp(1 + gauss(rnd) * 0.16, 0.55, 1.6),
+                    turn : gauss(rnd) * 0.16,
+                    clim : clamp(1 + gauss(rnd) * 0.45, 0.15, 2.0),
+                    drift: gauss(rnd) * 0.045,
+                    dp   : gauss(rnd) * 0.18
+                }
+            })));
+        }
+        const base = this.forecast(track, opts);
+        const steps = base.length;
+        /* 各リードタイムで70パーセンタイル距離を予報円半径に合わせる */
+        for (let s = 1; s < steps; s++){
+            const target = circleRadius(base[s].lead) * uncScale;
+            const ds = members.map(m => haversine(base[s].lat, base[s].lon, m[s].lat, m[s].lon));
+            const sorted = ds.slice().sort((a,b) => a-b);
+            const p70 = sorted[Math.min(sorted.length-1, Math.floor(sorted.length * 0.7))] || 1;
+            const f = clamp(target / Math.max(p70, 1), 0.15, 6);
+            for (let i = 0; i < members.length; i++){
+                const m = members[i][s];
+                if (ds[i] < 0.01) continue;
+                const brg = bearingDeg(base[s].lat, base[s].lon, m.lat, m.lon);
+                const np = destPoint(base[s].lat, base[s].lon, brg, ds[i] * f);
+                m.lat = np[0]; m.lon = np[1];
+            }
+        }
+        return { base, members };
+    }
+};
+
+/* =========================================================================
+   風の場（描画・地点風速の共通モデル）
+   中心から距離 r の点で 接線風 + 内向き流入 + 移動による非対称 + 環境流
+   ========================================================================= */
+function windAt(st, lat, lon){
+    if (!st) return { u: 0, v: 0, s: 0 };
+    /* 描画で毎フレーム数万回呼ばれるため、中心まわりの正距円筒近似で距離・方位を求める。
+       数百km規模なら誤差は1%未満。地点の「最接近距離」表示にはhaversineを使う。 */
+    let dLon = lon - st.lon;
+    if (dLon > 180) dLon -= 360; else if (dLon < -180) dLon += 360;
+    const kx = 111.32 * Math.cos((lat + st.lat) * 0.5 * D2R);
+    const dx = dLon * kx, dy = (lat - st.lat) * 110.57;
+    const r = Math.sqrt(dx * dx + dy * dy);
+    const vmax = MET.presToWind(st.pres);
+    const rm = MET.rmax(st.pres);
+    const vt = MET.tangential(r, vmax, rm);
+
+    /* 中心から見た方位 -> 反時計回り接線 + 流入角 */
+    const brg = Math.atan2(dx, dy) * R2D;
+    const inflow = r < rm ? 10 : 24;                       // 度
+    /* 北半球の低気圧＝反時計回り。中心から見て方位 brg の点では、
+       接線方向（吹いていく向き）は brg-90、さらに inflow だけ中心側へ倒す。 */
+    const th = (brg - 90 - inflow) * D2R;
+    let u = vt * Math.sin(th), v = vt * Math.cos(th);
+
+    /* 移動速度による非対称（右半円が強い） */
+    const trans = (st.spd || 0) / 3.6;                     // m/s
+    const td = (st.dir || 0) * D2R;
+    const w = Math.exp(-r / (4 * rm));
+    u += trans * Math.sin(td) * (0.55 * w + 0.35);
+    v += trans * Math.cos(td) * (0.55 * w + 0.35);
+
+    /* 遠方は環境流（低緯度：東風、中高緯度：偏西風）へ漸近 */
+    const far = clamp((r - 6 * rm) / (12 * rm), 0, 1);
+    const wLat = clamp((lat - 24) / 12, 0, 1);
+    const envU = lerp(-4.5, 11, wLat), envV = lerp(1.2, 3.5, wLat);
+    u = lerp(u, envU, far * 0.85);
+    v = lerp(v, envV, far * 0.85);
+
+    return { u, v, s: Math.hypot(u, v) };
+}
+
+/* =========================================================================
+   アプリ状態
+   ========================================================================= */
+const DEFAULT_SET = { horizon:120, clim:50, turn:100, unc:100, ens:40, parts:2200 };
+const STATE = {
+    name   : '',
+    track  : [],            // 実況 [{t,lat,lon,pres,wind}]
+    fc     : null,          // 予測 base
+    ens    : null,          // アンサンブル members
+    lead   : 0,             // タイムライン位置 [h]
+    playing: false,
+    point  : null,          // {lat,lon,name}
+    pickMode: false,
+    impact : null,          // 地点影響の計算結果キャッシュ
+    set    : Object.assign({}, DEFAULT_SET),
+    layers : { particles:true, fill:true, circle:true, ensemble:true, storm:true, past:true },
+    proxy  : '',
+    demoWarn: ''
+};
+const LS_KEY = 'typhoon_forecast_app_v1';
+
+function saveLocal(){
+    try{
+        localStorage.setItem(LS_KEY, JSON.stringify({
+            name: STATE.name, track: STATE.track, point: STATE.point,
+            set: STATE.set, layers: STATE.layers, proxy: STATE.proxy, demoWarn: STATE.demoWarn
+        }));
+    }catch(e){ /* 保存できなくても動作は継続 */ }
+}
+function loadLocal(){
+    try{
+        const raw = localStorage.getItem(LS_KEY);
+        if (!raw) return false;
+        const o = JSON.parse(raw);
+        if (o.set)    Object.assign(STATE.set, o.set);
+        if (o.layers) Object.assign(STATE.layers, o.layers);
+        STATE.point = o.point || null;
+        STATE.proxy = o.proxy || '';
+        STATE.demoWarn = o.demoWarn || '';
+        if (Array.isArray(o.track) && o.track.length >= 2){
+            STATE.name = o.name || '';
+            STATE.track = o.track;
+            return true;
+        }
+    }catch(e){ /* 壊れていたら無視 */ }
+    return false;
+}
+
+function toast(msg, kind){
+    const el = document.createElement('div');
+    el.className = 'toast' + (kind ? ' ' + kind : '');
+    el.textContent = msg;
+    $('toast').appendChild(el);
+    setTimeout(() => { el.style.transition = 'opacity .3s'; el.style.opacity = '0';
+                       setTimeout(() => el.remove(), 320); }, 2600);
+}
+
+/* =========================================================================
+   地図
+   ========================================================================= */
+const BASES = {
+    dark : { url:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+             opt:{ subdomains:'abcd', maxZoom:18, attribution:'&copy; OpenStreetMap contributors &copy; CARTO' } },
+    light: { url:'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+             opt:{ subdomains:'abcd', maxZoom:18, attribution:'&copy; OpenStreetMap contributors &copy; CARTO' } },
+    sat  : { url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+             opt:{ maxZoom:17, attribution:'Tiles &copy; Esri' } }
+};
+const map = L.map('map', {
+    center: [26, 133], zoom: 5, zoomControl: false, worldCopyJump: true,
+    minZoom: 3, maxZoom: 12, attributionControl: true
+});
+L.control.zoom({ position: 'bottomright' }).addTo(map);
+let baseLayer = null;
+function setBase(kind){
+    if (baseLayer){ map.removeLayer(baseLayer); baseLayer = null; }
+    if (kind === 'none') return;
+    const b = BASES[kind] || BASES.dark;
+    baseLayer = L.tileLayer(b.url, b.opt).addTo(map);
+    baseLayer.on('tileerror', () => { /* タイルが出なくても風の場は描画される */ });
+}
+setBase('dark');
+
+/* 描画用レイヤーグループ（描き直しやすいように用途別に分ける） */
+const gPast   = L.layerGroup().addTo(map);   // 実況経路
+const gFuture = L.layerGroup().addTo(map);   // 予測経路
+const gEns    = L.layerGroup().addTo(map);   // アンサンブル（経路）
+const gEnsDot = L.layerGroup().addTo(map);   // アンサンブル（現在時刻の位置）
+const gCircle = L.layerGroup().addTo(map);   // 予報円・暴風警戒域
+const gStorm  = L.layerGroup().addTo(map);   // 現在時刻の暴風域・強風域
+const gEye    = L.layerGroup().addTo(map);   // 中心マーカー
+const gPoint  = L.layerGroup().addTo(map);   // 指定地点
+
+/* 台風マーク（SVG） */
+function eyeIcon(color, size){
+    const s = size, h = s / 2;
+    const html = `<svg width="${s}" height="${s}" viewBox="0 0 100 100" class="eye-marker">
+      <g class="spin">
+        <path d="M50 50 C50 20, 20 12, 12 34 C22 26, 44 30, 50 50 Z" fill="${color}" opacity=".9"/>
+        <path d="M50 50 C50 80, 80 88, 88 66 C78 74, 56 70, 50 50 Z" fill="${color}" opacity=".9"/>
+      </g>
+      <circle cx="50" cy="50" r="8" fill="#fff" opacity=".95"/>
+      <circle cx="50" cy="50" r="15" fill="none" stroke="${color}" stroke-width="4" opacity=".8"/>
+    </svg>`;
+    return L.divIcon({ html, className: '', iconSize: [s, s], iconAnchor: [h, h] });
+}
+
+/* =========================================================================
+   風レイヤー（粒子アニメーション + 風速の色塗り）
+   ========================================================================= */
+const windCv = $('windCanvas'), windCtx = windCv.getContext('2d');
+const fillCv = $('fillCanvas'), fillCtx = fillCv.getContext('2d');
+let particles = [], dpr = 1, fillDirty = true;
+
+function resizeCanvases(){
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = map.getSize().x, h = map.getSize().y;
+    for (const cv of [windCv, fillCv]){
+        cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+        cv.style.width = w + 'px'; cv.style.height = h + 'px';
+    }
+    windCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    fillCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    seedParticles(true);
+    fillDirty = true;
+}
+window.addEventListener('resize', () => { map.invalidateSize(); resizeCanvases(); });
+map.on('move zoom viewreset', () => { fillDirty = true; });
+map.on('movestart zoomstart', () => { windCtx.clearRect(0, 0, windCv.width, windCv.height); });
+
+function randomLatLngInView(){
+    const b = map.getBounds();
+    return [ b.getSouth() + Math.random() * (b.getNorth() - b.getSouth()),
+             b.getWest()  + Math.random() * (b.getEast()  - b.getWest()) ];
+}
+function seedParticles(reset){
+    const n = STATE.set.parts;
+    if (reset) particles = [];
+    while (particles.length < n){
+        const p = randomLatLngInView();
+        particles.push({ lat: p[0], lon: p[1], age: Math.random() * 90 | 0, life: 60 + Math.random() * 60 | 0 });
+    }
+    if (particles.length > n) particles.length = n;
+}
+
+/* 風速の色塗り（低解像度でサンプリングして拡大） */
+const FILL_STEP = 8;
+const fillOff = document.createElement('canvas');
+const fillOffCtx = fillOff.getContext('2d');
+function drawFill(){
+    const st = currentState();
+    const w = map.getSize().x, h = map.getSize().y;
+    fillCtx.clearRect(0, 0, w, h);
+    if (!st || !STATE.layers.fill) return;
+    const cols = Math.ceil(w / FILL_STEP), rows = Math.ceil(h / FILL_STEP);
+    if (fillOff.width !== cols || fillOff.height !== rows){ fillOff.width = cols; fillOff.height = rows; }
+    const octx = fillOffCtx;
+    const img = octx.createImageData(cols, rows);
+    /* 画面座標→緯度経度はピクセルごとに線形なので、行ごとに端点から内挿する */
+    const nw = map.containerPointToLatLng([0, 0]);
+    const se = map.containerPointToLatLng([w, h]);
+    const dLatPx = (se.lat - nw.lat) / h, dLonPx = (se.lng - nw.lng) / w;
+    for (let j = 0; j < rows; j++){
+        for (let i = 0; i < cols; i++){
+            const la = nw.lat + dLatPx * j * FILL_STEP, lo = nw.lng + dLonPx * i * FILL_STEP;
+            const s = windAt(st, la, lo).s;
+            const c = windColor(s);
+            const k = (j * cols + i) * 4;
+            img.data[k] = c[0]; img.data[k+1] = c[1]; img.data[k+2] = c[2];
+            img.data[k+3] = s < 1.5 ? 0 : Math.min(232, (s - 1.5) * 22);
+        }
+    }
+    octx.putImageData(img, 0, 0);
+    fillCtx.imageSmoothingEnabled = true;
+    fillCtx.drawImage(fillOff, 0, 0, cols, rows, 0, 0, cols * FILL_STEP, rows * FILL_STEP);
+}
+
+let lastFrame = 0;
+function animate(ts){
+    requestAnimationFrame(animate);
+    if (ts - lastFrame < 33) return;              // ~30fps
+    lastFrame = ts;
+
+    if (fillDirty){ drawFill(); fillDirty = false; }
+
+    const w = map.getSize().x, h = map.getSize().y;
+    const st = currentState();
+    if (!STATE.layers.particles || !st){
+        windCtx.clearRect(0, 0, w, h);
+        return;
+    }
+    /* 軌跡を残すためのフェード */
+    windCtx.globalCompositeOperation = 'destination-out';
+    windCtx.fillStyle = 'rgba(0,0,0,0.14)';
+    windCtx.fillRect(0, 0, w, h);
+    windCtx.globalCompositeOperation = 'source-over';
+
+    const zoom = map.getZoom();
+    const timeScale = 2600 * Math.pow(2, 4 - zoom);   // ズームに応じて見かけの速さを調整
+    const bnds = map.getBounds();
+    windCtx.lineWidth = zoom >= 7 ? 1.6 : 1.2;
+
+    for (const p of particles){
+        if (p.age++ > p.life || !bnds.contains([p.lat, p.lon])){
+            const np = randomLatLngInView();
+            p.lat = np[0]; p.lon = np[1]; p.age = 0; p.life = 60 + Math.random() * 60 | 0;
+            continue;
+        }
+        const wv = windAt(st, p.lat, p.lon);
+        if (wv.s < 0.3) continue;
+        const dLat = wv.v / 110570 * timeScale;
+        const dLon = wv.u / (111320 * Math.max(0.2, Math.cos(p.lat * D2R))) * timeScale;
+        const nlat = p.lat + dLat, nlon = p.lon + dLon;
+        const a = map.latLngToContainerPoint([p.lat, p.lon]);
+        const b = map.latLngToContainerPoint([nlat, nlon]);
+        const c = windColor(wv.s);
+        windCtx.strokeStyle = `rgba(${c[0]},${c[1]},${c[2]},.85)`;
+        windCtx.beginPath();
+        windCtx.moveTo(a.x, a.y);
+        windCtx.lineTo(b.x, b.y);
+        windCtx.stroke();
+        p.lat = nlat; p.lon = nlon;
+    }
+}
+requestAnimationFrame(animate);
+
+/* =========================================================================
+   計算と描画
+   ========================================================================= */
+function currentState(){
+    if (!STATE.fc || !STATE.fc.length) return null;
+    const i = clamp(Math.round(STATE.lead), 0, STATE.fc.length - 1);
+    return STATE.fc[i];
+}
+function fcOpts(){
+    return {
+        horizon   : STATE.set.horizon,
+        climWeight: STATE.set.clim / 100,
+        turnWeight: STATE.set.turn / 100
+    };
+}
+
+/* 実況＋設定から予測一式を作り直す */
+function rebuild(keepLead){
+    invalidateImpact();
+    if (STATE.track.length < 2){
+        STATE.fc = null; STATE.ens = null;
+        [gPast, gFuture, gEns, gEnsDot, gCircle, gStorm, gEye].forEach(g => g.clearLayers());
+        renderInfo(); renderImpact();
+        return;
+    }
+    STATE.track.sort((a, b) => a.t - b.t);
+    const r = Model.ensemble(STATE.track, fcOpts(), STATE.set.ens, STATE.set.unc / 100);
+    STATE.fc = r.base;
+    STATE.ens = r.members;
+    if (!keepLead) STATE.lead = 0;
+    STATE.lead = clamp(STATE.lead, 0, STATE.fc.length - 1);
+
+    const sl = $('tlSlider');
+    sl.max = String(STATE.fc.length - 1);
+    sl.value = String(STATE.lead);
+    renderTimelineMarks();
+    drawStatic();
+    updateDynamic();
+    saveLocal();
+}
+
+/* 時間で変わらないもの（経路・アンサンブル・予報円の一覧） */
+function drawStatic(){
+    gPast.clearLayers(); gFuture.clearLayers(); gEns.clearLayers(); gCircle.clearLayers();
+    if (!STATE.fc) return;
+
+    /* --- 実況経路 --- */
+    if (STATE.layers.past){
+        const pts = STATE.track.map(p => [p.lat, p.lon]);
+        L.polyline(pts, { color:'#ffffff', weight:2.5, opacity:.75 }).addTo(gPast);
+        STATE.track.forEach((p, i) => {
+            const w = p.wind != null ? p.wind : MET.presToWind(p.pres);
+            L.circleMarker([p.lat, p.lon], {
+                radius: i === STATE.track.length-1 ? 5 : 3.4,
+                color:'#fff', weight:1.2, fillColor: MET.category(w).color, fillOpacity:.95
+            }).bindPopup(
+                `<b>実況</b><br>${fmtDateTime(p.t)}<br>${fmtLatLon(p.lat,p.lon)}<br>中心気圧 ${Math.round(p.pres)} hPa<br>最大風速 ${Math.round(w)} m/s`
+            ).addTo(gPast);
+        });
+    }
+
+    /* --- アンサンブル --- */
+    if (STATE.layers.ensemble && STATE.ens){
+        for (const m of STATE.ens){
+            L.polyline(m.map(p => [p.lat, p.lon]),
+                { color:'#7dd3fc', weight:1, opacity:.24, interactive:false }).addTo(gEns);
+        }
+    }
+
+    /* --- 予測経路 --- */
+    const fpts = STATE.fc.map(p => [p.lat, p.lon]);
+    L.polyline(fpts, { color:'#f8fafc', weight:3, opacity:.9, dashArray:'7 6' }).addTo(gFuture);
+
+    /* --- 予報円（代表リードタイムのみ） --- */
+    if (STATE.layers.circle){
+        const marks = [12, 24, 48, 72, 96, 120, 144, 168].filter(h => h <= STATE.set.horizon);
+        for (const h of marks){
+            const p = STATE.fc[h];
+            if (!p) continue;
+            const r = circleRadius(h) * STATE.set.unc / 100;
+            L.circle([p.lat, p.lon], {
+                radius: r * 1000, color:'#e2e8f0', weight:1.2, opacity:.55,
+                fillColor:'#94a3b8', fillOpacity:.05, interactive:false
+            }).addTo(gCircle);
+            /* 暴風警戒域＝予報円＋暴風域半径 */
+            const vmax = MET.presToWind(p.pres);
+            const r25 = MET.radiusOf(25, vmax, MET.rmax(p.pres));
+            if (r25 > 0 && STATE.layers.storm){
+                L.circle([p.lat, p.lon], {
+                    radius: (r + r25) * 1000, color:'#fb7185', weight:1, opacity:.35,
+                    fill:false, dashArray:'3 5', interactive:false
+                }).addTo(gCircle);
+            }
+            L.marker([p.lat, p.lon], {
+                icon: L.divIcon({ className:'', html:`<div class="pt-label">${h}h</div>`, iconSize:[0,0], iconAnchor:[-6,8] }),
+                interactive: false
+            }).addTo(gCircle);
+        }
+    }
+}
+
+/* 時間で変わるもの（中心位置・暴風域・情報パネル） */
+function updateDynamic(){
+    gStorm.clearLayers(); gEye.clearLayers(); gEnsDot.clearLayers();
+    const st = currentState();
+    fillDirty = true;
+    if (!st){ renderInfo(); renderImpact(); renderTimelineHead(); return; }
+
+    const vmax = MET.presToWind(st.pres);
+    const rm   = MET.rmax(st.pres);
+    const cat  = MET.category(vmax);
+    const r25  = MET.radiusOf(25, vmax, rm);
+    const r15  = MET.radiusOf(15, vmax, rm);
+
+    if (STATE.layers.storm){
+        if (r15 > 0) L.circle([st.lat, st.lon], { radius:r15*1000, color:'#fbbf24', weight:1.4,
+                        opacity:.65, fillColor:'#fbbf24', fillOpacity:.06, interactive:false }).addTo(gStorm);
+        if (r25 > 0) L.circle([st.lat, st.lon], { radius:r25*1000, color:'#ef4444', weight:1.6,
+                        opacity:.8, fillColor:'#ef4444', fillOpacity:.1, interactive:false }).addTo(gStorm);
+    }
+    if (STATE.layers.circle && st.lead > 0){
+        const r = circleRadius(st.lead) * STATE.set.unc / 100;
+        L.circle([st.lat, st.lon], { radius:r*1000, color:'#ffffff', weight:2, opacity:.85,
+            fillColor:'#ffffff', fillOpacity:.05, interactive:false }).addTo(gStorm);
+    }
+    /* アンサンブル各メンバーの同時刻位置 */
+    if (STATE.layers.ensemble && STATE.ens){
+        const i = clamp(Math.round(STATE.lead), 0, STATE.fc.length - 1);
+        for (const m of STATE.ens){
+            L.circleMarker([m[i].lat, m[i].lon], { radius:2, color:'#7dd3fc', weight:0,
+                fillColor:'#7dd3fc', fillOpacity:.55, interactive:false }).addTo(gEnsDot);
+        }
+    }
+
+    const size = clamp(28 + vmax * 0.55, 30, 74);
+    L.marker([st.lat, st.lon], { icon: eyeIcon(cat.color, size), zIndexOffset: 500 })
+        .bindPopup(`<b>${STATE.name || '台風'}</b><br>${fmtDateTime(st.t)}（${st.lead === 0 ? '実況' : '+' + st.lead + 'h'}）<br>` +
+                   `${fmtLatLon(st.lat, st.lon)}<br>中心気圧 <b>${Math.round(st.pres)}</b> hPa<br>` +
+                   `最大風速 <b>${Math.round(vmax)}</b> m/s（瞬間 ${Math.round(vmax*MET.gustFactor)}）<br>` +
+                   `${dirName(st.dir)}へ ${Math.round(st.spd)} km/h`)
+        .addTo(gEye);
+
+    renderInfo(); renderImpact(); renderTimelineHead();
+}
+
+/* ---------------- 左パネル ---------------- */
+function renderInfo(){
+    const st = currentState();
+    if (!st){
+        $('infoWhen').textContent = '—';
+        ['infoPres','infoWind'].forEach(k => $(k).textContent = '—');
+        ['infoPos','infoMove','infoGust','infoR25','infoR15','infoCircle'].forEach(k => $(k).textContent = '—');
+        $('infoCat').textContent = '階級 —';
+        $('infoCat').style.background = 'rgba(255,255,255,.08)';
+        $('infoCat').style.color = 'var(--text)';
+        return;
+    }
+    const vmax = MET.presToWind(st.pres), rm = MET.rmax(st.pres), cat = MET.category(vmax);
+    const r25 = MET.radiusOf(25, vmax, rm), r15 = MET.radiusOf(15, vmax, rm);
+    $('infoWhen').textContent = st.lead === 0 ? '実況' : `+${st.lead}h 予測`;
+    $('infoWhen').className = 'chip' + (st.lead === 0 ? ' ok' : '');
+    $('infoPres').textContent = Math.round(st.pres);
+    $('infoWind').textContent = Math.round(vmax);
+    const sz = MET.sizeClass(r15);
+    $('infoCat').textContent = (sz ? sz + '・' : '') + cat.name;
+    $('infoCat').style.background = cat.tone;
+    $('infoCat').style.color = cat.color;
+    $('infoPos').textContent = fmtLatLon(st.lat, st.lon);
+    $('infoMove').textContent = `${dirName(st.dir)} ${Math.round(st.spd)} km/h`;
+    $('infoGust').textContent = `${Math.round(vmax * MET.gustFactor)} m/s`;
+    $('infoR25').textContent = r25 > 0 ? `${Math.round(r25)} km` : 'なし';
+    $('infoR15').textContent = r15 > 0 ? `${Math.round(r15)} km` : 'なし';
+    $('infoCircle').textContent = st.lead > 0 ? `${Math.round(circleRadius(st.lead) * STATE.set.unc / 100)} km` : '—';
+    $('stormName').textContent = STATE.name || '台風進路予測システム';
+    $('stormSub').textContent = STATE.track.length
+        ? `実況${STATE.track.length}点 / 解析時刻 ${fmtDateTime(STATE.track[STATE.track.length-1].t)}` +
+          (STATE.demoWarn ? ` ⚠ ${STATE.demoWarn}` : '')
+        : 'データ未読込 — 「データ」から取得または入力してください';
+}
+
+/* ---------------- 右パネル：地点への影響 ---------------- */
+function invalidateImpact(){ STATE.impact = null; }
+
+/* 地点に対する時系列と、アンサンブルによる確率をまとめて計算（タイムライン移動では再計算しない） */
+function computeImpact(){
+    if (!STATE.point || !STATE.fc) return null;
+    const { lat, lon } = STATE.point;
+    const ser = STATE.fc.map(p => ({
+        lead: p.lead, t: p.t,
+        dist: haversine(p.lat, p.lon, lat, lon),
+        wind: windAt(p, lat, lon).s
+    }));
+    let n100 = 0, n300 = 0, nStorm = 0, N = 0;
+    if (STATE.ens && STATE.ens.length){
+        N = STATE.ens.length;
+        for (const m of STATE.ens){
+            let d = Infinity, wmax = 0;
+            for (const p of m){
+                const dd = haversine(p.lat, p.lon, lat, lon);
+                if (dd < d) d = dd;
+                const w = windAt(p, lat, lon).s;
+                if (w > wmax) wmax = w;
+            }
+            if (d <= 100) n100++;
+            if (d <= 300) n300++;
+            if (wmax >= 25) nStorm++;
+        }
+    }
+    return { ser, N, n100, n300, nStorm };
+}
+function renderImpact(){
+    if (!STATE.impact) STATE.impact = computeImpact();
+    const im = STATE.impact;
+    const ser = im && im.ser;
+    const setTxt = (id, v) => $(id).textContent = v;
+    if (!ser){
+        ['imTime','imDist','imWind','imGust','imLevel'].forEach(k => setTxt(k, '—'));
+        ['pr100','pr300','prStorm'].forEach(k => setTxt(k, '—'));
+        ['bar100','bar300','barStorm'].forEach(k => $(k).style.width = '0');
+        drawImpactChart(null);
+        $('ptName').textContent = STATE.point
+            ? `${fmtLatLon(STATE.point.lat, STATE.point.lon)}（台風データ未読込）`
+            : '地点未設定（地図をクリック）';
+        return;
+    }
+    let near = ser[0], peak = ser[0];
+    for (const s of ser){
+        if (s.dist < near.dist) near = s;
+        if (s.wind > peak.wind) peak = s;
+    }
+    $('ptName').textContent = (STATE.point.name ? STATE.point.name + ' / ' : '') + fmtLatLon(STATE.point.lat, STATE.point.lon);
+    setTxt('imTime', near.lead === 0 ? '既に最接近' : `${fmtDateTime(near.t)}（+${near.lead}h）`);
+    setTxt('imDist', `${Math.round(near.dist)} km`);
+    setTxt('imWind', `${peak.wind.toFixed(1)} m/s`);
+    setTxt('imGust', `${(peak.wind * MET.gustFactor).toFixed(1)} m/s`);
+
+    const lv = peak.wind >= 25 ? ['暴風・厳重警戒','var(--red)']
+             : peak.wind >= 15 ? ['強風・警戒','var(--amber)']
+             : peak.wind >= 10 ? ['やや強い風','var(--cyan)']
+             : ['影響小','var(--muted)'];
+    $('imLevel').textContent = lv[0];
+    $('imLevel').style.color = lv[1];
+
+    /* アンサンブルによる確率（キャッシュ済み） */
+    if (im.N){
+        const put = (id, bar, n) => {
+            const pct = Math.round(n / im.N * 100);
+            $(id).textContent = pct + '%';
+            $(bar).style.width = pct + '%';
+        };
+        put('pr100', 'bar100', im.n100);
+        put('pr300', 'bar300', im.n300);
+        put('prStorm', 'barStorm', im.nStorm);
+    }
+    drawImpactChart(ser);
+}
+
+function drawImpactChart(ser){
+    const cv = $('impactChart'), ctx = cv.getContext('2d');
+    const W = cv.width, H = cv.height;
+    ctx.clearRect(0, 0, W, H);
+    if (!ser || !ser.length) return;
+    const pad = { l: 26, r: 6, t: 8, b: 16 };
+    const maxW = Math.max(30, Math.ceil(Math.max(...ser.map(s => s.wind)) / 10) * 10 + 5);
+    const x = i => pad.l + (W - pad.l - pad.r) * (i / (ser.length - 1));
+    const y = v => H - pad.b - (H - pad.t - pad.b) * (v / maxW);
+
+    /* しきい値線 */
+    [[25, 'rgba(239,68,68,.55)'], [15, 'rgba(245,158,11,.5)']].forEach(([v, c]) => {
+        if (v > maxW) return;
+        ctx.strokeStyle = c; ctx.lineWidth = 2; ctx.setLineDash([6, 6]);
+        ctx.beginPath(); ctx.moveTo(pad.l, y(v)); ctx.lineTo(W - pad.r, y(v)); ctx.stroke();
+        ctx.setLineDash([]);
+    });
+    /* 面 */
+    const grd = ctx.createLinearGradient(0, pad.t, 0, H - pad.b);
+    grd.addColorStop(0, 'rgba(239,68,68,.55)');
+    grd.addColorStop(.5, 'rgba(245,158,11,.35)');
+    grd.addColorStop(1, 'rgba(56,189,248,.12)');
+    ctx.beginPath();
+    ctx.moveTo(x(0), H - pad.b);
+    ser.forEach((s, i) => ctx.lineTo(x(i), y(s.wind)));
+    ctx.lineTo(x(ser.length - 1), H - pad.b);
+    ctx.closePath(); ctx.fillStyle = grd; ctx.fill();
+    ctx.beginPath();
+    ser.forEach((s, i) => i ? ctx.lineTo(x(i), y(s.wind)) : ctx.moveTo(x(i), y(s.wind)));
+    ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 2.4; ctx.stroke();
+
+    /* 現在位置 */
+    const idx = clamp(Math.round(STATE.lead), 0, ser.length - 1);
+    ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x(idx), pad.t); ctx.lineTo(x(idx), H - pad.b); ctx.stroke();
+
+    /* 軸ラベル */
+    ctx.fillStyle = 'rgba(142,163,191,.95)';
+    ctx.font = '600 18px Inter, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(String(maxW), pad.l - 4, y(maxW) + 6);
+    ctx.fillText('0', pad.l - 4, H - pad.b + 2);
+    ctx.textAlign = 'center';
+    for (let h = 0; h <= ser[ser.length-1].lead; h += 24){
+        const i = Math.min(h, ser.length - 1);
+        ctx.fillText('+' + h + 'h', x(i), H - 2);
+    }
+}
+
+/* =========================================================================
+   タイムライン
+   ========================================================================= */
+function renderTimelineHead(){
+    const st = currentState();
+    if (!st){ $('tlTime').textContent = '—'; $('tlLead').textContent = '—'; return; }
+    $('tlTime').textContent = fmtDateTime(st.t);
+    $('tlLead').textContent = st.lead === 0 ? '実況（解析時刻）' : `+${st.lead} 時間後の予測`;
+}
+function renderTimelineMarks(){
+    const box = $('tlMarks');
+    box.innerHTML = '';
+    if (!STATE.fc) return;
+    const maxH = STATE.fc[STATE.fc.length - 1].lead;
+    const step = maxH > 120 ? 48 : 24;
+    for (let h = 0; h <= maxH; h += step){
+        const s = document.createElement('span');
+        const pct = h / maxH * 100;
+        s.style.left = pct + '%';
+        if (pct < 3) s.style.transform = 'translateX(0)';
+        else if (pct > 97) s.style.transform = 'translateX(-100%)';
+        s.textContent = h === 0 ? '今' : '+' + h + 'h';
+        box.appendChild(s);
+    }
+}
+$('tlSlider').addEventListener('input', e => {
+    STATE.lead = Number(e.target.value);
+    updateDynamic();
+});
+let playTimer = null;
+function setPlaying(on){
+    STATE.playing = on;
+    $('btnPlay').textContent = on ? '⏸' : '▶';
+    if (playTimer){ clearInterval(playTimer); playTimer = null; }
+    if (on){
+        playTimer = setInterval(() => {
+            if (!STATE.fc){ setPlaying(false); return; }
+            STATE.lead = (STATE.lead + 1) % STATE.fc.length;
+            $('tlSlider').value = String(STATE.lead);
+            updateDynamic();
+        }, 130);
+    }
+}
+$('btnPlay').addEventListener('click', () => setPlaying(!STATE.playing));
+$('btnNow').addEventListener('click', () => {
+    setPlaying(false);
+    STATE.lead = 0; $('tlSlider').value = '0'; updateDynamic();
+    const st = currentState();
+    if (st) map.panTo([st.lat, st.lon]);
+});
+
+/* =========================================================================
+   UI 配線
+   ========================================================================= */
+/* レイヤーボタン */
+$$('[data-layer]').forEach(b => b.addEventListener('click', () => {
+    const k = b.dataset.layer;
+    STATE.layers[k] = !STATE.layers[k];
+    b.classList.toggle('on', STATE.layers[k]);
+    if (k === 'fill'){ fillDirty = true; if (!STATE.layers.fill) fillCtx.clearRect(0,0,fillCv.width,fillCv.height); }
+    if (k === 'particles' && !STATE.layers.particles) windCtx.clearRect(0,0,windCv.width,windCv.height);
+    drawStatic(); updateDynamic(); saveLocal();
+}));
+$('baseSel').addEventListener('change', e => setBase(e.target.value));
+
+/* モーダル */
+function openModal(id){ $(id).classList.add('show'); }
+$$('[data-close]').forEach(b => b.addEventListener('click', () => b.closest('.modal').classList.remove('show')));
+$$('.modal').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); }));
+$('btnData').addEventListener('click', () => openModal('dataModal'));
+$('btnSettings').addEventListener('click', () => openModal('setModal'));
+$('btnHelp').addEventListener('click', () => openModal('helpModal'));
+$$('.tab').forEach(t => t.addEventListener('click', () => {
+    const box = t.closest('.modal-box');
+    box.querySelectorAll('.tab').forEach(x => x.classList.remove('on'));
+    box.querySelectorAll('.tabpane').forEach(x => x.classList.remove('on'));
+    t.classList.add('on'); $(t.dataset.tab).classList.add('on');
+}));
+
+/* モバイル：パネル切替 */
+$$('#mobBar [data-side]').forEach(b => b.addEventListener('click', () => {
+    const id = b.dataset.side, el = $(id), wasOpen = el.classList.contains('open');
+    $$('.side').forEach(s => s.classList.remove('open'));
+    $$('#mobBar [data-side]').forEach(x => x.classList.remove('on'));
+    if (!wasOpen){ el.classList.add('open'); b.classList.add('on'); }
+}));
+function syncMobBar(){
+    const isMob = window.matchMedia('(max-width:860px)').matches;
+    $$('#mobBar [data-side]').forEach(b => b.classList.toggle('on', isMob && $(b.dataset.side).classList.contains('open')));
+}
+window.addEventListener('resize', syncMobBar);
+
+/* 設定スライダー */
+const SLIDERS = [
+    ['spHorizon','lbHorizon','horizon'], ['spClim','lbClim','clim'], ['spTurn','lbTurn','turn'],
+    ['spUnc','lbUnc','unc'], ['spEns','lbEns','ens'], ['spParts','lbParts','parts']
+];
+function syncSliders(){
+    for (const [sid, lid, key] of SLIDERS){
+        $(sid).value = String(STATE.set[key]);
+        $(lid).textContent = String(STATE.set[key]);
+    }
+}
+SLIDERS.forEach(([sid, lid, key]) => {
+    $(sid).addEventListener('input', e => {
+        STATE.set[key] = Number(e.target.value);
+        $(lid).textContent = e.target.value;
+        if (key === 'parts'){ seedParticles(false); saveLocal(); return; }
+        rebuild(true);
+    });
+});
+$('btnResetSet').addEventListener('click', () => {
+    Object.assign(STATE.set, DEFAULT_SET);
+    syncSliders(); seedParticles(true); rebuild(true);
+    toast('設定を初期値に戻しました', 'ok');
+});
+
+/* 地点指定 */
+$('btnPickPoint').addEventListener('click', () => {
+    STATE.pickMode = !STATE.pickMode;
+    $('btnPickPoint').classList.toggle('on', STATE.pickMode);
+    $('map').style.cursor = STATE.pickMode ? 'crosshair' : '';
+    if (STATE.pickMode) toast('地図をクリックして地点を指定してください');
+});
+map.on('click', e => {
+    if (!STATE.pickMode) return;
+    setPoint(e.latlng.lat, e.latlng.lng, STATE.point && STATE.point.name);
+    STATE.pickMode = false;
+    $('btnPickPoint').classList.remove('on');
+    $('map').style.cursor = '';
+});
+function setPoint(lat, lon, name){
+    STATE.point = { lat: Number(lat.toFixed(4)), lon: Number(lon.toFixed(4)), name: name || '' };
+    $('ptLat').value = STATE.point.lat;
+    $('ptLon').value = STATE.point.lon;
+    gPoint.clearLayers();
+    L.marker([lat, lon], { icon: L.divIcon({
+        className:'', iconSize:[16,16], iconAnchor:[8,8],
+        html:'<div style="width:16px;height:16px;border-radius:50%;background:#22c55e;border:2.5px solid #fff;box-shadow:0 0 10px rgba(34,197,94,.9)"></div>'
+    })}).addTo(gPoint);
+    invalidateImpact(); renderImpact(); saveLocal();
+}
+$('btnPtApply').addEventListener('click', () => {
+    const la = parseFloat($('ptLat').value), lo = parseFloat($('ptLon').value);
+    if (!isFinite(la) || !isFinite(lo) || Math.abs(la) > 90 || Math.abs(lo) > 180){
+        toast('緯度・経度が正しくありません', 'err'); return;
+    }
+    setPoint(la, lo); map.panTo([la, lo]);
+});
+$('btnGeo').addEventListener('click', () => {
+    if (!navigator.geolocation){ toast('この端末では現在地を取得できません', 'err'); return; }
+    navigator.geolocation.getCurrentPosition(
+        pos => { setPoint(pos.coords.latitude, pos.coords.longitude, '現在地'); map.setView([pos.coords.latitude, pos.coords.longitude], 7); toast('現在地を設定しました','ok'); },
+        () => toast('現在地を取得できませんでした（許可設定を確認）', 'err'),
+        { enableHighAccuracy:false, timeout:8000 }
+    );
+});
+$('btnPtSave').addEventListener('click', () => {
+    if (!STATE.point){ toast('先に地点を指定してください', 'err'); return; }
+    const n = prompt('地点名（例：第1圃場）', STATE.point.name || '');
+    if (n === null) return;
+    STATE.point.name = n; invalidateImpact(); renderImpact(); saveLocal();
+    toast('地点を保存しました', 'ok');
+});
+
+/* =========================================================================
+   データ入出力
+   ========================================================================= */
+function parseWhen(s){
+    s = String(s).trim().replace(/\//g, '-');
+    let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):?(\d{2})?/);
+    if (m){
+        if (/[+\-]\d{2}:?\d{2}$|Z$/.test(s)){
+            const d = new Date(s.replace(' ', 'T'));
+            if (!isNaN(d)) return d.getTime();
+        }
+        return new Date(+m[1], +m[2]-1, +m[3], +m[4], +(m[5] || 0)).getTime();
+    }
+    const d = new Date(s);
+    return isNaN(d) ? NaN : d.getTime();
+}
+function parseCoord(v){
+    if (typeof v === 'number') return v;
+    if (v == null) return NaN;
+    let s = String(v).trim();
+    const neg = /^[SW]/i.test(s) || /[SW]$/i.test(s) || s.startsWith('-');
+    s = s.replace(/[NSEW]/ig, '').replace(/[度°]/g, ' ').replace(/[分′']/g, ' ').trim();
+    const parts = s.split(/[\s:]+/).filter(Boolean).map(Number);
+    if (!parts.length || parts.some(isNaN)) return NaN;
+    let val = Math.abs(parts[0]) + (parts[1] || 0) / 60 + (parts[2] || 0) / 3600;
+    return neg ? -val : val;
+}
+function parseCsv(text){
+    const out = [];
+    for (const raw of text.split(/\r?\n/)){
+        const line = raw.trim();
+        if (!line || line.startsWith('#')) continue;
+        const c = line.split(',').map(s => s.trim());
+        if (c.length < 4) continue;
+        const t = parseWhen(c[0]), lat = parseCoord(c[1]), lon = parseCoord(c[2]);
+        const pres = parseFloat(c[3]);
+        const wind = c[4] !== undefined && c[4] !== '' ? parseFloat(c[4]) : null;
+        if (!isFinite(t) || !isFinite(lat) || !isFinite(lon) || !isFinite(pres)) continue;
+        out.push({ t, lat, lon, pres, wind: isFinite(wind) ? wind : null });
+    }
+    return out;
+}
+function trackToCsv(){
+    return ['# 日時, 緯度, 経度, 中心気圧(hPa), 最大風速(m/s)']
+        .concat(STATE.track.map(p => {
+            const d = new Date(p.t), z = n => String(n).padStart(2,'0');
+            return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}, ` +
+                   `${p.lat}, ${p.lon}, ${Math.round(p.pres)}, ${Math.round(p.wind != null ? p.wind : MET.presToWind(p.pres))}`;
+        })).join('\n');
+}
+function download(name, text, type){
+    const blob = new Blob([text], { type: type || 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+function applyTrack(track, name, warn){
+    if (!track || track.length < 2){ toast('実況データが2点未満です', 'err'); return false; }
+    STATE.track = track;
+    STATE.name = name || '台風';
+    STATE.demoWarn = warn || '';
+    rebuild(false);
+    const st = currentState();
+    if (st) map.setView([st.lat + 4, st.lon], map.getZoom() < 5 ? 5 : map.getZoom());
+    toast(`${STATE.name} を読み込みました（${track.length}点）`, 'ok');
+    return true;
+}
+$('btnLoadCsv').addEventListener('click', () => {
+    const tr = parseCsv($('mCsv').value);
+    if (applyTrack(tr, $('mName').value.trim() || '台風')) $('dataModal').classList.remove('show');
+});
+$('btnExportCsv').addEventListener('click', () => {
+    if (!STATE.track.length){ toast('データがありません', 'err'); return; }
+    download('typhoon_track.csv', trackToCsv(), 'text/csv;charset=utf-8');
+});
+$('btnExportJson').addEventListener('click', () => {
+    if (!STATE.fc){ toast('データがありません', 'err'); return; }
+    download('typhoon_forecast.json', JSON.stringify({
+        name: STATE.name, generatedAt: new Date().toISOString(),
+        model: '簡易外挿モデル（本アプリ独自・公式予報ではありません）',
+        settings: STATE.set, observed: STATE.track,
+        forecast: STATE.fc.map(p => ({ time:new Date(p.t).toISOString(), lead:p.lead, lat:+p.lat.toFixed(3),
+            lon:+p.lon.toFixed(3), pres:Math.round(p.pres), wind:+MET.presToWind(p.pres).toFixed(1),
+            circleKm: Math.round(circleRadius(p.lead) * STATE.set.unc / 100) }))
+    }, null, 2), 'application/json');
+});
+$('btnClearData').addEventListener('click', () => {
+    if (!confirm('読み込み済みの台風データを消去します。よろしいですか？')) return;
+    STATE.track = []; STATE.name = ''; STATE.demoWarn = '';
+    rebuild(false); saveLocal(); toast('消去しました');
+});
+
+/* ---------------- サンプルデータ ---------------- */
+function relTrack(rows){
+    /* rows: [hoursBeforeNow, lat, lon, pres] を、直近の正時を基準に時刻付与 */
+    const now = new Date(); now.setMinutes(0, 0, 0);
+    return rows.map(r => ({ t: now.getTime() - r[0] * 3.6e6, lat: r[1], lon: r[2], pres: r[3], wind: null }));
+}
+const DEMO_A = [[48,19.5,133.5,992],[42,20.0,132.8,988],[36,20.6,132.1,982],[30,21.2,131.5,976],
+                [24,21.9,131.0,968],[18,22.6,130.6,962],[12,23.4,130.3,956],[6,24.2,130.1,950],[0,25.1,130.0,945]];
+const DEMO_B = [[48,22.0,141.0,985],[42,22.6,140.2,980],[36,23.3,139.5,972],[30,24.0,138.9,965],
+                [24,24.8,138.4,958],[18,25.7,138.0,950],[12,26.7,137.7,942],[6,27.8,137.6,938],[0,29.0,137.6,935]];
+/* 2019年台風19号の「概略」。気象庁ベストトラックの正確な値ではありません（出典未確認の近似値）。 */
+const DEMO_C = [
+    ['2019-10-08 09:00',18.0,143.0,915],['2019-10-08 21:00',19.3,141.6,915],
+    ['2019-10-09 09:00',20.6,140.4,920],['2019-10-09 21:00',22.0,139.4,925],
+    ['2019-10-10 09:00',23.6,138.7,925],['2019-10-10 21:00',25.3,138.3,935],
+    ['2019-10-11 09:00',27.2,138.2,945],['2019-10-11 21:00',29.4,138.3,945],
+    ['2019-10-12 09:00',31.9,138.4,950]
+];
+$('btnDemo1').addEventListener('click', () => {
+    applyTrack(relTrack(DEMO_A), 'デモA：南西諸島へ北上（架空）', 'デモデータです（実際の台風ではありません）');
+    $('dataModal').classList.remove('show');
+});
+$('btnDemo2').addEventListener('click', () => {
+    applyTrack(relTrack(DEMO_B), 'デモB：本州直撃コース（架空）', 'デモデータです（実際の台風ではありません）');
+    $('dataModal').classList.remove('show');
+});
+$('btnDemo3').addEventListener('click', () => {
+    applyTrack(DEMO_C.map(r => ({ t: parseWhen(r[0]), lat: r[1], lon: r[2], pres: r[3], wind: null })),
+        '2019年台風19号（概略値）', '座標は概略の近似値であり公式記録ではありません');
+    $('dataModal').classList.remove('show');
+});
+
+/* ---------------- 気象庁JSONの取得（ベストエフォート・疎通未検証） ---------------- */
+const JMA_BASE = 'https://www.jma.go.jp/bosai/typhoon/data/';
+async function jmaGet(path){
+    const url = (STATE.proxy || '') + JMA_BASE + path;
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+}
+/* 構造を決め打ちせず、緯度経度らしきキーを持つノードを再帰的に拾う */
+function numOf(v){
+    if (v == null) return NaN;
+    if (typeof v === 'number') return v;
+    if (typeof v === 'string') return parseFloat(v.replace(/[^\d.\-]/g, ''));
+    if (typeof v === 'object'){
+        for (const k of ['value','val','text','hPa','ms']) if (v[k] != null) return numOf(v[k]);
+    }
+    return NaN;
+}
+function harvest(node, out, ctx, depth){
+    if (depth > 12 || node == null) return;
+    if (Array.isArray(node)){ for (const n of node) harvest(n, out, ctx, depth + 1); return; }
+    if (typeof node !== 'object') return;
+    const keys = Object.keys(node);
+
+    /* 時刻・気圧・風速は緯度経度と同じ階層にあるとは限らない（例: center:{lat,lon} の兄弟に pressure）。
+       上位で見つけた値を子へ引き継ぎ、より深い階層の値で上書きする。 */
+    const c = { t: ctx.t, pres: ctx.pres, wind: ctx.wind };
+    for (const k of keys){
+        if (/valid|datetime|date_?time|^time$|forecast_?time|announce|reportdate/i.test(k)){
+            const v = parseWhen(node[k]);
+            if (isFinite(v)) c.t = v;
+        } else if (/pressure|気圧/i.test(k)){
+            const v = numOf(node[k]);
+            if (isFinite(v) && v > 850 && v < 1030) c.pres = v;
+        } else if (/maxwind|wind_?speed|wind$|風速/i.test(k)){
+            const v = numOf(node[k]);
+            if (isFinite(v) && v > 0 && v < 120) c.wind = v;
+        }
+    }
+
+    const latK = keys.find(k => /^lat$|latitude|^緯度$/i.test(k));
+    const lonK = keys.find(k => /^lon$|^lng$|longitude|^経度$/i.test(k));
+    if (latK && lonK){
+        const lat = parseCoord(node[latK]);
+        const lon = parseCoord(node[lonK]);
+        if (isFinite(lat) && isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180 && isFinite(c.t)){
+            out.push({ t: c.t, lat, lon, pres: c.pres, wind: c.wind });
+        }
+    }
+    for (const k of keys) if (node[k] && typeof node[k] === 'object') harvest(node[k], out, c, depth + 1);
+}
+function dedupe(recs){
+    const map = new Map();
+    for (const r of recs){
+        const key = Math.round(r.t / 6e5);
+        const prev = map.get(key);
+        if (!prev || (prev.pres == null && r.pres != null)) map.set(key, r);
+    }
+    return Array.from(map.values()).sort((a, b) => a.t - b.t);
+}
+async function fetchJma(){
+    $('jmaRaw').textContent = '取得中…';
+    try{
+        const ids = await jmaGet('targetTc.json');
+        const list = (Array.isArray(ids) ? ids : Object.values(ids || {}))
+            .map(v => typeof v === 'string' ? v : (v && (v.id || v.tcId || v.code)))
+            .filter(Boolean);
+        if (!list.length){ $('jmaRaw').textContent = '現在、対象となる台風はありません。'; toast('対象の台風がありません'); return; }
+        const sel = $('jmaList');
+        sel.innerHTML = list.map(id => `<option value="${id}">${id}</option>`).join('');
+        await loadJmaTc(list[0]);
+    }catch(e){
+        $('jmaRaw').textContent = 'エラー: ' + e.message +
+            '\n（CORS制限、またはネットワーク遮断の可能性があります。プロキシ欄を使うか「手入力 / CSV」をご利用ください）';
+        toast('気象庁からの取得に失敗しました', 'err');
+    }
+}
+async function loadJmaTc(id){
+    const recs = [];
+    let rawPreview = '';
+    for (const file of ['specifications.json', 'forecast.json']){
+        try{
+            const j = await jmaGet(id + '/' + file);
+            harvest(j, recs, { t: NaN, pres: null, wind: null }, 0);
+            rawPreview += `--- ${file} ---\n` + JSON.stringify(j).slice(0, 900) + '\n';
+        }catch(e){ rawPreview += `--- ${file} : ${e.message}\n`; }
+    }
+    $('jmaRaw').textContent = rawPreview || '（データなし）';
+    const all = dedupe(recs).map(r => ({ t:r.t, lat:r.lat, lon:r.lon,
+        pres: r.pres != null ? r.pres : (r.wind != null ? MET.windToPres(r.wind) : 990), wind: r.wind }));
+    if (!all.length){ toast('位置情報を抽出できませんでした', 'err'); return; }
+    const now = Date.now();
+    let obs = all.filter(r => r.t <= now + 3.6e6);
+    let warn = '';
+    if (obs.length < 2){
+        obs = all.slice(0, Math.min(3, all.length));
+        warn = '実況点が不足のため取得した最初の数点を実況として扱っています';
+    }
+    if (applyTrack(obs, '気象庁 ' + id, warn)) $('dataModal').classList.remove('show');
+}
+$('btnFetchJma').addEventListener('click', () => { STATE.proxy = $('proxyUrl').value.trim(); saveLocal(); fetchJma(); });
+$('jmaList').addEventListener('change', e => { if (e.target.value) loadJmaTc(e.target.value); });
+
+/* =========================================================================
+   起動
+   ========================================================================= */
+function buildLegend(){
+    const stops = WIND_STOPS.map(s => {
+        const pct = clamp(s[0] / 65 * 100, 0, 100);
+        return `rgb(${s[1][0]},${s[1][1]},${s[1][2]}) ${pct}%`;
+    }).join(',');
+    $('legendBar').style.background = `linear-gradient(90deg,${stops})`;
+}
+document.addEventListener('keydown', e => {
+    if (/INPUT|TEXTAREA|SELECT/.test((e.target.tagName || ''))) return;
+    if (e.code === 'Space'){ e.preventDefault(); setPlaying(!STATE.playing); }
+    else if (e.key === 'ArrowRight' && STATE.fc){ STATE.lead = clamp(STATE.lead + 1, 0, STATE.fc.length-1); $('tlSlider').value = STATE.lead; updateDynamic(); }
+    else if (e.key === 'ArrowLeft'  && STATE.fc){ STATE.lead = clamp(STATE.lead - 1, 0, STATE.fc.length-1); $('tlSlider').value = STATE.lead; updateDynamic(); }
+    else if (e.key === 'Escape') $$('.modal').forEach(m => m.classList.remove('show'));
+});
+
+(function init(){
+    buildLegend();
+    const had = loadLocal();
+    syncSliders();
+    $('proxyUrl').value = STATE.proxy;
+    $$('[data-layer]').forEach(b => b.classList.toggle('on', !!STATE.layers[b.dataset.layer]));
+    resizeCanvases();
+
+    if (STATE.point) setPoint(STATE.point.lat, STATE.point.lon, STATE.point.name);
+
+    if (had){
+        $('mName').value = STATE.name;
+        $('mCsv').value = trackToCsv();
+        rebuild(false);
+    }else{
+        applyTrack(relTrack(DEMO_A), 'デモA：南西諸島へ北上（架空）', 'デモデータです（実際の台風ではありません）');
+        $('mCsv').value = trackToCsv();
+        setTimeout(() => toast('デモデータを表示中です。実データは「📡 データ」から', 'ok'), 900);
+    }
+    syncMobBar();
+    setTimeout(() => map.invalidateSize(), 200);
+})();
+</script>
+</body>
+</html>
