@@ -1,0 +1,3176 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>株式自動売買システム</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+    :root{
+        --primary:#38bdf8;
+        --primary-hover:#0ea5e9;
+        --bg:#0b1220;
+        --card-bg:rgba(22,34,54,0.72);
+        --card-solid:#16223a;
+        --text:#f1f5f9;
+        --muted:#8ea3bf;
+        --border:rgba(255,255,255,0.10);
+        --green:#22c55e;
+        --sky:#38bdf8;
+        --indigo:#818cf8;
+        --amber:#f59e0b;
+        --rose:#fb7185;
+        --teal:#2dd4bf;
+        --violet:#a78bfa;
+    }
+    *{box-sizing:border-box}
+    body{
+        margin:0;font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+        background:linear-gradient(140deg,#0b1220 0%,#101a33 55%,#0d1728 100%);
+        background-attachment:fixed;color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;
+    }
+    .container{max-width:1180px;margin:0 auto;padding:1.6rem 1rem 4rem}
+
+    header{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem;flex-wrap:wrap}
+    .brand{display:flex;align-items:center;gap:.8rem}
+    .brand .logo{
+        width:48px;height:48px;border-radius:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.6rem;
+        background:linear-gradient(135deg,#38bdf8,#818cf8);box-shadow:0 6px 20px rgba(56,189,248,.35);
+    }
+    .brand h1{font-size:1.5rem;margin:0;line-height:1.2;font-weight:800;letter-spacing:.02em}
+    .brand .sub{color:var(--muted);font-size:.8rem;margin-top:2px}
+    .header-actions{display:flex;gap:.5rem;flex-wrap:wrap}
+
+    .btn{
+        border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);
+        padding:.55rem .9rem;border-radius:10px;font-size:.85rem;font-weight:600;cursor:pointer;
+        transition:all .18s ease;display:inline-flex;align-items:center;gap:.4rem;font-family:inherit;
+    }
+    .btn:hover{background:rgba(255,255,255,.12);transform:translateY(-1px)}
+    .btn.primary{background:var(--primary);border-color:transparent;color:#04202e}
+    .btn.primary:hover{background:var(--primary-hover);color:#fff}
+    .btn.green{background:var(--green);border-color:transparent;color:#04220f}
+    .btn.ghost{background:transparent}
+    .btn.danger{color:var(--rose);border-color:rgba(251,113,133,.35)}
+    .btn.danger:hover{background:rgba(251,113,133,.15)}
+    .btn.sm{padding:.35rem .6rem;font-size:.78rem}
+    .btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+
+    .disclaimer{
+        display:flex;gap:.6rem;align-items:flex-start;
+        background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.30);
+        color:#fcd9a0;border-radius:12px;padding:.7rem .9rem;font-size:.78rem;line-height:1.6;margin-bottom:1.2rem;
+    }
+    .disclaimer b{color:var(--amber)}
+
+    .tabs{display:flex;gap:.4rem;overflow-x:auto;margin-bottom:1rem;padding-bottom:.3rem;-webkit-overflow-scrolling:touch}
+    .tab{
+        border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--muted);
+        padding:.5rem .9rem;border-radius:10px;font-size:.83rem;font-weight:600;cursor:pointer;white-space:nowrap;
+        transition:all .18s ease;font-family:inherit;
+    }
+    .tab:hover{color:var(--text);background:rgba(255,255,255,.09)}
+    .tab.active{background:var(--primary);border-color:transparent;color:#04202e}
+
+    .card{
+        background:var(--card-bg);border:1px solid var(--border);border-radius:16px;
+        padding:1.1rem 1.2rem;margin-bottom:1rem;backdrop-filter:blur(8px);
+    }
+    .card h2{font-size:1rem;margin:0 0 .9rem;font-weight:700;display:flex;align-items:center;gap:.45rem}
+    .card h2 .ic{font-size:1.1rem}
+    .card .hint{color:var(--muted);font-size:.76rem;line-height:1.6;margin:.4rem 0 0}
+
+    .grid{display:grid;gap:.8rem}
+    .g2{grid-template-columns:repeat(2,1fr)}
+    .g3{grid-template-columns:repeat(3,1fr)}
+    .g4{grid-template-columns:repeat(4,1fr)}
+    @media(max-width:900px){.g3,.g4{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:560px){.g2,.g3,.g4{grid-template-columns:1fr}}
+
+    .field{display:flex;flex-direction:column;gap:.3rem}
+    .field label{font-size:.74rem;color:var(--muted);font-weight:600}
+    input[type=text],input[type=number],input[type=date],input[type=url],select,textarea{
+        background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text);
+        padding:.5rem .65rem;border-radius:9px;font-size:.85rem;font-family:inherit;width:100%;
+    }
+    input:focus,select:focus,textarea:focus{outline:none;border-color:var(--primary);background:rgba(56,189,248,.08)}
+    textarea{resize:vertical;min-height:90px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.78rem}
+    select option{background:var(--card-solid)}
+    input[type=checkbox]{width:16px;height:16px;accent-color:var(--primary);cursor:pointer}
+
+    .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.7rem}
+    .stat{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;padding:.75rem .85rem}
+    .stat .k{font-size:.72rem;color:var(--muted);font-weight:600}
+    .stat .v{font-size:1.25rem;font-weight:800;margin-top:.25rem;letter-spacing:-.01em}
+    .stat .s{font-size:.7rem;color:var(--muted);margin-top:.15rem}
+    .pos{color:var(--green)} .neg{color:var(--rose)} .neu{color:var(--muted)}
+
+    table{width:100%;border-collapse:collapse;font-size:.8rem}
+    th{text-align:left;color:var(--muted);font-weight:600;font-size:.72rem;padding:.5rem .5rem;border-bottom:1px solid var(--border);white-space:nowrap}
+    td{padding:.5rem .5rem;border-bottom:1px solid rgba(255,255,255,.05);white-space:nowrap}
+    tbody tr:hover{background:rgba(255,255,255,.03)}
+    .num{text-align:right;font-variant-numeric:tabular-nums}
+    .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+    .badge{display:inline-block;padding:.15rem .5rem;border-radius:6px;font-size:.7rem;font-weight:700}
+    .badge.buy{background:rgba(34,197,94,.18);color:#4ade80}
+    .badge.sell{background:rgba(251,113,133,.18);color:#fb7185}
+    .badge.hold{background:rgba(142,163,191,.15);color:var(--muted)}
+
+    .rule{border:1px solid var(--border);border-radius:12px;padding:.7rem .8rem;background:rgba(255,255,255,.03)}
+    .rule .rh{display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem}
+    .rule .rh .name{font-weight:700;font-size:.85rem;flex:1}
+    .rule .params{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:.5rem}
+    .rule.off{opacity:.5}
+
+    canvas{width:100%;display:block;border-radius:12px;background:rgba(0,0,0,.20)}
+
+    .log{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.74rem;line-height:1.7;max-height:320px;overflow-y:auto}
+    .log .row{display:flex;gap:.6rem;padding:.2rem 0;border-bottom:1px solid rgba(255,255,255,.04)}
+    .log .t{color:var(--muted);flex-shrink:0}
+
+    .empty{text-align:center;color:var(--muted);font-size:.82rem;padding:2rem 1rem;line-height:1.8}
+    .row-flex{display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end}
+    .chk{display:flex;align-items:center;gap:.45rem;font-size:.8rem;color:var(--text);cursor:pointer;user-select:none}
+    .sep{height:1px;background:var(--border);margin:.9rem 0}
+    .pill{font-size:.72rem;color:var(--muted);background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:999px;padding:.2rem .6rem}
+
+    .toast{
+        position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
+        background:var(--card-solid);border:1px solid var(--border);color:var(--text);
+        padding:.7rem 1.1rem;border-radius:12px;font-size:.85rem;font-weight:600;
+        box-shadow:0 10px 30px rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:all .25s ease;z-index:99;
+    }
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    .toast.err{border-color:rgba(251,113,133,.5)}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+    <div class="brand">
+        <div class="logo">📈</div>
+        <div>
+            <h1>株式自動売買システム</h1>
+            <div class="sub">戦略エンジン / バックテスト / リスク管理 / 自動売買シミュレーション</div>
+        </div>
+    </div>
+    <div class="header-actions">
+        <button class="btn sm" onclick="exportJSON()">💾 エクスポート</button>
+        <button class="btn sm" onclick="document.getElementById('importFile').click()">📥 インポート</button>
+        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)">
+        <button class="btn sm danger" onclick="resetAll()">初期化</button>
+    </div>
+</header>
+
+<div class="disclaimer">
+    <span>⚠️</span>
+    <div>
+        <b>免責事項：</b>本システムは投資判断の検証・学習を目的としたシミュレーションツールです。投資助言ではありません。
+        バックテスト結果は将来の運用成績を保証しません。実際の発注を行う場合は、必ず少額・ドライランで十分に検証し、
+        最終的な投資判断とその結果はご自身の責任で行ってください。
+    </div>
+</div>
+
+<div class="tabs" id="tabs"></div>
+
+<!-- ===== ダッシュボード ===== -->
+<section id="tab-dash" class="tabsec">
+    <div class="card">
+        <h2><span class="ic">📊</span>ポートフォリオ状況（ペーパートレード）</h2>
+        <div class="stat-grid" id="dashStats"></div>
+    </div>
+    <div class="card">
+        <h2><span class="ic">🔔</span>最新シグナル</h2>
+        <div class="row-flex" style="margin-bottom:.8rem">
+            <button class="btn primary sm" onclick="runDailyJudge()">⚡ シグナル判定を実行</button>
+            <button class="btn sm" onclick="switchTab('auto')">自動売買タブへ</button>
+        </div>
+        <div class="table-wrap"><table id="dashSignals"></table></div>
+    </div>
+    <div class="card">
+        <h2><span class="ic">💼</span>保有ポジション</h2>
+        <div class="table-wrap"><table id="dashPositions"></table></div>
+    </div>
+    <div class="card">
+        <h2><span class="ic">📉</span>資産推移</h2>
+        <canvas id="dashEquity" style="height:220px"></canvas>
+    </div>
+</section>
+
+<!-- ===== 銘柄・データ ===== -->
+<section id="tab-data" class="tabsec" style="display:none">
+    <div class="card">
+        <h2><span class="ic">➕</span>銘柄の登録</h2>
+        <div class="grid g4">
+            <div class="field"><label>銘柄コード</label><input type="text" id="newCode" placeholder="7203"></div>
+            <div class="field"><label>銘柄名</label><input type="text" id="newName" placeholder="トヨタ自動車"></div>
+            <div class="field"><label>単元株数</label><input type="number" id="newUnit" value="100" min="1"></div>
+            <div class="field" style="justify-content:flex-end"><button class="btn primary" onclick="addSymbol()">銘柄を追加</button></div>
+        </div>
+        <div class="sep"></div>
+        <h2><span class="ic">🧪</span>デモデータ生成</h2>
+        <p class="hint">
+            実データが無くても動作確認できるよう、擬似的な日足を生成します。シード値を固定すれば同じ系列を再現できます。
+            <b>トレンド持続性を0にすると完全なランダムウォーク</b>になり、この場合はどんなテクニカル戦略も理論上「買って持ち続ける」に勝てません
+            （相場から降りている間は上昇分を取り逃し、さらに売買コストが引かれるため）。
+            実際の相場にはある程度の持続性があるので、20〜40%を指定すると順張り戦略が機能する状況を再現できます。
+        </p>
+        <div class="grid g4" style="margin-top:.6rem">
+            <div class="field"><label>生成日数</label><input type="number" id="demoDays" value="500" min="80"></div>
+            <div class="field"><label>初期価格(円)</label><input type="number" id="demoPrice" value="2500" min="1"></div>
+            <div class="field"><label>年率ボラティリティ(%)</label><input type="number" id="demoVol" value="28" min="1"></div>
+            <div class="field"><label>想定年率(%)<br><span style="opacity:.7">相場全体の傾き</span></label><input type="number" id="demoDrift" value="6" step="1"></div>
+            <div class="field"><label>トレンド持続性(%)<br><span style="opacity:.7">0=完全ランダム</span></label><input type="number" id="demoTrend" value="0" step="5" min="0" max="60"></div>
+            <div class="field"><label>シード</label><input type="number" id="demoSeed" value="42"></div>
+        </div>
+        <div class="row-flex" style="margin-top:.7rem">
+            <button class="btn" onclick="genDemoForActive()">選択銘柄にデモデータ生成</button>
+            <button class="btn green" onclick="genDemoPortfolio()">サンプル5銘柄を一括生成</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2><span class="ic">📁</span>価格データの取込（CSV）</h2>
+        <p class="hint">
+            対応形式：<code>日付,始値,高値,安値,終値,出来高</code>（英語ヘッダ Date,Open,High,Low,Close,Volume も可）。
+            ヘッダ行が無い場合はこの並び順とみなします。カンマ区切り／タブ区切りに対応。同じ日付は上書きされます。
+        </p>
+        <div class="row-flex" style="margin:.7rem 0">
+            <div class="field" style="flex:1;min-width:200px">
+                <label>取込先の銘柄</label>
+                <select id="csvTarget"></select>
+            </div>
+            <button class="btn" onclick="document.getElementById('csvFile').click()">📎 CSVファイルを選択</button>
+            <input type="file" id="csvFile" accept=".csv,.txt,.tsv" style="display:none" onchange="importCSVFile(event)">
+        </div>
+        <div class="field"><label>貼り付けで取込</label><textarea id="csvPaste" placeholder="2024-01-04,2500,2560,2490,2545,1200000&#10;2024-01-05,2545,2580,2530,2570,980000"></textarea></div>
+        <div class="row-flex" style="margin-top:.6rem">
+            <button class="btn primary" onclick="importCSVPaste()">貼り付け内容を取込</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2><span class="ic">✍️</span>最新足の手入力</h2>
+        <p class="hint">日々の運用では、その日の四本値をここに追加してからシグナル判定を実行します。</p>
+        <div class="grid g4" style="margin-top:.6rem">
+            <div class="field"><label>銘柄</label><select id="barSymbol"></select></div>
+            <div class="field"><label>日付</label><input type="date" id="barDate"></div>
+            <div class="field"><label>始値</label><input type="number" id="barOpen" step="0.1"></div>
+            <div class="field"><label>高値</label><input type="number" id="barHigh" step="0.1"></div>
+            <div class="field"><label>安値</label><input type="number" id="barLow" step="0.1"></div>
+            <div class="field"><label>終値</label><input type="number" id="barClose" step="0.1"></div>
+            <div class="field"><label>出来高</label><input type="number" id="barVol" step="1"></div>
+            <div class="field" style="justify-content:flex-end"><button class="btn primary" onclick="addBar()">足を追加</button></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2><span class="ic">📋</span>登録銘柄</h2>
+        <div class="table-wrap"><table id="symbolTable"></table></div>
+    </div>
+</section>
+
+<!-- ===== 戦略設定 ===== -->
+<section id="tab-strategy" class="tabsec" style="display:none">
+    <div class="card">
+        <h2><span class="ic">💴</span>運用プリセット</h2>
+        <p class="hint">
+            資金規模に合わせて設定を一括で切り替えます。日本株は通常100株単位のため、
+            1万円・10万円では<b>単元未満株（S株・ミニ株など1株から買える取引）</b>を前提とした設定になります。
+            手数料は単元未満株の実勢に近い片道0.55%を初期値としていますので、ご利用の証券会社に合わせて調整してください。
+        </p>
+        <div class="row-flex" style="margin-top:.8rem" id="presetBtns"></div>
+        <div class="sep"></div>
+        <div class="stat-grid" id="costStats"></div>
+    </div>
+    <div class="card">
+        <h2><span class="ic">🧠</span>シグナル合成方式</h2>
+        <div class="grid g3">
+            <div class="field">
+                <label>判定モード</label>
+                <select id="stMode" onchange="readStrategy();renderStrategy()">
+                    <option value="score">スコア合議（重み付き合計）</option>
+                    <option value="all">全条件一致（AND）</option>
+                </select>
+            </div>
+            <div class="field"><label>買いスコア閾値</label><input type="number" id="stBuyTh" step="0.5" onchange="readStrategy()"></div>
+            <div class="field"><label>売りスコア閾値</label><input type="number" id="stSellTh" step="0.5" onchange="readStrategy()"></div>
+            <div class="field">
+                <label>決済の方針</label>
+                <select id="stExit" onchange="readStrategy();renderStrategy()">
+                    <option value="signal">売りシグナルで決済（短期売買）</option>
+                    <option value="trend">長期トレンドが崩れるまで保有</option>
+                </select>
+            </div>
+        </div>
+        <p class="hint" id="modeHint"></p>
+    </div>
+
+    <div class="card">
+        <h2><span class="ic">⚙️</span>テクニカルルール</h2>
+        <p class="hint">各ルールは「買い＝+重み／売り＝−重み」を出力します。合計スコアが閾値を超えると発注シグナルになります。</p>
+        <div class="grid g2" id="ruleList" style="margin-top:.8rem"></div>
+    </div>
+
+    <div class="card">
+        <h2><span class="ic">🛡️</span>資金・リスク管理</h2>
+        <div class="grid g4">
+            <div class="field"><label>初期資金(円)</label><input type="number" id="rkCash" step="10000" onchange="readRisk()"></div>
+            <div class="field">
+                <label>建玉サイズ決定</label>
+                <select id="rkSizing" onchange="readRisk();renderRisk()">
+                    <option value="ratio">資金比率</option>
+                    <option value="risk">リスク率（ATR基準）</option>
+                </select>
+            </div>
+            <div class="field" id="fldAlloc"><label>1銘柄あたり投入比率(%)</label><input type="number" id="rkAlloc" step="1" onchange="readRisk()"></div>
+            <div class="field" id="fldRisk"><label>1トレード許容リスク(%)</label><input type="number" id="rkRisk" step="0.1" onchange="readRisk()"></div>
+            <div class="field"><label>ATR期間</label><input type="number" id="rkAtrP" onchange="readRisk()"></div>
+            <div class="field"><label>ATR倍率（損切り幅）</label><input type="number" id="rkAtrM" step="0.1" onchange="readRisk()"></div>
+            <div class="field"><label>最大同時保有銘柄数</label><input type="number" id="rkMaxPos" onchange="readRisk()"></div>
+            <div class="field"><label>売買単位（単元）</label><input type="number" id="rkUnit" onchange="readRisk()"></div>
+            <div class="field"><label>損切り(%)</label><input type="number" id="rkStop" step="0.5" onchange="readRisk()"></div>
+            <div class="field"><label>利確(%)</label><input type="number" id="rkTake" step="0.5" onchange="readRisk()"></div>
+            <div class="field"><label>トレーリングストップ(%)<br><span style="opacity:.7">0で無効</span></label><input type="number" id="rkTrail" step="0.5" onchange="readRisk()"></div>
+            <div class="field"><label>最大保有日数<br><span style="opacity:.7">0で無期限</span></label><input type="number" id="rkHold" onchange="readRisk()"></div>
+            <div class="field"><label>手数料(%)</label><input type="number" id="rkFee" step="0.01" onchange="readRisk()"></div>
+            <div class="field"><label>スリッページ(%)</label><input type="number" id="rkSlip" step="0.01" onchange="readRisk()"></div>
+            <div class="field" style="justify-content:flex-end">
+                <label class="chk"><input type="checkbox" id="rkAtrStop" onchange="readRisk()"> 損切りをATR基準にする</label>
+            </div>
+            <div class="field" style="justify-content:flex-end">
+                <label class="chk"><input type="checkbox" id="rkMinUnit" onchange="readRisk()"> 枠に満たなくても1単元は買う</label>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2><span class="ic">🚨</span>安全装置（無理をさせないための制限）</h2>
+        <p class="hint">
+            <b>信用取引・借入は一切行いません。</b>発注はすべて保有現金の範囲内に限られ、
+            現金が足りない場合は数量を減らすか見送ります。損失が資金以上に膨らむことはありません。
+            以下はそれに加えて、損失の拡大や売買の過熱を自動的に止めるための制限です。
+        </p>
+        <div class="grid g4" style="margin-top:.8rem">
+            <div class="field"><label>資産の下限で停止(%)<br><span style="opacity:.7">0で無効</span></label><input type="number" id="rkHaltDD" step="1" onchange="readRisk()"></div>
+            <div class="field"><label>連敗で停止(回)<br><span style="opacity:.7">0で無効</span></label><input type="number" id="rkConsec" step="1" onchange="readRisk()"></div>
+            <div class="field"><label>1日の最大買い回数<br><span style="opacity:.7">0で無制限</span></label><input type="number" id="rkDaily" step="1" onchange="readRisk()"></div>
+            <div class="field"><label>常に残す現金(%)<br><span style="opacity:.7">初期資金に対する割合</span></label><input type="number" id="rkReserve" step="1" onchange="readRisk()"></div>
+            <div class="field"><label>最低保有日数<br><span style="opacity:.7">短期の往復売買を抑制</span></label><input type="number" id="rkMinHold" step="1" onchange="readRisk()"></div>
+            <div class="field"><label>再購入までの日数<br><span style="opacity:.7">売却直後の買い直しを防止</span></label><input type="number" id="rkCooldown" step="1" onchange="readRisk()"></div>
+        </div>
+        <p class="hint" id="safetyHint"></p>
+    </div>
+</section>
+
+<!-- ===== バックテスト ===== -->
+<section id="tab-backtest" class="tabsec" style="display:none">
+    <div class="card">
+        <h2><span class="ic">⏱️</span>バックテスト実行</h2>
+        <div class="grid g4">
+            <div class="field"><label>対象</label><select id="btTarget"></select></div>
+            <div class="field"><label>開始日（空欄で全期間）</label><input type="date" id="btFrom"></div>
+            <div class="field"><label>終了日</label><input type="date" id="btTo"></div>
+            <div class="field" style="justify-content:flex-end"><button class="btn primary" onclick="doBacktest()">▶ 実行</button></div>
+        </div>
+        <p class="hint">シグナルは当日終値で判定し、翌営業日の始値で約定します（先読み防止）。損切り・利確はザラ場の高値／安値で判定し、同一日に両方到達した場合は保守的に損切りを優先します。</p>
+    </div>
+
+    <div id="btResult" style="display:none">
+        <div class="card">
+            <h2><span class="ic">🏆</span>成績サマリー</h2>
+            <div class="stat-grid" id="btStats"></div>
+        </div>
+        <div class="card">
+            <h2><span class="ic">🧭</span>堅実さの評価</h2>
+            <div id="btVerdict"></div>
+            <div class="stat-grid" id="btSteady" style="margin-top:.9rem"></div>
+            <div class="table-wrap" style="margin-top:.9rem"><table id="btMonthly"></table></div>
+        </div>
+        <div class="card">
+            <h2><span class="ic">📈</span>資産曲線とドローダウン</h2>
+            <canvas id="btEquity" style="height:240px"></canvas>
+        </div>
+        <div class="card">
+            <h2><span class="ic">🕯️</span>チャートと売買ポイント</h2>
+            <div class="row-flex" style="margin-bottom:.7rem">
+                <div class="field" style="min-width:180px"><label>表示銘柄</label><select id="btChartSym" onchange="drawBtChart()"></select></div>
+                <div class="field" style="min-width:130px"><label>表示本数</label><input type="number" id="btChartBars" value="160" min="40" onchange="drawBtChart()"></div>
+            </div>
+            <canvas id="btPrice" style="height:300px"></canvas>
+        </div>
+        <div class="card">
+            <h2><span class="ic">🧾</span>取引履歴</h2>
+            <div class="table-wrap"><table id="btTrades"></table></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2><span class="ic">🧪</span>ウォークフォワード検証（過剰最適化の点検）</h2>
+        <p class="hint">
+            過去データに合わせ込んだ設定は、その期間だけ良く見えるのが普通です。ここでは期間を区切り、
+            <b>前半で最適化した設定を、それより後の「見ていない期間」で運用</b>して成績を測ります。
+            検証期間の成績が学習期間より大きく劣るなら、その設定は過去に合わせ込んだだけで実運用では通用しません。
+        </p>
+        <div class="row-flex" style="margin-top:.7rem">
+            <div class="field" style="min-width:180px"><label>対象</label><select id="wfTarget"></select></div>
+            <div class="field" style="min-width:130px"><label>分割数</label>
+                <select id="wfFolds"><option value="2">2分割</option><option value="3" selected>3分割</option><option value="4">4分割</option></select>
+            </div>
+            <button class="btn" onclick="runWalkForward()">🧪 検証する</button>
+        </div>
+        <div id="wfVerdict" style="margin-top:.9rem"></div>
+        <div class="table-wrap" style="margin-top:.7rem"><table id="wfTable"></table></div>
+    </div>
+
+    <div class="card">
+        <h2><span class="ic">🔬</span>パラメータ最適化（グリッドサーチ）</h2>
+        <p class="hint">移動平均の短期／長期の組み合わせを総当たりで検証します。過剰最適化を避けるため、上位の成績が特定の1点だけに偏っていないか（周辺も良好か）を確認してください。</p>
+        <div class="row-flex" style="margin-top:.7rem">
+            <div class="field" style="min-width:180px"><label>対象</label><select id="optTarget"></select></div>
+            <div class="field" style="min-width:150px"><label>評価指標</label>
+                <select id="optMetric">
+                    <option value="ret">総リターン</option>
+                    <option value="pf">プロフィットファクター</option>
+                    <option value="sharpe">シャープレシオ</option>
+                    <option value="calmar">リターン÷最大DD</option>
+                </select>
+            </div>
+            <button class="btn" onclick="runOptimize()">🔍 最適化を実行</button>
+        </div>
+        <div class="table-wrap" style="margin-top:.9rem"><table id="optTable"></table></div>
+    </div>
+</section>
+
+<!-- ===== デモ運用 ===== -->
+<section id="tab-demo" class="tabsec" style="display:none">
+    <div class="card">
+        <h2><span class="ic">🎬</span>デモ運用（過去データの日次再生）</h2>
+        <p class="hint">
+            実際のお金を使わずに、過去の値動きを1日ずつ再生しながら自動売買の動きを観察します。
+            資産がどう増減し、どこで買ってどこで損切りされるのかを、実際の運用と同じ順序で確認できます。
+        </p>
+        <div class="grid g4" style="margin-top:.8rem">
+            <div class="field"><label>対象</label><select id="dmTarget"></select></div>
+            <div class="field"><label>再生する日数</label><input type="number" id="dmDays" value="250" min="60"></div>
+            <div class="field"><label>再生速度</label>
+                <select id="dmSpeed">
+                    <option value="1">ゆっくり（1日ずつ）</option>
+                    <option value="3" selected>ふつう（3日ずつ）</option>
+                    <option value="10">速い（10日ずつ）</option>
+                </select>
+            </div>
+            <div class="field" style="justify-content:flex-end">
+                <button class="btn primary" id="dmPlay" onclick="demoToggle()">▶ 再生</button>
+            </div>
+        </div>
+        <div class="row-flex" style="margin-top:.7rem">
+            <button class="btn sm" onclick="demoStepOne()">⏭ 1日進める</button>
+            <button class="btn sm" onclick="demoRunToEnd()">⏩ 最後まで一気に</button>
+            <button class="btn sm danger" onclick="demoReset()">↺ 最初からやり直す</button>
+        </div>
+        <div style="margin-top:.9rem">
+            <div style="height:8px;background:rgba(255,255,255,.06);border-radius:99px;overflow:hidden">
+                <div id="dmBar" style="height:100%;width:0%;background:linear-gradient(90deg,#38bdf8,#818cf8);transition:width .2s"></div>
+            </div>
+            <div class="hint" id="dmProgress" style="margin-top:.4rem">未開始</div>
+        </div>
+        <div id="dmHalt" style="display:none;margin-top:.8rem" class="disclaimer">
+            <span>⛔</span><div id="dmHaltMsg"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2><span class="ic">💰</span>デモ口座の状況</h2>
+        <div class="stat-grid" id="dmStats"></div>
+    </div>
+
+    <div class="card">
+        <h2><span class="ic">📈</span>資産の推移</h2>
+        <canvas id="dmEquity" style="height:230px"></canvas>
+    </div>
+
+    <div class="card">
+        <h2><span class="ic">💼</span>デモ口座の保有ポジション</h2>
+        <div class="table-wrap"><table id="dmPositions"></table></div>
+    </div>
+
+    <div class="card">
+        <h2><span class="ic">📃</span>売買の記録</h2>
+        <div class="log" id="dmLog"></div>
+    </div>
+
+    <div class="card">
+        <h2><span class="ic">🩺</span>設定の自己診断</h2>
+        <p class="hint">デモを始める前に、資金と設定の噛み合わせに問題がないかを点検します。</p>
+        <div class="row-flex" style="margin:.7rem 0">
+            <button class="btn" onclick="runDiagnostics()">🩺 診断する</button>
+        </div>
+        <div id="dmDiag"></div>
+    </div>
+</section>
+
+<!-- ===== 自動売買 ===== -->
+<section id="tab-auto" class="tabsec" style="display:none">
+    <div class="card">
+        <h2><span class="ic">🤖</span>自動売買エンジン</h2>
+        <div class="grid g3">
+            <div class="field">
+                <label>実行モード</label>
+                <select id="exMode" onchange="readExec()">
+                    <option value="dry">ドライラン（シグナル記録のみ）</option>
+                    <option value="paper">ペーパートレード（仮想約定）</option>
+                    <option value="bridge">発注ブリッジ送信＋仮想約定</option>
+                </select>
+            </div>
+            <div class="field"><label>自動実行の間隔(分)</label><input type="number" id="exInterval" value="30" min="1" onchange="readExec()"></div>
+            <div class="field" style="justify-content:flex-end">
+                <button class="btn primary" id="autoToggle" onclick="toggleAuto()">▶ 自動実行を開始</button>
+            </div>
+        </div>
+        <p class="hint" id="execHint"></p>
+        <div id="haltBanner" style="display:none;margin-top:.8rem" class="disclaimer">
+            <span>⛔</span><div id="haltMsg"></div>
+        </div>
+        <div class="row-flex" style="margin-top:.9rem">
+            <button class="btn green" onclick="runDailyJudge()">⚡ 今すぐシグナル判定</button>
+            <button class="btn" onclick="closeAllPaper()">全ポジションを手仕舞い</button>
+            <button class="btn danger" onclick="resetPaper()">ペーパー口座をリセット</button>
+            <button class="btn sm" id="haltRelease" style="display:none" onclick="releaseHalt()">安全装置を解除して再開</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2><span class="ic">🔌</span>発注ブリッジ設定</h2>
+        <p class="hint">
+            証券会社のAPIへ直接接続する機能は含みません。利用者側で用意した中継サーバ（自前のブリッジ）へ注文JSONをPOSTする方式です。
+            ブラウザから外部へのPOSTはCORS設定が必要です。認証情報はこの端末のlocalStorageに保存されるため、共有端末では使用しないでください。
+        </p>
+        <div class="grid g2" style="margin-top:.7rem">
+            <div class="field"><label>エンドポイントURL</label><input type="url" id="exUrl" placeholder="https://localhost:8080/orders" onchange="readExec()"></div>
+            <div class="field"><label>認証トークン（任意）</label><input type="text" id="exToken" placeholder="Bearer トークン" onchange="readExec()"></div>
+        </div>
+        <div class="row-flex" style="margin-top:.7rem">
+            <button class="btn sm" onclick="testBridge()">接続テスト</button>
+            <span class="pill" id="bridgeStatus">未接続</span>
+        </div>
+        <div class="sep"></div>
+        <div class="field"><label>送信する注文JSONの例</label><textarea readonly id="orderSample"></textarea></div>
+    </div>
+
+    <div class="card">
+        <h2><span class="ic">📌</span>本日のシグナルと注文プラン</h2>
+        <div class="table-wrap"><table id="autoSignals"></table></div>
+    </div>
+
+    <div class="card">
+        <h2><span class="ic">📃</span>実行ログ</h2>
+        <div class="log" id="execLog"></div>
+    </div>
+</section>
+
+<!-- ===== 履歴 ===== -->
+<section id="tab-history" class="tabsec" style="display:none">
+    <div class="card">
+        <h2><span class="ic">📊</span>ペーパートレード成績</h2>
+        <div class="stat-grid" id="paperStats"></div>
+    </div>
+    <div class="card">
+        <h2><span class="ic">🧾</span>約定履歴</h2>
+        <div class="row-flex" style="margin-bottom:.7rem">
+            <button class="btn sm" onclick="exportTradesCSV()">📤 CSVで書き出し</button>
+        </div>
+        <div class="table-wrap"><table id="paperTrades"></table></div>
+    </div>
+</section>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   株式自動売買システム
+   単一HTMLで完結する戦略検証・自動売買シミュレーション環境
+   ============================================================ */
+
+const LS_KEY = 'stock_auto_trading_v1';
+
+const TABS = [
+    {id:'dash',      label:'📊 ダッシュボード'},
+    {id:'data',      label:'📁 銘柄・データ'},
+    {id:'strategy',  label:'🧠 戦略設定'},
+    {id:'backtest',  label:'⏱️ バックテスト'},
+    {id:'demo',      label:'🎬 デモ運用'},
+    {id:'auto',      label:'🤖 自動売買'},
+    {id:'history',   label:'🧾 履歴'}
+];
+
+const RULE_DEFS = {
+    regime:   {name:'トレンドフィルタ（下降相場では買わない）',
+               desc:'終値が長期移動平均を下回っている間は新規買いを一切行いません。相場全体が下向きのときに買い向かうのを避けるための、最も効果の大きい安全弁です。保有中の建玉の手仕舞いは通常どおり行われます。',
+               params:[{k:'period',label:'期間',min:20}],
+               filter:true},
+    smaCross: {name:'移動平均クロス', desc:'短期線が長期線の上＝買い方向。クロス当日は重みを2倍で評価。',
+               params:[{k:'short',label:'短期',min:2},{k:'long',label:'長期',min:3}]},
+    emaTrend: {name:'EMAトレンド', desc:'終値が長期EMAより上なら買い方向（順張りフィルタ）。',
+               params:[{k:'period',label:'期間',min:3}]},
+    rsi:      {name:'RSI（逆張り）', desc:'売られすぎで買い、買われすぎで売り。',
+               params:[{k:'period',label:'期間',min:2},{k:'low',label:'買い水準',min:1},{k:'high',label:'売り水準',min:1}]},
+    macd:     {name:'MACD', desc:'ヒストグラムの符号で方向を判定。シグナルクロス当日は重み2倍。',
+               params:[{k:'fast',label:'短期',min:2},{k:'slow',label:'長期',min:3},{k:'signal',label:'シグナル',min:2}]},
+    boll:     {name:'ボリンジャーバンド', desc:'−σ割れで買い、+σ超えで売り（逆張り）。',
+               params:[{k:'period',label:'期間',min:3},{k:'k',label:'σ倍率',min:0.5,step:0.5}]},
+    breakout: {name:'ブレイクアウト', desc:'過去N日高値更新で買い、安値更新で売り。',
+               params:[{k:'period',label:'期間',min:3}]},
+    volume:   {name:'出来高フィルタ', desc:'出来高が平均のN倍未満なら新規買いを見送ります（スコアには加算しません）。',
+               params:[{k:'period',label:'平均期間',min:3},{k:'mult',label:'倍率',min:0.1,step:0.1}],
+               filter:true}
+};
+
+/* 運用プリセット。少額では単元未満株(1株単位)を前提にしないと1銘柄も買えないため、
+   資金規模に応じて単元・投入比率・手数料・安全装置をまとめて切り替える */
+const PRESETS = {
+    yen500k: {
+        label:'50万円・堅実型', note:'上昇トレンドを持ち切り、崩れたら降りる（推奨）', recommended:true,
+        risk:{initialCash:500000, unit:1, allowMinUnit:true, sizing:'ratio', allocPct:18,
+              maxPositions:5, feePct:0.55, slipPct:0.1,
+              useAtrStop:true, atrPeriod:14, atrMult:3.5, stopPct:10, takePct:0, trailPct:0,
+              maxHoldDays:0, minHoldDays:5, cooldownDays:10,
+              maxDailyTrades:2, haltDrawdownPct:15, maxConsecLosses:6, reserveCashPct:10},
+        strategy:{
+            mode:'score', buyTh:3, sellTh:3, exitPolicy:'trend',
+            rules:{
+                regime:  {on:true,  w:0, period:200},
+                smaCross:{on:true,  w:2, short:20, long:60},
+                emaTrend:{on:true,  w:2, period:100},
+                rsi:     {on:false, w:1, period:14, low:30, high:75},
+                macd:    {on:true,  w:1, fast:12, slow:26, signal:9},
+                boll:    {on:false, w:1, period:20, k:2},
+                breakout:{on:true,  w:2, period:40},
+                volume:  {on:true,  w:1, period:20, mult:1.0}
+            }
+        }
+    },
+    yen10k: {
+        label:'1万円', note:'単元未満株・最大2銘柄・1日1回まで',
+        risk:{initialCash:10000, unit:1, allowMinUnit:true, sizing:'ratio', allocPct:45,
+              maxPositions:2, feePct:0.55, slipPct:0.2, stopPct:6, takePct:12, trailPct:0,
+              useAtrStop:false, maxHoldDays:20, minHoldDays:3, cooldownDays:5,
+              maxDailyTrades:1, haltDrawdownPct:20, maxConsecLosses:5, reserveCashPct:5}
+    },
+    yen100k: {
+        label:'10万円', note:'単元未満株・最大3銘柄・1日2回まで',
+        risk:{initialCash:100000, unit:1, allowMinUnit:true, sizing:'ratio', allocPct:30,
+              maxPositions:3, feePct:0.55, slipPct:0.15, stopPct:7, takePct:15, trailPct:0,
+              useAtrStop:false, maxHoldDays:30, minHoldDays:3, cooldownDays:7,
+              maxDailyTrades:2, haltDrawdownPct:20, maxConsecLosses:6, reserveCashPct:5}
+    },
+    yen1m: {
+        label:'100万円', note:'単元株(100株)・最大5銘柄',
+        risk:{initialCash:1000000, unit:100, allowMinUnit:false, sizing:'ratio', allocPct:20,
+              maxPositions:5, feePct:0.1, slipPct:0.05, stopPct:7, takePct:15, trailPct:0,
+              useAtrStop:false, maxHoldDays:0, minHoldDays:0, cooldownDays:0,
+              maxDailyTrades:0, haltDrawdownPct:25, maxConsecLosses:0, reserveCashPct:0}
+    }
+};
+
+function defaultState(){
+    return {
+        symbols: [],
+        activeSymbol: null,
+        strategy: {
+            mode:'score', buyTh:2, sellTh:2, exitPolicy:'signal',
+            rules:{
+                regime:  {on:true,  w:0, period:200},
+                smaCross:{on:true,  w:2, short:5,  long:25},
+                emaTrend:{on:true,  w:1, period:75},
+                rsi:     {on:true,  w:1, period:14, low:30, high:70},
+                macd:    {on:true,  w:1, fast:12, slow:26, signal:9},
+                boll:    {on:false, w:1, period:20, k:2},
+                breakout:{on:false, w:2, period:20},
+                volume:  {on:false, w:1, period:20, mult:1.2}
+            }
+        },
+        risk: {
+            initialCash:1000000, sizing:'ratio', allocPct:20, riskPct:2,
+            atrPeriod:14, atrMult:2, useAtrStop:false, unit:100, allowMinUnit:false,
+            stopPct:7, takePct:15, trailPct:0, maxHoldDays:0,
+            maxPositions:5, feePct:0.1, slipPct:0.05,
+            maxDailyTrades:0, haltDrawdownPct:0, maxConsecLosses:0, reserveCashPct:0,
+            minHoldDays:0, cooldownDays:0
+        },
+        exec: {mode:'dry', interval:30, url:'', token:''},
+        paper: {cash:1000000, positions:{}, trades:[], equity:[], log:[], lastSignals:[], lastRun:null,
+                lastBarDate:null, halted:false, haltReason:'', consecLosses:0, dayTrades:0, dayDate:null},
+        ui: {tab:'dash'}
+    };
+}
+
+let state = defaultState();
+let btLast = null;      // 直近のバックテスト結果
+let autoTimer = null;
+
+/* ---------- 永続化 ---------- */
+function save(){
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+    catch(e){ toast('保存に失敗しました：' + e.message, true); }
+}
+function load(){
+    try{
+        const raw = localStorage.getItem(LS_KEY);
+        if(!raw) return false;
+        const d = JSON.parse(raw);
+        const base = defaultState();
+        state = Object.assign(base, d);
+        state.strategy = Object.assign(base.strategy, d.strategy||{});
+        state.strategy.rules = Object.assign(base.strategy.rules, (d.strategy||{}).rules||{});
+        state.risk = Object.assign(base.risk, d.risk||{});
+        state.exec = Object.assign(base.exec, d.exec||{});
+        state.paper = Object.assign(base.paper, d.paper||{});
+        return true;
+    }catch(e){ return false; }
+}
+
+/* ---------- 汎用ユーティリティ ---------- */
+function toast(msg, isErr){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (isErr ? ' err' : '');
+    clearTimeout(t._tm);
+    t._tm = setTimeout(()=>{ t.className = 'toast'; }, 2600);
+}
+function yen(n){
+    if(n == null || !isFinite(n)) return '—';
+    return Math.round(n).toLocaleString('ja-JP') + '円';
+}
+function num(n, d){
+    if(n == null || !isFinite(n)) return '—';
+    return n.toLocaleString('ja-JP', {minimumFractionDigits:d||0, maximumFractionDigits:d||0});
+}
+function pct(n, d){
+    if(n == null || !isFinite(n)) return '—';
+    return (n >= 0 ? '+' : '') + n.toFixed(d == null ? 2 : d) + '%';
+}
+function cls(n){ return n > 0 ? 'pos' : (n < 0 ? 'neg' : 'neu'); }
+function today(){ return new Date().toISOString().slice(0,10); }
+function parseNum(v){
+    if(typeof v === 'number') return v;
+    if(v == null) return NaN;
+    return parseFloat(String(v).replace(/[,¥\s"円]/g, ''));
+}
+function normDate(s){
+    const t = String(s).trim().replace(/["']/g, '');
+    let m = t.match(/^(\d{4})[-/年.](\d{1,2})[-/月.](\d{1,2})/);
+    if(m) return m[1] + '-' + String(m[2]).padStart(2,'0') + '-' + String(m[3]).padStart(2,'0');
+    const d = new Date(t);
+    if(!isNaN(d.getTime())) return d.toISOString().slice(0,10);
+    return null;
+}
+function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+        ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ============================================================
+   テクニカル指標
+   いずれも入力配列と同じ長さの配列を返し、
+   計算に必要な期間が満たない箇所は null を格納する
+   ============================================================ */
+function sma(arr, p){
+    const out = new Array(arr.length).fill(null);
+    if(p < 1) return out;
+    let sum = 0;
+    for(let i = 0; i < arr.length; i++){
+        sum += arr[i];
+        if(i >= p) sum -= arr[i-p];
+        if(i >= p-1) out[i] = sum / p;
+    }
+    return out;
+}
+function ema(arr, p){
+    const out = new Array(arr.length).fill(null);
+    if(p < 1 || arr.length < p) return out;
+    const k = 2 / (p + 1);
+    let prev = 0;
+    for(let i = 0; i < p; i++) prev += arr[i];
+    prev /= p;
+    out[p-1] = prev;
+    for(let i = p; i < arr.length; i++){
+        prev = arr[i] * k + prev * (1 - k);
+        out[i] = prev;
+    }
+    return out;
+}
+function rsi(closes, p){
+    const out = new Array(closes.length).fill(null);
+    if(closes.length <= p) return out;
+    let gain = 0, loss = 0;
+    for(let i = 1; i <= p; i++){
+        const d = closes[i] - closes[i-1];
+        if(d >= 0) gain += d; else loss -= d;
+    }
+    gain /= p; loss /= p;
+    out[p] = loss === 0 ? 100 : 100 - 100 / (1 + gain / loss);
+    for(let i = p+1; i < closes.length; i++){
+        const d = closes[i] - closes[i-1];
+        gain = (gain * (p-1) + (d > 0 ? d : 0)) / p;
+        loss = (loss * (p-1) + (d < 0 ? -d : 0)) / p;
+        out[i] = loss === 0 ? 100 : 100 - 100 / (1 + gain / loss);
+    }
+    return out;
+}
+function macd(closes, f, s, sg){
+    const ef = ema(closes, f), es = ema(closes, s);
+    const line = closes.map((_, i) => (ef[i] != null && es[i] != null) ? ef[i] - es[i] : null);
+    const valid = line.filter(v => v != null);
+    const sigValid = ema(valid, sg);
+    const offset = line.length - valid.length;
+    const signal = new Array(line.length).fill(null);
+    for(let i = 0; i < sigValid.length; i++) signal[i + offset] = sigValid[i];
+    const hist = line.map((v, i) => (v != null && signal[i] != null) ? v - signal[i] : null);
+    return {line, signal, hist};
+}
+function bollinger(closes, p, k){
+    const mid = sma(closes, p);
+    const upper = new Array(closes.length).fill(null);
+    const lower = new Array(closes.length).fill(null);
+    for(let i = p-1; i < closes.length; i++){
+        if(mid[i] == null) continue;
+        let v = 0;
+        for(let j = i-p+1; j <= i; j++) v += Math.pow(closes[j] - mid[i], 2);
+        const sd = Math.sqrt(v / p);
+        upper[i] = mid[i] + k * sd;
+        lower[i] = mid[i] - k * sd;
+    }
+    return {mid, upper, lower};
+}
+function atr(bars, p){
+    const out = new Array(bars.length).fill(null);
+    if(bars.length <= p) return out;
+    const tr = bars.map((b, i) => i === 0 ? b.h - b.l :
+        Math.max(b.h - b.l, Math.abs(b.h - bars[i-1].c), Math.abs(b.l - bars[i-1].c)));
+    let sum = 0;
+    for(let i = 1; i <= p; i++) sum += tr[i];
+    let prev = sum / p;
+    out[p] = prev;
+    for(let i = p+1; i < bars.length; i++){
+        prev = (prev * (p-1) + tr[i]) / p;
+        out[i] = prev;
+    }
+    return out;
+}
+/* 当日を含まない直近N本の最高値／最安値（ブレイクアウト判定用） */
+function highestPrev(arr, p){
+    const out = new Array(arr.length).fill(null);
+    for(let i = p; i < arr.length; i++){
+        let m = -Infinity;
+        for(let j = i-p; j < i; j++) m = Math.max(m, arr[j]);
+        out[i] = m;
+    }
+    return out;
+}
+function lowestPrev(arr, p){
+    const out = new Array(arr.length).fill(null);
+    for(let i = p; i < arr.length; i++){
+        let m = Infinity;
+        for(let j = i-p; j < i; j++) m = Math.min(m, arr[j]);
+        out[i] = m;
+    }
+    return out;
+}
+
+/* ============================================================
+   戦略エンジン
+   ============================================================ */
+function buildIndicators(bars, strat, risk){
+    const closes = bars.map(b => b.c);
+    const r = strat.rules;
+    return {
+        smaS: sma(closes, Math.max(2, r.smaCross.short)),
+        smaL: sma(closes, Math.max(3, r.smaCross.long)),
+        emaT: ema(closes, Math.max(3, r.emaTrend.period)),
+        rsi:  rsi(closes, Math.max(2, r.rsi.period)),
+        macd: macd(closes, Math.max(2, r.macd.fast), Math.max(3, r.macd.slow), Math.max(2, r.macd.signal)),
+        boll: bollinger(closes, Math.max(3, r.boll.period), r.boll.k),
+        hh:   highestPrev(bars.map(b => b.h), Math.max(3, r.breakout.period)),
+        ll:   lowestPrev(bars.map(b => b.l), Math.max(3, r.breakout.period)),
+        volMa: sma(bars.map(b => b.v || 0), Math.max(3, r.volume.period)),
+        regime: sma(closes, Math.max(20, (r.regime || {period:200}).period)),
+        atr:  atr(bars, Math.max(2, risk.atrPeriod))
+    };
+}
+
+/* i 本目の終値時点でのシグナルを評価する */
+function evalSignal(bars, ind, i, strat){
+    const r = strat.rules;
+    const votes = [];
+    let score = 0;
+    const b = bars[i];
+
+    const add = (key, dir, weight, text) => {
+        if(!dir) return;
+        score += dir * weight;
+        votes.push({key, dir, weight, text});
+    };
+
+    if(r.smaCross.on && ind.smaS[i] != null && ind.smaL[i] != null){
+        const now = ind.smaS[i] - ind.smaL[i];
+        const prev = (i > 0 && ind.smaS[i-1] != null && ind.smaL[i-1] != null) ? ind.smaS[i-1] - ind.smaL[i-1] : now;
+        const crossed = (prev <= 0 && now > 0) || (prev >= 0 && now < 0);
+        const dir = now > 0 ? 1 : (now < 0 ? -1 : 0);
+        const w = r.smaCross.w * (crossed ? 2 : 1);
+        add('smaCross', dir, w, crossed
+            ? (dir > 0 ? 'ゴールデンクロス' : 'デッドクロス')
+            : (dir > 0 ? '短期>長期' : '短期<長期'));
+    }
+    if(r.emaTrend.on && ind.emaT[i] != null){
+        const dir = b.c > ind.emaT[i] ? 1 : -1;
+        add('emaTrend', dir, r.emaTrend.w, dir > 0 ? 'EMA上' : 'EMA下');
+    }
+    if(r.rsi.on && ind.rsi[i] != null){
+        let dir = 0, txt = '';
+        if(ind.rsi[i] <= r.rsi.low){ dir = 1; txt = 'RSI' + ind.rsi[i].toFixed(0) + '（売られすぎ）'; }
+        else if(ind.rsi[i] >= r.rsi.high){ dir = -1; txt = 'RSI' + ind.rsi[i].toFixed(0) + '（買われすぎ）'; }
+        add('rsi', dir, r.rsi.w, txt);
+    }
+    if(r.macd.on && ind.macd.hist[i] != null){
+        const h = ind.macd.hist[i];
+        const ph = (i > 0 && ind.macd.hist[i-1] != null) ? ind.macd.hist[i-1] : h;
+        const crossed = (ph <= 0 && h > 0) || (ph >= 0 && h < 0);
+        const dir = h > 0 ? 1 : (h < 0 ? -1 : 0);
+        add('macd', dir, r.macd.w * (crossed ? 2 : 1),
+            crossed ? 'MACDシグナルクロス' : (dir > 0 ? 'MACD陽転中' : 'MACD陰転中'));
+    }
+    if(r.boll.on && ind.boll.upper[i] != null){
+        let dir = 0, txt = '';
+        if(b.c < ind.boll.lower[i]){ dir = 1; txt = '−σ割れ'; }
+        else if(b.c > ind.boll.upper[i]){ dir = -1; txt = '+σ超え'; }
+        add('boll', dir, r.boll.w, txt);
+    }
+    if(r.breakout.on && ind.hh[i] != null){
+        let dir = 0, txt = '';
+        if(b.c > ind.hh[i]){ dir = 1; txt = r.breakout.period + '日高値更新'; }
+        else if(b.c < ind.ll[i]){ dir = -1; txt = r.breakout.period + '日安値更新'; }
+        add('breakout', dir, r.breakout.w, txt);
+    }
+
+    // 出来高フィルタ（スコアには加算せず、新規買いの可否のみ制御）
+    let volumeOK = true;
+    if(r.volume.on && ind.volMa[i] != null && ind.volMa[i] > 0){
+        volumeOK = (b.v || 0) >= ind.volMa[i] * r.volume.mult;
+    }
+    // トレンドフィルタ。長期移動平均を下回る局面では新規買いを行わない
+    let regimeOK = true;
+    if(r.regime && r.regime.on && ind.regime && ind.regime[i] != null){
+        regimeOK = b.c >= ind.regime[i];
+    }
+
+    // 判定
+    let action = 'hold';
+    if(strat.mode === 'all'){
+        const dirs = votes.map(v => v.dir);
+        if(dirs.length && dirs.every(d => d > 0)) action = 'buy';
+        else if(dirs.length && dirs.every(d => d < 0)) action = 'sell';
+    }else{
+        if(score >= strat.buyTh) action = 'buy';
+        else if(score <= -strat.sellTh) action = 'sell';
+    }
+    // 決済方針。'trend' では短期の売りシグナルでは降りず、
+    // 長期トレンドが崩れたときだけ手仕舞う。上昇局面を持ち切るための設定
+    if(strat.exitPolicy === 'trend'){
+        if(action === 'sell'){
+            action = (ind.regime && ind.regime[i] != null && b.c < ind.regime[i]) ? 'sell' : 'hold';
+        }else if(ind.regime && ind.regime[i] != null && b.c < ind.regime[i]){
+            action = 'sell';
+        }
+    }
+
+    let blocked = '';
+    if(action === 'buy' && !regimeOK){ action = 'hold'; blocked = '長期トレンドが下向きのため見送り'; }
+    else if(action === 'buy' && !volumeOK){ action = 'hold'; blocked = '出来高が不足しているため見送り'; }
+
+    return {action, score, votes, volumeOK, regimeOK, blocked};
+}
+
+/* ============================================================
+   バックテストエンジン
+   当日終値でシグナル判定 → 翌日始値で約定（先読み防止）
+   ============================================================ */
+/* シミュレータを生成する。1日ずつ進められる構造にして、
+   バックテストとデモ運用の再生で同一のロジックを共有する */
+function createSim(symbols, strat, risk, from, to){
+    // 開始日より前の足も指標の計算には使う。ここを切ってしまうと移動平均が
+    // 立ち上がらず、期間を変えるだけで判定内容が変わってしまうため
+    const ctx = symbols.map(s => {
+        const bars = to ? s.bars.filter(b => b.d <= to) : s.bars.slice();
+        const idx = {};
+        bars.forEach((b, i) => { idx[b.d] = i; });
+        return {sym:s, bars, idx, ind: buildIndicators(bars, strat, risk)};
+    }).filter(c => c.bars.length > 30);
+
+    if(!ctx.length) return null;
+
+    // 全銘柄の日付を統合した時間軸
+    const dateSet = new Set();
+    ctx.forEach(c => c.bars.forEach(b => dateSet.add(b.d)));
+    const dates = Array.from(dateSet).sort();
+
+    // 売買を開始する位置。これより前は指標の助走にのみ使う
+    let startT = 0;
+    if(from){
+        const k = dates.findIndex(d => d >= from);
+        if(k < 0) return null;
+        startT = k;
+    }
+    if(startT >= dates.length) return null;
+
+    return {
+        ctx, dates, strat, risk, t:startT, startT,
+        tradeDates: dates.slice(startT),
+        cash: risk.initialCash,
+        positions:{},    // code -> {qty, avg, stop, take, peak, entryDate}
+        trades:[], equity:[], marks:{}, pending:[],
+        halted:false, haltReason:'', consecLosses:0,
+        dayTrades:0, dayDate:null, costs:0, lastExit:{},
+        events:[], finished:false
+    };
+}
+function simEvent(sim, msg){
+    sim.events.push({d: sim.dates[Math.min(sim.t, sim.dates.length-1)], m: msg});
+    if(sim.events.length > 500) sim.events.shift();
+}
+/* 発注に使える現金。初期資金の一定割合は常に手元へ残す（使い切りの防止） */
+function usableCash(sim){
+    const reserve = sim.risk.initialCash * (sim.risk.reserveCashPct || 0) / 100;
+    return Math.max(0, sim.cash - reserve);
+}
+function simOpen(sim, c, price, qty, date){
+    const risk = sim.risk;
+    const p = price * (1 + risk.slipPct/100);
+    const cost = p * qty * (1 + risk.feePct/100);
+    // 自己資金の範囲を超える発注は行わない（信用取引・借入は一切行わない）
+    if(cost > usableCash(sim)) return false;
+    sim.cash -= cost;
+    sim.costs += p * qty * (risk.feePct/100) + (p - price) * qty;   // 手数料と滑りの実額
+    sim.positions[c.sym.code] = {
+        qty, avg:p, entryDate:date, peak:p,
+        stop: calcStop(c, date, p, risk),
+        take: risk.takePct > 0 ? p * (1 + risk.takePct/100) : null
+    };
+    (sim.marks[c.sym.code] = sim.marks[c.sym.code] || []).push({d:date, type:'buy', price:p});
+    sim.dayTrades++;
+    simEvent(sim, `買い ${c.sym.code} ${num(qty)}株 @${num(p,1)}（${yen(cost)}）`);
+    return true;
+}
+function simClose(sim, c, price, date, reason){
+    const risk = sim.risk;
+    const code = c.sym.code;
+    const pos = sim.positions[code];
+    if(!pos) return;
+    const p = price * (1 - risk.slipPct/100);
+    const proceeds = p * pos.qty * (1 - risk.feePct/100);
+    const cost = pos.avg * pos.qty * (1 + risk.feePct/100);
+    sim.cash += proceeds;
+    sim.costs += p * pos.qty * (risk.feePct/100) + (price - p) * pos.qty;
+    const pnl = proceeds - cost;
+    sim.trades.push({
+        code, name:c.sym.name, qty:pos.qty,
+        entryDate:pos.entryDate, entryPrice:pos.avg,
+        exitDate:date, exitPrice:p,
+        pnl, pnlPct: cost > 0 ? pnl / cost * 100 : 0, reason,
+        days: daysBetween(pos.entryDate, date)
+    });
+    (sim.marks[code] = sim.marks[code] || []).push({d:date, type:'sell', price:p});
+    delete sim.positions[code];
+    sim.lastExit[code] = date;
+    sim.consecLosses = pnl > 0 ? 0 : sim.consecLosses + 1;
+    simEvent(sim, `売り ${code} ${num(pos.qty)}株 @${num(p,1)}（${reason} ${pnl >= 0 ? '+' : ''}${yen(pnl)}）`);
+}
+/* 安全装置。停止条件に触れたら新規の買いを止める。
+   既に持っている建玉は損切り・利確・売りシグナルで通常どおり手仕舞う */
+function simSafety(sim, equityNow){
+    if(sim.halted) return;
+    const risk = sim.risk;
+    if(risk.haltDrawdownPct > 0){
+        const floor = risk.initialCash * (1 - risk.haltDrawdownPct/100);
+        if(equityNow <= floor){
+            sim.halted = true;
+            sim.haltReason = `資産が下限 ${yen(floor)}（初期資金の-${risk.haltDrawdownPct}%）に到達したため新規買いを停止しました`;
+        }
+    }
+    if(!sim.halted && risk.maxConsecLosses > 0 && sim.consecLosses >= risk.maxConsecLosses){
+        sim.halted = true;
+        sim.haltReason = `${risk.maxConsecLosses}連敗に到達したため新規買いを停止しました`;
+    }
+    if(sim.halted) simEvent(sim, '⛔ ' + sim.haltReason);
+}
+/* 1営業日ぶん進める。最終日まで到達したら true を返す */
+function simStep(sim){
+    if(sim.finished) return true;
+    const ctx = sim.ctx, dates = sim.dates, risk = sim.risk;
+    const date = dates[sim.t];
+    if(sim.dayDate !== date){ sim.dayDate = date; sim.dayTrades = 0; }
+
+    // 1) 前日に生成された注文を当日始値で執行
+    const orders = sim.pending; sim.pending = [];
+    for(const o of orders){
+        const c = ctx[o.ci];
+        const i = c.idx[date];
+        if(i == null) continue;              // その銘柄に当日足が無ければ見送り
+        const bar = c.bars[i];
+        if(o.side === 'buy'){
+            if(sim.halted) continue;
+            if(sim.positions[c.sym.code]) continue;
+            if(Object.keys(sim.positions).length >= risk.maxPositions) continue;
+            if(risk.maxDailyTrades > 0 && sim.dayTrades >= risk.maxDailyTrades) continue;
+            const equityNow = sim.cash + mtm(ctx, sim.positions, date);
+            const qty = calcQty(c, i, bar.o, equityNow, usableCash(sim), risk);
+            if(qty > 0) simOpen(sim, c, bar.o, qty, date);
+        }else{
+            if(sim.positions[c.sym.code]) simClose(sim, c, bar.o, date, o.reason || 'シグナル');
+        }
+    }
+
+    // 2) ザラ場での損切り・利確・トレーリング判定
+    for(const c of ctx){
+        const pos = sim.positions[c.sym.code];
+        if(!pos) continue;
+        const i = c.idx[date];
+        if(i == null) continue;
+        const bar = c.bars[i];
+
+        if(pos.stop != null && bar.l <= pos.stop){
+            simClose(sim, c, pos.stop, date, '損切り');
+            continue;
+        }
+        if(pos.take != null && bar.h >= pos.take){
+            simClose(sim, c, pos.take, date, '利確');
+            continue;
+        }
+        if(risk.trailPct > 0){
+            pos.peak = Math.max(pos.peak, bar.h);
+            const trail = pos.peak * (1 - risk.trailPct/100);
+            if(pos.stop == null || trail > pos.stop) pos.stop = trail;
+        }
+        if(risk.maxHoldDays > 0 && daysBetween(pos.entryDate, date) >= risk.maxHoldDays){
+            simClose(sim, c, bar.c, date, '期限到来');
+        }
+    }
+
+    // 3) 当日終値でシグナルを評価し、翌日の注文を作成
+    for(let ci = 0; ci < ctx.length; ci++){
+        const c = ctx[ci];
+        const i = c.idx[date];
+        if(i == null || i < 30) continue;
+        const sig = evalSignal(c.bars, c.ind, i, sim.strat);
+        const code = c.sym.code;
+        const pos = sim.positions[code];
+        if(sig.action === 'buy' && !pos){
+            // 直前に売った銘柄をすぐ買い直さない（往復コストの浪費と往復売買の防止）
+            const last = sim.lastExit[code];
+            if(risk.cooldownDays > 0 && last && daysBetween(last, date) < risk.cooldownDays) continue;
+            sim.pending.push({ci, side:'buy'});
+        }else if(sig.action === 'sell' && pos){
+            // 最低保有日数に満たないうちはシグナルでの手仕舞いを見送る。
+            // 損切りはこの制限を受けないため、リスク管理は損なわれない
+            if(risk.minHoldDays > 0 && daysBetween(pos.entryDate, date) < risk.minHoldDays) continue;
+            sim.pending.push({ci, side:'sell', reason:'売りシグナル'});
+        }
+    }
+
+    // 4) 時価評価と安全装置の判定
+    const eq = sim.cash + mtm(ctx, sim.positions, date);
+    sim.equity.push({d:date, e:eq});
+    simSafety(sim, eq);
+
+    sim.t++;
+    if(sim.t >= dates.length){ simFinish(sim); return true; }
+    return false;
+}
+/* 最終日に残っている建玉を終値で清算する */
+function simFinish(sim){
+    if(sim.finished) return;
+    const lastDate = sim.dates[sim.dates.length-1];
+    for(const c of sim.ctx){
+        if(sim.positions[c.sym.code]){
+            const i = c.idx[lastDate];
+            if(i != null) simClose(sim, c, c.bars[i].c, lastDate, '期末清算');
+        }
+    }
+    if(sim.equity.length) sim.equity[sim.equity.length-1].e = sim.cash;
+    sim.finished = true;
+}
+function simResult(sim){
+    return {
+        equity:sim.equity, trades:sim.trades, marks:sim.marks,
+        ctx:sim.ctx, dates:sim.dates,
+        halted:sim.halted, haltReason:sim.haltReason, costs:sim.costs,
+        metrics: calcMetrics(sim.equity, sim.trades, sim.risk.initialCash),
+        buyHold: calcMetrics(buyHoldCurve(sim.ctx, sim.tradeDates, sim.risk), [], sim.risk.initialCash),
+        steady: steadiness(sim.equity, sim.trades, sim.risk.initialCash)
+    };
+}
+function backtest(symbols, strat, risk, from, to){
+    const sim = createSim(symbols, strat, risk, from, to);
+    if(!sim) return null;
+    while(!simStep(sim)){ /* 最終日まで進める */ }
+    return simResult(sim);
+}
+
+function mtm(ctx, positions, date){
+    let v = 0;
+    for(const c of ctx){
+        const pos = positions[c.sym.code];
+        if(!pos) continue;
+        const i = c.idx[date];
+        const price = i != null ? c.bars[i].c : pos.avg;
+        v += price * pos.qty;
+    }
+    return v;
+}
+function calcStop(c, date, price, risk){
+    if(risk.useAtrStop){
+        const i = c.idx[date];
+        const a = (i != null) ? c.ind.atr[i] : null;
+        if(a != null && a > 0) return price - a * risk.atrMult;
+    }
+    return risk.stopPct > 0 ? price * (1 - risk.stopPct/100) : null;
+}
+function calcQty(c, i, price, equity, cash, risk){
+    const unit = Math.max(1, risk.unit);
+    let qty = 0;
+    if(risk.sizing === 'risk'){
+        const a = c.ind.atr[i];
+        const stopDist = (a != null && a > 0) ? a * risk.atrMult : price * (risk.stopPct/100);
+        if(stopDist <= 0) return 0;
+        qty = Math.floor((equity * risk.riskPct/100) / stopDist / unit) * unit;
+    }else{
+        qty = Math.floor((equity * risk.allocPct/100) / price / unit) * unit;
+    }
+    // 株価が高い銘柄では算出枠が1単元に満たず0株になる。許可時のみ1単元まで引き上げる
+    if(qty < unit && risk.allowMinUnit) qty = unit;
+    const affordable = Math.floor(cash / (price * (1 + risk.feePct/100)) / unit) * unit;
+    return Math.max(0, Math.min(qty, affordable));
+}
+/* 数量が0になった理由を利用者に説明するための補助 */
+function sizingNote(price, equity, cash, risk){
+    const unit = Math.max(1, risk.unit);
+    const need = price * unit * (1 + risk.feePct/100);
+    if(need > cash) return '1単元(' + num(unit) + '株)に ' + yen(need) + ' 必要ですが現金が不足しています';
+    const budget = risk.sizing === 'ratio' ? equity * risk.allocPct/100 : null;
+    if(budget != null && need > budget){
+        return '1単元(' + num(unit) + '株)＝' + yen(need) + ' が投入枠 ' + yen(budget) +
+               '（資金の' + risk.allocPct + '%）を超えるため見送り。投入比率を上げるか「1単元まで許容」を有効にしてください';
+    }
+    return '算出数量が1単元に届きませんでした。リスク許容度または投入比率をご確認ください';
+}
+function daysBetween(a, b){
+    return Math.round((new Date(b) - new Date(a)) / 86400000);
+}
+
+/* 同じ資金で全銘柄を初日に等金額で買い、最終日まで持ち続けた場合の資産推移。
+   自動売買がこれを上回れないなら、売買する意味そのものが薄いという基準になる */
+function buyHoldCurve(ctx, dates, risk){
+    const per = risk.initialCash / ctx.length;
+    const unit = Math.max(1, risk.unit);
+    let cash = risk.initialCash;
+    const holds = [];
+    const d0 = dates[0];
+    ctx.forEach(c => {
+        const i0 = c.idx[d0];
+        if(i0 == null) return;
+        const b0 = c.bars[i0];
+        const qty = Math.floor(per / b0.o / unit) * unit;
+        const cost = qty * b0.o * (1 + risk.feePct/100);
+        if(qty > 0 && cost <= cash){ cash -= cost; holds.push({c, qty, last:b0.o}); }
+    });
+    return dates.map(d => {
+        let v = cash;
+        holds.forEach(h => {
+            const i = h.c.idx[d];
+            if(i != null) h.last = h.c.bars[i].c;
+            v += h.last * h.qty;
+        });
+        return {d, e:v};
+    });
+}
+
+/* 月次リターン。着実に増えているかは、月ごとの積み上がりを見るのが分かりやすい */
+function monthlyReturns(equity){
+    if(!equity.length) return [];
+    const byMonth = {};
+    equity.forEach(p => { byMonth[p.d.slice(0,7)] = p.e; });
+    const keys = Object.keys(byMonth).sort();
+    const out = [];
+    let prev = equity[0].e;
+    keys.forEach(k => {
+        out.push({m:k, r: prev > 0 ? (byMonth[k]/prev - 1) * 100 : 0, e:byMonth[k]});
+        prev = byMonth[k];
+    });
+    return out;
+}
+
+/* 堅実さの評価。増え方が安定しているか、落ち込みから戻れるかを見る */
+function steadiness(equity, trades, initial){
+    const months = monthlyReturns(equity);
+    const winMonths = months.filter(m => m.r > 0).length;
+    const worstMonth = months.length ? Math.min(...months.map(m => m.r)) : 0;
+
+    let streak = 0, maxStreak = 0;
+    trades.forEach(t => { streak = t.pnl > 0 ? 0 : streak + 1; maxStreak = Math.max(maxStreak, streak); });
+
+    // 最大ドローダウンの谷から、以前の高値を取り戻すまでにかかった日数
+    let peak = -Infinity, peakDate = null, worstDD = 0, troughDate = null, ddPeakDate = null;
+    equity.forEach(p => {
+        if(p.e > peak){ peak = p.e; peakDate = p.d; }
+        const dd = peak > 0 ? (p.e - peak) / peak * 100 : 0;
+        if(dd < worstDD){ worstDD = dd; troughDate = p.d; ddPeakDate = peakDate; }
+    });
+    let recoveryDays = null;
+    if(troughDate != null){
+        const peakVal = equity.find(p => p.d === ddPeakDate);
+        const rec = equity.find(p => p.d > troughDate && peakVal && p.e >= peakVal.e);
+        if(rec) recoveryDays = daysBetween(troughDate, rec.d);
+    }
+    return {
+        months, winMonths,
+        monthCount: months.length,
+        winMonthRate: months.length ? winMonths / months.length * 100 : 0,
+        worstMonth, maxLoseStreak: maxStreak,
+        recoveryDays, stillUnderwater: troughDate != null && recoveryDays == null
+    };
+}
+
+function calcMetrics(equity, trades, initial){
+    if(!equity.length) return null;
+    const last = equity[equity.length-1].e;
+    const totalPnl = last - initial;
+    const totalRet = initial > 0 ? totalPnl / initial * 100 : 0;
+
+    let peak = -Infinity, maxDD = 0;
+    const ddSeries = equity.map(p => {
+        peak = Math.max(peak, p.e);
+        const dd = peak > 0 ? (p.e - peak) / peak * 100 : 0;
+        maxDD = Math.min(maxDD, dd);
+        return dd;
+    });
+
+    const rets = [];
+    for(let i = 1; i < equity.length; i++){
+        if(equity[i-1].e > 0) rets.push(equity[i].e / equity[i-1].e - 1);
+    }
+    const mean = rets.length ? rets.reduce((a,b)=>a+b,0) / rets.length : 0;
+    const sd = rets.length > 1
+        ? Math.sqrt(rets.reduce((a,b)=>a+Math.pow(b-mean,2),0) / (rets.length-1)) : 0;
+    const sharpe = sd > 0 ? mean / sd * Math.sqrt(252) : 0;
+
+    const wins = trades.filter(t => t.pnl > 0);
+    const losses = trades.filter(t => t.pnl <= 0);
+    const sumWin = wins.reduce((a,t)=>a+t.pnl, 0);
+    const sumLoss = Math.abs(losses.reduce((a,t)=>a+t.pnl, 0));
+
+    const years = equity.length > 1
+        ? Math.max(daysBetween(equity[0].d, equity[equity.length-1].d) / 365, 1/365) : 1;
+    const cagr = initial > 0 && last > 0 ? (Math.pow(last/initial, 1/years) - 1) * 100 : 0;
+
+    return {
+        finalEquity:last, totalPnl, totalRet, cagr, maxDD, sharpe, ddSeries,
+        trades: trades.length,
+        winRate: trades.length ? wins.length / trades.length * 100 : 0,
+        avgWin: wins.length ? sumWin/wins.length : 0,
+        avgLoss: losses.length ? -sumLoss/losses.length : 0,
+        pf: sumLoss > 0 ? sumWin/sumLoss : (sumWin > 0 ? Infinity : 0),
+        expectancy: trades.length ? totalPnl/trades.length : 0,
+        avgDays: trades.length ? trades.reduce((a,t)=>a+t.days,0)/trades.length : 0
+    };
+}
+
+/* ============================================================
+   デモデータ生成（幾何ブラウン運動）
+   ============================================================ */
+function mulberry32(seed){
+    let a = seed >>> 0;
+    return function(){
+        a |= 0; a = a + 0x6D2B79F5 | 0;
+        let t = Math.imul(a ^ a >>> 15, 1 | a);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+}
+/* trendPct: トレンドの持続性(0〜60程度)。前日の値動きを翌日へどれだけ引き継ぐか。
+   0だと完全なランダムウォークとなり、理論上どんなテクニカル戦略も買い持ちに勝てない。
+   実際の相場にはある程度の持続性があるため、それを再現して戦略の有効性を確かめる */
+function genBars(days, start, volPct, seed, driftPct, trendPct){
+    const rnd = mulberry32(seed);
+    const gauss = () => {
+        const u = Math.max(rnd(), 1e-9), v = rnd();
+        return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v);
+    };
+    const dailyVol = (volPct/100) / Math.sqrt(252);
+    const drift = (driftPct == null ? 6 : driftPct) / 100 / 252;
+    const phi = Math.max(0, Math.min(0.6, (trendPct == null ? 0 : trendPct) / 100));
+    const bars = [];
+    let price = start;
+    let prevRet = 0;
+    const d = new Date();
+    d.setDate(d.getDate() - Math.ceil(days * 1.45));
+    let cursor = new Date(d);
+    while(bars.length < days){
+        cursor.setDate(cursor.getDate() + 1);
+        const wd = cursor.getDay();
+        if(wd === 0 || wd === 6) continue;
+        const o = price;
+        // 前日の値動きを一部引き継ぐことでトレンドの持続性を表現する
+        const shock = dailyVol * Math.sqrt(1 - phi*phi) * gauss();
+        const ret = drift - 0.5*dailyVol*dailyVol + phi*prevRet + shock;
+        prevRet = ret - drift;
+        price = price * Math.exp(ret);
+        const c = Math.max(1, price);
+        const range = Math.abs(c - o) + c * dailyVol * (0.4 + rnd());
+        const h = Math.max(o, c) + range * rnd() * 0.6;
+        const l = Math.max(1, Math.min(o, c) - range * rnd() * 0.6);
+        bars.push({
+            d: cursor.toISOString().slice(0,10),
+            o: round1(o), h: round1(h), l: round1(l), c: round1(c),
+            v: Math.round(500000 * (0.5 + rnd()*1.6))
+        });
+    }
+    return bars;
+}
+function round1(n){ return Math.round(n*10)/10; }
+
+/* ============================================================
+   CSV 取込
+   ============================================================ */
+/* 引用符に対応した1行分の分割。"2,500" のように値の内側にカンマを含む形式に対応する */
+function splitCSVLine(line, delim){
+    const out = [];
+    let cur = '', quoted = false;
+    for(let i = 0; i < line.length; i++){
+        const ch = line[i];
+        if(quoted){
+            if(ch === '"'){
+                if(line[i+1] === '"'){ cur += '"'; i++; }   // "" はエスケープされた引用符
+                else quoted = false;
+            }else cur += ch;
+        }else{
+            if(ch === '"') quoted = true;
+            else if(ch === delim){ out.push(cur); cur = ''; }
+            else cur += ch;
+        }
+    }
+    out.push(cur);
+    return out.map(c => c.trim());
+}
+function parseCSV(text){
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if(!lines.length) throw new Error('データが空です');
+    const delim = (lines[0].split('\t').length > lines[0].split(',').length) ? '\t' : ',';
+    const cells = lines.map(l => splitCSVLine(l, delim));
+
+    const headerMap = {d:0, o:1, h:2, l:3, c:4, v:5};
+    let startRow = 0;
+    const first = cells[0].map(c => c.toLowerCase());
+    const looksHeader = isNaN(parseNum(cells[0][1]));
+    if(looksHeader){
+        const find = keys => first.findIndex(h => keys.some(k => h.includes(k)));
+        const pick = (keys, def) => { const i = find(keys); return i >= 0 ? i : def; };
+        headerMap.d = pick(['date','日付','年月日'], 0);
+        headerMap.o = pick(['open','始値','始'], 1);
+        headerMap.h = pick(['high','高値','高'], 2);
+        headerMap.l = pick(['low','安値','安'], 3);
+        headerMap.c = pick(['close','終値','終'], 4);
+        headerMap.v = pick(['volume','出来高','売買高'], 5);
+        startRow = 1;
+    }
+
+    const bars = [];
+    for(let i = startRow; i < cells.length; i++){
+        const row = cells[i];
+        const d = normDate(row[headerMap.d]);
+        if(!d) continue;
+        const o = parseNum(row[headerMap.o]), h = parseNum(row[headerMap.h]);
+        const l = parseNum(row[headerMap.l]), c = parseNum(row[headerMap.c]);
+        const v = parseNum(row[headerMap.v]);
+        if(!isFinite(c) || c <= 0) continue;
+        bars.push({
+            d,
+            o: isFinite(o) && o > 0 ? o : c,
+            h: isFinite(h) && h > 0 ? h : Math.max(o||c, c),
+            l: isFinite(l) && l > 0 ? l : Math.min(o||c, c),
+            c,
+            v: isFinite(v) ? v : 0
+        });
+    }
+    if(!bars.length) throw new Error('有効な行がありませんでした。列の並びをご確認ください');
+    return bars;
+}
+function mergeBars(sym, incoming){
+    const map = {};
+    sym.bars.forEach(b => { map[b.d] = b; });
+    incoming.forEach(b => { map[b.d] = b; });
+    sym.bars = Object.values(map).sort((a,b) => a.d < b.d ? -1 : 1);
+}
+
+/* ============================================================
+   画面描画
+   ============================================================ */
+function switchTab(id){
+    state.ui.tab = id;
+    TABS.forEach(t => {
+        document.getElementById('tab-' + t.id).style.display = (t.id === id) ? '' : 'none';
+    });
+    renderTabs();
+    render();
+    save();
+}
+function renderTabs(){
+    document.getElementById('tabs').innerHTML = TABS.map(t =>
+        `<button class="tab ${state.ui.tab === t.id ? 'active' : ''}" onclick="switchTab('${t.id}')">${t.label}</button>`
+    ).join('');
+}
+
+function render(){
+    renderSymbolSelects();
+    const tab = state.ui.tab;
+    if(tab === 'dash') renderDash();
+    if(tab === 'data') renderSymbolTable();
+    if(tab === 'strategy'){ renderStrategy(); renderRisk(); renderPresets(); }
+    if(tab === 'demo') renderDemo();
+    if(tab === 'auto'){ renderExec(); renderAutoSignals(); renderLog(); }
+    if(tab === 'history') renderHistory();
+}
+
+function renderSymbolSelects(){
+    const opts = state.symbols.map(s =>
+        `<option value="${esc(s.code)}">${esc(s.code)} ${esc(s.name)}</option>`).join('');
+    ['csvTarget','barSymbol','btChartSym'].forEach(id => {
+        const el = document.getElementById(id);
+        if(!el) return;
+        const cur = el.value;
+        el.innerHTML = opts || '<option value="">銘柄未登録</option>';
+        if(cur) el.value = cur;
+    });
+    ['btTarget','optTarget','dmTarget','wfTarget'].forEach(id => {
+        const el = document.getElementById(id);
+        if(!el) return;
+        const cur = el.value;
+        el.innerHTML = '<option value="__all__">全銘柄（ポートフォリオ）</option>' + opts;
+        if(cur) el.value = cur;
+    });
+}
+
+function renderDash(){
+    const p = state.paper;
+    const mv = positionsValue();
+    const equity = p.cash + mv;
+    const pnl = equity - state.risk.initialCash;
+    const ret = state.risk.initialCash > 0 ? pnl / state.risk.initialCash * 100 : 0;
+    const realized = p.trades.reduce((a,t) => a + t.pnl, 0);
+    const wins = p.trades.filter(t => t.pnl > 0).length;
+
+    document.getElementById('dashStats').innerHTML = `
+        ${stat('総資産', yen(equity), '現金 ' + yen(p.cash))}
+        ${stat('評価損益', yen(pnl), pct(ret), cls(pnl))}
+        ${stat('建玉評価額', yen(mv), Object.keys(p.positions).length + '銘柄')}
+        ${stat('実現損益', yen(realized), p.trades.length + '回決済', cls(realized))}
+        ${stat('勝率', p.trades.length ? (wins/p.trades.length*100).toFixed(1) + '%' : '—', wins + '勝 ' + (p.trades.length-wins) + '敗')}
+        ${stat('登録銘柄', state.symbols.length + '銘柄', p.lastRun ? '最終判定 ' + p.lastRun : '未実行')}
+    `;
+
+    const sigs = p.lastSignals || [];
+    document.getElementById('dashSignals').innerHTML = sigs.length ? `
+        <thead><tr><th>銘柄</th><th>判定</th><th class="num">スコア</th><th class="num">終値</th><th>根拠</th></tr></thead>
+        <tbody>${sigs.slice(0,12).map(s => `
+            <tr>
+                <td>${esc(s.code)} ${esc(s.name)}</td>
+                <td><span class="badge ${s.action}">${actLabel(s.action)}</span></td>
+                <td class="num ${cls(s.score)}">${s.score.toFixed(1)}</td>
+                <td class="num">${num(s.price,1)}</td>
+                <td style="white-space:normal;color:var(--muted)">${esc(s.votes.map(v=>v.text).filter(Boolean).join(' / '))}${s.note ? '<br><span style="color:var(--amber)">' + esc(s.note) + '</span>' : ''}</td>
+            </tr>`).join('')}</tbody>`
+        : '<tbody><tr><td class="empty">シグナル判定はまだ実行されていません。<br>「シグナル判定を実行」を押してください。</td></tr></tbody>';
+
+    renderPositionsTable('dashPositions');
+    drawEquityChart(document.getElementById('dashEquity'),
+        p.equity.length ? p.equity : [{d:today(), e:state.risk.initialCash}]);
+}
+function stat(k, v, s, c){
+    return `<div class="stat"><div class="k">${k}</div><div class="v ${c||''}">${v}</div><div class="s">${s||''}</div></div>`;
+}
+function actLabel(a){ return a === 'buy' ? '買い' : (a === 'sell' ? '売り' : '見送り'); }
+
+function positionsValue(){
+    let v = 0;
+    for(const code in state.paper.positions){
+        const pos = state.paper.positions[code];
+        const s = state.symbols.find(x => x.code === code);
+        const price = (s && s.bars.length) ? s.bars[s.bars.length-1].c : pos.avg;
+        v += price * pos.qty;
+    }
+    return v;
+}
+function renderPositionsTable(id){
+    const el = document.getElementById(id);
+    const codes = Object.keys(state.paper.positions);
+    if(!codes.length){
+        el.innerHTML = '<tbody><tr><td class="empty">保有ポジションはありません</td></tr></tbody>';
+        return;
+    }
+    el.innerHTML = `
+        <thead><tr><th>銘柄</th><th class="num">数量</th><th class="num">取得単価</th><th class="num">現在値</th>
+        <th class="num">評価損益</th><th class="num">損切</th><th class="num">利確</th><th>取得日</th><th></th></tr></thead>
+        <tbody>${codes.map(code => {
+            const pos = state.paper.positions[code];
+            const s = state.symbols.find(x => x.code === code);
+            const price = (s && s.bars.length) ? s.bars[s.bars.length-1].c : pos.avg;
+            const pnl = (price - pos.avg) * pos.qty;
+            const pr = pos.avg > 0 ? (price/pos.avg - 1) * 100 : 0;
+            return `<tr>
+                <td>${esc(code)} ${esc(s ? s.name : '')}</td>
+                <td class="num">${num(pos.qty)}</td>
+                <td class="num">${num(pos.avg,1)}</td>
+                <td class="num">${num(price,1)}</td>
+                <td class="num ${cls(pnl)}">${yen(pnl)} <span style="opacity:.7">(${pct(pr)})</span></td>
+                <td class="num">${pos.stop ? num(pos.stop,1) : '—'}</td>
+                <td class="num">${pos.take ? num(pos.take,1) : '—'}</td>
+                <td>${esc(pos.entryDate)}</td>
+                <td><button class="btn sm danger" onclick="manualClose('${esc(code)}')">決済</button></td>
+            </tr>`;
+        }).join('')}</tbody>`;
+}
+
+function renderSymbolTable(){
+    const el = document.getElementById('symbolTable');
+    if(!state.symbols.length){
+        el.innerHTML = '<tbody><tr><td class="empty">銘柄が登録されていません。<br>上のフォームから追加するか「サンプル5銘柄を一括生成」でお試しください。</td></tr></tbody>';
+        return;
+    }
+    el.innerHTML = `
+        <thead><tr><th>コード</th><th>銘柄名</th><th class="num">単元</th><th class="num">データ本数</th>
+        <th>期間</th><th class="num">最新終値</th><th></th></tr></thead>
+        <tbody>${state.symbols.map(s => `
+            <tr>
+                <td>${esc(s.code)}</td>
+                <td>${esc(s.name)}</td>
+                <td class="num">${num(s.unit)}</td>
+                <td class="num">${num(s.bars.length)}</td>
+                <td>${s.bars.length ? esc(s.bars[0].d) + ' 〜 ' + esc(s.bars[s.bars.length-1].d) : '—'}</td>
+                <td class="num">${s.bars.length ? num(s.bars[s.bars.length-1].c,1) : '—'}</td>
+                <td>
+                    <button class="btn sm" onclick="clearBars('${esc(s.code)}')">データ削除</button>
+                    <button class="btn sm danger" onclick="removeSymbol('${esc(s.code)}')">削除</button>
+                </td>
+            </tr>`).join('')}</tbody>`;
+}
+
+function renderStrategy(){
+    const st = state.strategy;
+    document.getElementById('stMode').value = st.mode;
+    document.getElementById('stBuyTh').value = st.buyTh;
+    document.getElementById('stSellTh').value = st.sellTh;
+    document.getElementById('stExit').value = st.exitPolicy || 'signal';
+    const scoreMode = st.mode === 'score';
+    document.getElementById('stBuyTh').disabled = !scoreMode;
+    document.getElementById('stSellTh').disabled = !scoreMode;
+    document.getElementById('modeHint').innerHTML = (scoreMode
+        ? '有効なルールの重み付き合計が買い閾値以上で買い、売り閾値以上のマイナスで売りと判定します。'
+        : '有効なルールがすべて同じ方向を向いたときのみ発注します。取引回数は減りますが、精度重視の設定です。')
+        + '<br>' + ((st.exitPolicy === 'trend')
+        ? '<b>決済は長期トレンドが崩れたときだけ</b>行います。上昇が続く限り持ち続けるため売買回数が大きく減り、上昇分を取りこぼしにくくなります（損切りは常に有効）。'
+        : '売りシグナルが出るたびに決済します。細かく利益を確定できますが、売買回数とコストが増え、上昇局面を早く降りてしまう傾向があります。');
+
+    document.getElementById('ruleList').innerHTML = Object.keys(RULE_DEFS).map(key => {
+        const def = RULE_DEFS[key], r = st.rules[key];
+        return `<div class="rule ${r.on ? '' : 'off'}">
+            <div class="rh">
+                <input type="checkbox" ${r.on ? 'checked' : ''} onchange="toggleRule('${key}',this.checked)">
+                <span class="name">${def.name}</span>
+                ${def.filter ? '<span class="pill">フィルタ</span>'
+                             : `<span class="pill">重み <input type="number" value="${r.w}" step="0.5" min="0" style="width:56px;padding:.15rem .3rem;font-size:.75rem" onchange="setRule('${key}','w',this.value)"></span>`}
+            </div>
+            <div class="params">
+                ${def.params.map(p => `
+                    <div class="field">
+                        <label>${p.label}</label>
+                        <input type="number" value="${r[p.k]}" min="${p.min}" step="${p.step||1}"
+                               onchange="setRule('${key}','${p.k}',this.value)">
+                    </div>`).join('')}
+            </div>
+            <p class="hint">${def.desc}</p>
+        </div>`;
+    }).join('');
+}
+function toggleRule(key, on){ state.strategy.rules[key].on = on; save(); renderStrategy(); }
+function setRule(key, k, v){
+    const n = parseFloat(v);
+    if(isFinite(n)) state.strategy.rules[key][k] = n;
+    save();
+}
+function readStrategy(){
+    state.strategy.mode = document.getElementById('stMode').value;
+    state.strategy.buyTh = parseFloat(document.getElementById('stBuyTh').value) || 1;
+    state.strategy.sellTh = parseFloat(document.getElementById('stSellTh').value) || 1;
+    state.strategy.exitPolicy = document.getElementById('stExit').value;
+    save();
+}
+
+function renderRisk(){
+    const r = state.risk;
+    const set = (id, v) => { const el = document.getElementById(id); if(el) el.value = v; };
+    set('rkCash', r.initialCash); set('rkSizing', r.sizing); set('rkAlloc', r.allocPct);
+    set('rkRisk', r.riskPct); set('rkAtrP', r.atrPeriod); set('rkAtrM', r.atrMult);
+    set('rkMaxPos', r.maxPositions); set('rkUnit', r.unit); set('rkStop', r.stopPct);
+    set('rkTake', r.takePct); set('rkTrail', r.trailPct); set('rkHold', r.maxHoldDays);
+    set('rkFee', r.feePct); set('rkSlip', r.slipPct);
+    document.getElementById('rkAtrStop').checked = !!r.useAtrStop;
+    document.getElementById('rkMinUnit').checked = !!r.allowMinUnit;
+    set('rkHaltDD', r.haltDrawdownPct); set('rkConsec', r.maxConsecLosses);
+    set('rkDaily', r.maxDailyTrades); set('rkReserve', r.reserveCashPct);
+    set('rkMinHold', r.minHoldDays); set('rkCooldown', r.cooldownDays);
+    const parts = [];
+    parts.push(r.haltDrawdownPct > 0
+        ? `資産が ${yen(r.initialCash * (1 - r.haltDrawdownPct/100))} まで減ったら新規買いを止めます`
+        : '資産の下限による停止は無効です');
+    if(r.maxConsecLosses > 0) parts.push(`${r.maxConsecLosses}連敗で新規買いを止めます`);
+    if(r.maxDailyTrades > 0) parts.push(`1日の新規買いは${r.maxDailyTrades}回までです`);
+    if(r.reserveCashPct > 0) parts.push(`${yen(r.initialCash * r.reserveCashPct/100)} は常に現金で残します`);
+    if(r.minHoldDays > 0) parts.push(`買ってから${r.minHoldDays}日間はシグナルでは売りません（損切りは常に有効）`);
+    if(r.cooldownDays > 0) parts.push(`売却後${r.cooldownDays}日間は同じ銘柄を買い直しません`);
+    const hintEl = document.getElementById('safetyHint');
+    if(hintEl) hintEl.textContent = parts.join('。') + '。';
+    document.getElementById('fldAlloc').style.opacity = r.sizing === 'ratio' ? 1 : .4;
+    document.getElementById('fldRisk').style.opacity = r.sizing === 'risk' ? 1 : .4;
+}
+function readRisk(){
+    const g = id => parseFloat(document.getElementById(id).value);
+    const r = state.risk;
+    const prevCash = r.initialCash;
+    r.initialCash = g('rkCash') || 1000000;
+    r.sizing = document.getElementById('rkSizing').value;
+    r.allocPct = g('rkAlloc') || 20;
+    r.riskPct = g('rkRisk') || 2;
+    r.atrPeriod = Math.max(2, g('rkAtrP') || 14);
+    r.atrMult = g('rkAtrM') || 2;
+    r.maxPositions = Math.max(1, g('rkMaxPos') || 5);
+    r.unit = Math.max(1, g('rkUnit') || 100);
+    r.stopPct = g('rkStop') || 0;
+    r.takePct = g('rkTake') || 0;
+    r.trailPct = g('rkTrail') || 0;
+    r.maxHoldDays = g('rkHold') || 0;
+    r.feePct = g('rkFee') || 0;
+    r.slipPct = g('rkSlip') || 0;
+    r.useAtrStop = document.getElementById('rkAtrStop').checked;
+    r.allowMinUnit = document.getElementById('rkMinUnit').checked;
+    r.haltDrawdownPct = Math.max(0, g('rkHaltDD') || 0);
+    r.maxConsecLosses = Math.max(0, g('rkConsec') || 0);
+    r.maxDailyTrades = Math.max(0, g('rkDaily') || 0);
+    r.reserveCashPct = Math.max(0, Math.min(90, g('rkReserve') || 0));
+    r.minHoldDays = Math.max(0, g('rkMinHold') || 0);
+    r.cooldownDays = Math.max(0, g('rkCooldown') || 0);
+    // 未取引のうちは初期資金の変更をペーパー口座にも反映する
+    if(!state.paper.trades.length && !Object.keys(state.paper.positions).length && prevCash !== r.initialCash){
+        state.paper.cash = r.initialCash;
+        state.paper.equity = [];
+    }
+    save();
+    renderRisk();
+    renderPresets();
+}
+
+/* ---------- 運用プリセットと売買コスト ---------- */
+function renderPresets(){
+    const el = document.getElementById('presetBtns');
+    if(!el) return;
+    const cur = state.risk.initialCash;
+    el.innerHTML = Object.keys(PRESETS).map(k => {
+        const p = PRESETS[k];
+        const active = cur === p.risk.initialCash;
+        return `<button class="btn ${active ? 'primary' : (p.recommended ? 'green' : '')}" onclick="applyPreset('${k}')">
+            ${p.label}<span style="opacity:.75;font-weight:500"> / ${p.note}</span></button>`;
+    }).join('');
+
+    // 少額運用では手数料が成績を大きく左右するため、往復コストを常に見せる
+    const r = state.risk;
+    const roundTrip = (r.feePct + r.slipPct) * 2;
+    const budget = r.initialCash * r.allocPct / 100;
+    const costYen = budget * roundTrip / 100;
+    const ratio = r.takePct > 0 ? roundTrip / r.takePct * 100 : null;
+    const heavy = ratio != null && ratio >= 33;
+    document.getElementById('costStats').innerHTML = `
+        ${stat('1銘柄あたり投入額', yen(budget), '資金の' + r.allocPct + '%')}
+        ${stat('売買1往復のコスト', roundTrip.toFixed(2) + '%', '手数料' + r.feePct + '%＋滑り' + r.slipPct + '%の往復')}
+        ${stat('コストの目安額', yen(costYen), '1回の売買あたり')}
+        ${stat('損益分岐に必要な上昇', roundTrip.toFixed(2) + '%', 'これ未満の値上がりでは損', heavy ? 'neg' : '')}
+        ${stat('利確幅に占めるコスト', ratio == null ? '—' : ratio.toFixed(0) + '%',
+               heavy ? 'コスト負けしやすい設定です' : '許容範囲です', heavy ? 'neg' : 'pos')}
+    `;
+}
+function applyPreset(key){
+    const p = PRESETS[key];
+    if(!p) return;
+    const dirty = state.paper.trades.length || Object.keys(state.paper.positions).length;
+    if(dirty && !confirm(p.label + 'の設定を適用し、ペーパー口座をリセットします。よろしいですか？')) return;
+    Object.assign(state.risk, p.risk);
+    if(p.strategy){
+        state.strategy.mode = p.strategy.mode;
+        state.strategy.buyTh = p.strategy.buyTh;
+        state.strategy.sellTh = p.strategy.sellTh;
+        state.strategy.exitPolicy = p.strategy.exitPolicy || 'signal';
+        Object.keys(p.strategy.rules).forEach(k => {
+            state.strategy.rules[k] = Object.assign({}, state.strategy.rules[k], p.strategy.rules[k]);
+        });
+    }
+    state.paper = {cash:p.risk.initialCash, positions:{}, trades:[], equity:[], log:[],
+                   lastSignals:[], lastRun:null, lastBarDate:null};
+    demoReset(true);
+    save();
+    renderRisk(); renderPresets(); renderStrategy(); render();
+    toast(p.label + 'の設定を適用しました');
+}
+
+/* ---------- 実行設定 ---------- */
+function renderExec(){
+    const e = state.exec;
+    document.getElementById('exMode').value = e.mode;
+    document.getElementById('exInterval').value = e.interval;
+    document.getElementById('exUrl').value = e.url;
+    document.getElementById('exToken').value = e.token;
+    const hints = {
+        dry:'シグナルの記録のみを行い、仮想口座の残高は変動しません。戦略の挙動を安全に確認したい場合に選択します。',
+        paper:'シグナルに従って仮想口座で売買します。実際の資金は動きません。',
+        bridge:'仮想約定に加えて、設定したエンドポイントへ注文JSONをPOSTします。実発注につながる可能性があるため、送信前に確認ダイアログを表示します。'
+    };
+    document.getElementById('execHint').textContent = hints[e.mode];
+    document.getElementById('autoToggle').textContent = autoTimer ? '■ 自動実行を停止' : '▶ 自動実行を開始';
+    document.getElementById('autoToggle').className = autoTimer ? 'btn danger' : 'btn primary';
+    const halted = !!state.paper.halted;
+    document.getElementById('haltBanner').style.display = halted ? '' : 'none';
+    document.getElementById('haltRelease').style.display = halted ? '' : 'none';
+    if(halted) document.getElementById('haltMsg').innerHTML =
+        '<b>安全装置が作動しました：</b>' + esc(state.paper.haltReason) +
+        '<br>新規の買いは行いません。保有中の建玉は損切り・利確の条件で手仕舞われます。設定を見直したうえで「安全装置を解除して再開」を押してください。';
+    document.getElementById('orderSample').value = JSON.stringify({
+        version:1, generatedAt:new Date().toISOString(), mode:e.mode,
+        orders:[{symbol:'7203', name:'トヨタ自動車', side:'buy', quantity:100,
+                 orderType:'market', price:null, stopLoss:2790, takeProfit:3450,
+                 signalScore:3.5, reasons:['ゴールデンクロス','MACD陽転中']}]
+    }, null, 2);
+}
+function readExec(){
+    state.exec.mode = document.getElementById('exMode').value;
+    state.exec.interval = Math.max(1, parseInt(document.getElementById('exInterval').value) || 30);
+    state.exec.url = document.getElementById('exUrl').value.trim();
+    state.exec.token = document.getElementById('exToken').value.trim();
+    save();
+    renderExec();
+}
+
+function renderAutoSignals(){
+    const el = document.getElementById('autoSignals');
+    const sigs = state.paper.lastSignals || [];
+    if(!sigs.length){
+        el.innerHTML = '<tbody><tr><td class="empty">「今すぐシグナル判定」を実行すると、ここに注文プランが表示されます。</td></tr></tbody>';
+        return;
+    }
+    el.innerHTML = `
+        <thead><tr><th>銘柄</th><th>判定</th><th class="num">スコア</th><th class="num">終値</th>
+        <th class="num">想定数量</th><th class="num">概算金額</th><th class="num">損切</th><th class="num">利確</th><th>根拠</th><th>備考</th></tr></thead>
+        <tbody>${sigs.map(s => `
+            <tr>
+                <td>${esc(s.code)} ${esc(s.name)}</td>
+                <td><span class="badge ${s.action}">${actLabel(s.action)}</span></td>
+                <td class="num ${cls(s.score)}">${s.score.toFixed(1)}</td>
+                <td class="num">${num(s.price,1)}</td>
+                <td class="num">${s.qty ? num(s.qty) : '—'}</td>
+                <td class="num">${s.qty ? yen(s.qty * s.price) : '—'}</td>
+                <td class="num">${s.stop ? num(s.stop,1) : '—'}</td>
+                <td class="num">${s.take ? num(s.take,1) : '—'}</td>
+                <td style="white-space:normal;color:var(--muted)">${esc(s.votes.map(v=>v.text).filter(Boolean).join(' / '))}</td>
+                <td style="white-space:normal;color:var(--amber)">${esc(s.note||'')}</td>
+            </tr>`).join('')}</tbody>`;
+}
+function renderLog(){
+    const el = document.getElementById('execLog');
+    const logs = state.paper.log || [];
+    el.innerHTML = logs.length
+        ? logs.slice(0,200).map(l => `<div class="row"><span class="t">${esc(l.t)}</span><span>${esc(l.m)}</span></div>`).join('')
+        : '<div class="empty">ログはまだありません</div>';
+}
+function log(m){
+    state.paper.log = state.paper.log || [];
+    state.paper.log.unshift({t:new Date().toLocaleString('ja-JP', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}), m});
+    if(state.paper.log.length > 500) state.paper.log.length = 500;
+}
+
+function renderHistory(){
+    const trades = state.paper.trades;
+    const m = calcMetrics(
+        state.paper.equity.length ? state.paper.equity : [{d:today(), e:state.paper.cash + positionsValue()}],
+        trades, state.risk.initialCash);
+    document.getElementById('paperStats').innerHTML = m ? `
+        ${stat('総リターン', pct(m.totalRet), yen(m.totalPnl), cls(m.totalPnl))}
+        ${stat('取引回数', num(m.trades) + '回', '平均保有 ' + m.avgDays.toFixed(1) + '日')}
+        ${stat('勝率', m.winRate.toFixed(1) + '%', 'PF ' + (isFinite(m.pf) ? m.pf.toFixed(2) : '∞'))}
+        ${stat('平均利益', yen(m.avgWin), '平均損失 ' + yen(m.avgLoss))}
+        ${stat('最大DD', m.maxDD.toFixed(2) + '%', '', 'neg')}
+        ${stat('期待値', yen(m.expectancy), '1取引あたり', cls(m.expectancy))}` : '';
+
+    const el = document.getElementById('paperTrades');
+    el.innerHTML = trades.length ? `
+        <thead><tr><th>銘柄</th><th class="num">数量</th><th>取得日</th><th class="num">取得</th>
+        <th>決済日</th><th class="num">決済</th><th class="num">損益</th><th class="num">率</th><th>理由</th></tr></thead>
+        <tbody>${trades.slice().reverse().map(t => `
+            <tr>
+                <td>${esc(t.code)} ${esc(t.name)}</td>
+                <td class="num">${num(t.qty)}</td>
+                <td>${esc(t.entryDate)}</td>
+                <td class="num">${num(t.entryPrice,1)}</td>
+                <td>${esc(t.exitDate)}</td>
+                <td class="num">${num(t.exitPrice,1)}</td>
+                <td class="num ${cls(t.pnl)}">${yen(t.pnl)}</td>
+                <td class="num ${cls(t.pnl)}">${pct(t.pnlPct)}</td>
+                <td>${esc(t.reason)}</td>
+            </tr>`).join('')}</tbody>`
+        : '<tbody><tr><td class="empty">約定履歴はまだありません</td></tr></tbody>';
+}
+
+/* ============================================================
+   チャート描画（Canvas）
+   ============================================================ */
+function setupCanvas(cv){
+    const dpr = window.devicePixelRatio || 1;
+    const rect = cv.getBoundingClientRect();
+    const w = rect.width || 600, h = rect.height || 200;
+    cv.width = w * dpr; cv.height = h * dpr;
+    const ctx = cv.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    return {ctx, w, h};
+}
+function drawEquityChart(cv, equity, ddSeries){
+    if(!cv) return;
+    const {ctx, w, h} = setupCanvas(cv);
+    if(!equity || equity.length < 2){
+        ctx.fillStyle = '#8ea3bf'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('データがありません', w/2, h/2);
+        return;
+    }
+    const padL = 62, padR = 12, padT = 14, padB = 24;
+    const cw = w - padL - padR, ch = h - padT - padB;
+    const vals = equity.map(p => p.e);
+    let min = Math.min(...vals), max = Math.max(...vals);
+    const pad = (max - min) * 0.08 || max * 0.05 || 1;
+    min -= pad; max += pad;
+    const X = i => padL + cw * (i / (equity.length - 1));
+    const Y = v => padT + ch * (1 - (v - min) / (max - min));
+
+    // グリッドと目盛
+    ctx.strokeStyle = 'rgba(255,255,255,.07)';
+    ctx.fillStyle = '#8ea3bf';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'right';
+    for(let i = 0; i <= 4; i++){
+        const y = padT + ch * i/4, v = max - (max-min) * i/4;
+        ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w-padR, y); ctx.stroke();
+        ctx.fillText(Math.round(v).toLocaleString('ja-JP'), padL-6, y+3);
+    }
+    // 初期資金ライン
+    const base = equity[0].e;
+    if(base >= min && base <= max){
+        ctx.strokeStyle = 'rgba(142,163,191,.45)';
+        ctx.setLineDash([4,4]); ctx.beginPath();
+        ctx.moveTo(padL, Y(base)); ctx.lineTo(w-padR, Y(base)); ctx.stroke();
+        ctx.setLineDash([]);
+    }
+    // 資産曲線
+    const up = vals[vals.length-1] >= base;
+    const grd = ctx.createLinearGradient(0, padT, 0, padT+ch);
+    grd.addColorStop(0, up ? 'rgba(34,197,94,.28)' : 'rgba(251,113,133,.28)');
+    grd.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.beginPath();
+    equity.forEach((p, i) => i ? ctx.lineTo(X(i), Y(p.e)) : ctx.moveTo(X(i), Y(p.e)));
+    ctx.lineTo(X(equity.length-1), padT+ch); ctx.lineTo(X(0), padT+ch); ctx.closePath();
+    ctx.fillStyle = grd; ctx.fill();
+
+    ctx.beginPath();
+    equity.forEach((p, i) => i ? ctx.lineTo(X(i), Y(p.e)) : ctx.moveTo(X(i), Y(p.e)));
+    ctx.strokeStyle = up ? '#22c55e' : '#fb7185';
+    ctx.lineWidth = 2; ctx.stroke();
+
+    // ドローダウン（下部に薄く重ねる）
+    if(ddSeries && ddSeries.length === equity.length){
+        const minDD = Math.min(...ddSeries, -1);
+        ctx.beginPath();
+        ddSeries.forEach((d, i) => {
+            const y = padT + ch * (1 - d/minDD * 0.28);
+            i ? ctx.lineTo(X(i), y) : ctx.moveTo(X(i), y);
+        });
+        ctx.strokeStyle = 'rgba(251,113,133,.5)';
+        ctx.lineWidth = 1; ctx.stroke();
+    }
+
+    ctx.fillStyle = '#8ea3bf'; ctx.textAlign = 'left';
+    ctx.fillText(equity[0].d, padL, h-8);
+    ctx.textAlign = 'right';
+    ctx.fillText(equity[equity.length-1].d, w-padR, h-8);
+}
+
+function drawPriceChart(cv, bars, ind, marks, count){
+    if(!cv) return;
+    const {ctx, w, h} = setupCanvas(cv);
+    if(!bars || bars.length < 5){
+        ctx.fillStyle = '#8ea3bf'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('価格データがありません', w/2, h/2);
+        return;
+    }
+    const n = Math.min(count || 160, bars.length);
+    const s = bars.length - n;
+    const view = bars.slice(s);
+    const padL = 58, padR = 12, padT = 12, padB = 22;
+    const cw = w - padL - padR, ch = h - padT - padB;
+
+    let min = Infinity, max = -Infinity;
+    view.forEach(b => { min = Math.min(min, b.l); max = Math.max(max, b.h); });
+    for(const key of ['smaS','smaL']){
+        for(let i = s; i < bars.length; i++){
+            const v = ind[key][i];
+            if(v != null){ min = Math.min(min, v); max = Math.max(max, v); }
+        }
+    }
+    const pad = (max - min) * 0.06 || 1;
+    min -= pad; max += pad;
+    const bw = cw / n;
+    const X = i => padL + bw * (i + 0.5);
+    const Y = v => padT + ch * (1 - (v - min) / (max - min));
+
+    ctx.strokeStyle = 'rgba(255,255,255,.07)';
+    ctx.fillStyle = '#8ea3bf'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
+    for(let i = 0; i <= 4; i++){
+        const y = padT + ch * i/4, v = max - (max-min) * i/4;
+        ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w-padR, y); ctx.stroke();
+        ctx.fillText(Math.round(v).toLocaleString('ja-JP'), padL-6, y+3);
+    }
+
+    // ローソク足
+    const bodyW = Math.max(1, Math.min(9, bw * 0.62));
+    view.forEach((b, i) => {
+        const up = b.c >= b.o;
+        ctx.strokeStyle = up ? '#22c55e' : '#fb7185';
+        ctx.fillStyle = up ? 'rgba(34,197,94,.85)' : 'rgba(251,113,133,.85)';
+        ctx.beginPath();
+        ctx.moveTo(X(i), Y(b.h)); ctx.lineTo(X(i), Y(b.l));
+        ctx.lineWidth = 1; ctx.stroke();
+        const y1 = Y(Math.max(b.o, b.c)), y2 = Y(Math.min(b.o, b.c));
+        ctx.fillRect(X(i) - bodyW/2, y1, bodyW, Math.max(1, y2 - y1));
+    });
+
+    // 移動平均線
+    const drawLine = (arr, color) => {
+        ctx.beginPath(); let started = false;
+        for(let i = 0; i < n; i++){
+            const v = arr[s + i];
+            if(v == null){ started = false; continue; }
+            if(!started){ ctx.moveTo(X(i), Y(v)); started = true; }
+            else ctx.lineTo(X(i), Y(v));
+        }
+        ctx.strokeStyle = color; ctx.lineWidth = 1.4; ctx.stroke();
+    };
+    drawLine(ind.smaS, '#38bdf8');
+    drawLine(ind.smaL, '#f59e0b');
+
+    // 売買マーカー
+    if(marks && marks.length){
+        const idxOf = {};
+        view.forEach((b, i) => { idxOf[b.d] = i; });
+        marks.forEach(m => {
+            const i = idxOf[m.d];
+            if(i == null) return;
+            const y = Y(m.price);
+            ctx.fillStyle = m.type === 'buy' ? '#22c55e' : '#fb7185';
+            ctx.beginPath();
+            if(m.type === 'buy'){
+                ctx.moveTo(X(i), y+4); ctx.lineTo(X(i)-5, y+13); ctx.lineTo(X(i)+5, y+13);
+            }else{
+                ctx.moveTo(X(i), y-4); ctx.lineTo(X(i)-5, y-13); ctx.lineTo(X(i)+5, y-13);
+            }
+            ctx.closePath(); ctx.fill();
+        });
+    }
+
+    ctx.fillStyle = '#8ea3bf'; ctx.textAlign = 'left';
+    ctx.fillText(view[0].d, padL, h-6);
+    ctx.textAlign = 'right';
+    ctx.fillText(view[view.length-1].d, w-padR, h-6);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#38bdf8'; ctx.fillText('SMA' + state.strategy.rules.smaCross.short, padL+2, padT+12);
+    ctx.fillStyle = '#f59e0b'; ctx.fillText('SMA' + state.strategy.rules.smaCross.long, padL+56, padT+12);
+}
+
+/* ============================================================
+   銘柄・データ操作
+   ============================================================ */
+function addSymbol(){
+    const code = document.getElementById('newCode').value.trim();
+    const name = document.getElementById('newName').value.trim();
+    const unit = parseInt(document.getElementById('newUnit').value) || 100;
+    if(!code){ toast('銘柄コードを入力してください', true); return; }
+    if(state.symbols.some(s => s.code === code)){ toast('その銘柄は登録済みです', true); return; }
+    state.symbols.push({code, name: name || code, unit, bars: []});
+    state.activeSymbol = code;
+    document.getElementById('newCode').value = '';
+    document.getElementById('newName').value = '';
+    save(); render();
+    toast(code + ' を追加しました');
+}
+function removeSymbol(code){
+    if(!confirm(code + ' を削除します。よろしいですか？')) return;
+    state.symbols = state.symbols.filter(s => s.code !== code);
+    delete state.paper.positions[code];
+    save(); render();
+}
+function clearBars(code){
+    const s = state.symbols.find(x => x.code === code);
+    if(!s) return;
+    if(!confirm(code + ' の価格データを削除します。よろしいですか？')) return;
+    s.bars = [];
+    save(); render();
+}
+function currentCSVTarget(){
+    const code = document.getElementById('csvTarget').value;
+    return state.symbols.find(s => s.code === code);
+}
+function importCSVFile(ev){
+    const file = ev.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        try{ applyCSV(e.target.result); }
+        catch(err){ toast(err.message, true); }
+    };
+    reader.readAsText(file, 'UTF-8');
+    ev.target.value = '';
+}
+function importCSVPaste(){
+    const text = document.getElementById('csvPaste').value;
+    if(!text.trim()){ toast('取込む内容を貼り付けてください', true); return; }
+    try{ applyCSV(text); document.getElementById('csvPaste').value = ''; }
+    catch(err){ toast(err.message, true); }
+}
+function applyCSV(text){
+    const sym = currentCSVTarget();
+    if(!sym){ throw new Error('先に銘柄を登録してください'); }
+    const bars = parseCSV(text);
+    mergeBars(sym, bars);
+    save(); render();
+    toast(sym.code + ' に ' + bars.length + '件を取込みました（合計 ' + sym.bars.length + '件）');
+}
+function addBar(){
+    const code = document.getElementById('barSymbol').value;
+    const sym = state.symbols.find(s => s.code === code);
+    if(!sym){ toast('銘柄を選択してください', true); return; }
+    const d = document.getElementById('barDate').value;
+    const c = parseFloat(document.getElementById('barClose').value);
+    if(!d || !isFinite(c)){ toast('日付と終値は必須です', true); return; }
+    const o = parseFloat(document.getElementById('barOpen').value);
+    const h = parseFloat(document.getElementById('barHigh').value);
+    const l = parseFloat(document.getElementById('barLow').value);
+    const v = parseFloat(document.getElementById('barVol').value);
+    mergeBars(sym, [{
+        d, c,
+        o: isFinite(o) ? o : c,
+        h: isFinite(h) ? h : Math.max(isFinite(o) ? o : c, c),
+        l: isFinite(l) ? l : Math.min(isFinite(o) ? o : c, c),
+        v: isFinite(v) ? v : 0
+    }]);
+    save(); render();
+    toast(code + ' に ' + d + ' の足を追加しました');
+}
+function genDemoForActive(){
+    const sym = currentCSVTarget();
+    if(!sym){ toast('先に銘柄を登録してください', true); return; }
+    const days = parseInt(document.getElementById('demoDays').value) || 500;
+    const price = parseFloat(document.getElementById('demoPrice').value) || 2500;
+    const vol = parseFloat(document.getElementById('demoVol').value) || 28;
+    const seed = parseInt(document.getElementById('demoSeed').value) || 42;
+    const drift = parseFloat(document.getElementById('demoDrift').value);
+    const trend = parseFloat(document.getElementById('demoTrend').value);
+    sym.bars = genBars(days, price, vol, seed, isFinite(drift) ? drift : 6, isFinite(trend) ? trend : 0);
+    save(); render();
+    toast(sym.code + ' に ' + days + '本のデモデータを生成しました');
+}
+function genDemoPortfolio(){
+    const samples = [
+        {code:'7203', name:'サンプル自動車', price:2800, vol:24, seed:11},
+        {code:'6758', name:'サンプル電機',   price:13500, vol:30, seed:22},
+        {code:'9432', name:'サンプル通信',   price:155,  vol:18, seed:33},
+        {code:'8306', name:'サンプル銀行',   price:1450, vol:26, seed:44},
+        {code:'4063', name:'サンプル化学',   price:5200, vol:32, seed:55}
+    ];
+    const days = parseInt(document.getElementById('demoDays').value) || 500;
+    const drift = parseFloat(document.getElementById('demoDrift').value);
+    const trend = parseFloat(document.getElementById('demoTrend').value);
+    const dr = isFinite(drift) ? drift : 6;
+    const tp = isFinite(trend) ? trend : 0;
+    samples.forEach(s => {
+        let sym = state.symbols.find(x => x.code === s.code);
+        if(!sym){ sym = {code:s.code, name:s.name, unit:100, bars:[]}; state.symbols.push(sym); }
+        sym.bars = genBars(days, s.price, s.vol, s.seed, dr, tp);
+    });
+    save(); render();
+    toast('サンプル5銘柄を生成しました');
+}
+
+/* ============================================================
+   バックテスト実行
+   ============================================================ */
+function targetSymbols(selectId){
+    const v = document.getElementById(selectId).value;
+    if(v === '__all__' || !v) return state.symbols.filter(s => s.bars.length > 30);
+    return state.symbols.filter(s => s.code === v && s.bars.length > 30);
+}
+function doBacktest(){
+    const syms = targetSymbols('btTarget');
+    if(!syms.length){ toast('30本以上の価格データを持つ銘柄がありません', true); return; }
+    const from = document.getElementById('btFrom').value || null;
+    const to = document.getElementById('btTo').value || null;
+    const res = backtest(syms, state.strategy, state.risk, from, to);
+    if(!res){ toast('対象期間のデータが不足しています', true); return; }
+    btLast = res;
+    document.getElementById('btResult').style.display = '';
+    renderBacktest(res);
+    toast('バックテスト完了：' + res.trades.length + '取引');
+}
+function renderBacktest(res){
+    const m = res.metrics;
+    document.getElementById('btStats').innerHTML = `
+        ${stat('最終資産', yen(m.finalEquity), '初期 ' + yen(state.risk.initialCash))}
+        ${stat('総リターン', pct(m.totalRet), yen(m.totalPnl), cls(m.totalPnl))}
+        ${stat('年率(CAGR)', pct(m.cagr), '', cls(m.cagr))}
+        ${stat('最大DD', m.maxDD.toFixed(2) + '%', '資産の最大下落率', 'neg')}
+        ${stat('シャープレシオ', m.sharpe.toFixed(2), '年率換算')}
+        ${stat('プロフィットファクター', isFinite(m.pf) ? m.pf.toFixed(2) : '∞', '総利益÷総損失')}
+        ${stat('勝率', m.winRate.toFixed(1) + '%', m.trades + '取引')}
+        ${stat('平均損益', yen(m.expectancy), '平均保有 ' + m.avgDays.toFixed(1) + '日', cls(m.expectancy))}
+        ${stat('支払った売買コスト', yen(res.costs || 0),
+               '元手の' + ((res.costs||0)/state.risk.initialCash*100).toFixed(1) + '%', 'neg')}
+    `;
+    if(res.halted) document.getElementById('btStats').insertAdjacentHTML('afterend',
+        '<p class="hint" style="color:var(--amber);margin-top:.7rem">⛔ 期間中に安全装置が作動しました：' + esc(res.haltReason) + '</p>');
+    renderVerdict(res);
+    drawEquityChart(document.getElementById('btEquity'), res.equity, m.ddSeries);
+
+    const sel = document.getElementById('btChartSym');
+    sel.innerHTML = res.ctx.map(c =>
+        `<option value="${esc(c.sym.code)}">${esc(c.sym.code)} ${esc(c.sym.name)}</option>`).join('');
+    // 売買マーカーが確認できるよう、取引が発生した銘柄を初期表示にする
+    const traded = new Set(res.trades.map(t => t.code));
+    const firstTraded = res.ctx.find(c => traded.has(c.sym.code));
+    if(firstTraded) sel.value = firstTraded.sym.code;
+    drawBtChart();
+
+    const el = document.getElementById('btTrades');
+    el.innerHTML = res.trades.length ? `
+        <thead><tr><th>銘柄</th><th class="num">数量</th><th>取得日</th><th class="num">取得</th>
+        <th>決済日</th><th class="num">決済</th><th class="num">日数</th><th class="num">損益</th><th class="num">率</th><th>理由</th></tr></thead>
+        <tbody>${res.trades.slice().reverse().slice(0,200).map(t => `
+            <tr>
+                <td>${esc(t.code)} ${esc(t.name)}</td>
+                <td class="num">${num(t.qty)}</td>
+                <td>${esc(t.entryDate)}</td>
+                <td class="num">${num(t.entryPrice,1)}</td>
+                <td>${esc(t.exitDate)}</td>
+                <td class="num">${num(t.exitPrice,1)}</td>
+                <td class="num">${t.days}</td>
+                <td class="num ${cls(t.pnl)}">${yen(t.pnl)}</td>
+                <td class="num ${cls(t.pnl)}">${pct(t.pnlPct)}</td>
+                <td>${esc(t.reason)}</td>
+            </tr>`).join('')}</tbody>`
+        : '<tbody><tr><td class="empty">条件を満たす取引が発生しませんでした。閾値やルールを緩めてお試しください。</td></tr></tbody>';
+}
+/* 「着実に増えているか」を数字ではなく言葉で判定する。
+   自動売買が単純な買い持ちに負けているなら、売買する意味そのものが無い */
+function renderVerdict(res){
+    const m = res.metrics, bh = res.buyHold, st = res.steady;
+    const checks = [];
+    const beatBH = m.totalRet > bh.totalRet;
+    checks.push({
+        ok: beatBH,
+        t: beatBH ? '買い持ちを上回っています' : '買い持ちに負けています',
+        d: `自動売買 ${pct(m.totalRet)} に対し、同じ資金でただ買って持ち続けた場合は ${pct(bh.totalRet)}。` +
+           (beatBH ? '売買する価値が出ています。' : 'この設定で売買する意味はありません。設定を見直すか、買って持ち続ける方が有利です。')
+    });
+    checks.push({
+        ok: m.totalRet > 0,
+        t: m.totalRet > 0 ? '資産が増えています' : '資産が減っています',
+        d: `${yen(state.risk.initialCash)} → ${yen(m.finalEquity)}（年率 ${pct(m.cagr)}）。` +
+           `うち売買コストの支払いは ${yen(res.costs||0)} です。`
+    });
+    checks.push({
+        ok: st.winMonthRate >= 50,
+        t: `勝った月は ${st.winMonths} / ${st.monthCount} か月（${st.winMonthRate.toFixed(0)}%）`,
+        d: st.winMonthRate >= 50
+            ? '月単位で見て半分以上の月がプラスです。増え方が安定しています。'
+            : 'プラスの月が半分未満です。増える月と減る月の波が大きく、着実とは言えません。'
+    });
+    checks.push({
+        ok: m.maxDD > -20,
+        t: `最大の落ち込みは ${m.maxDD.toFixed(1)}%`,
+        d: `一時的に ${yen(state.risk.initialCash * (1 + m.maxDD/100))} まで減る場面がありました。` +
+           (st.stillUnderwater ? '期間内に元の高値へは戻っていません。'
+            : (st.recoveryDays != null ? `そこから ${st.recoveryDays} 日で高値を回復しています。` : ''))
+    });
+    checks.push({
+        ok: st.maxLoseStreak <= 5,
+        t: `最長 ${st.maxLoseStreak} 連敗`,
+        d: st.maxLoseStreak <= 5 ? '連敗は許容範囲です。'
+            : '連敗が長く、資金と気持ちの両方に負担がかかります。安全装置の連敗停止を活用してください。'
+    });
+    checks.push({
+        ok: m.trades > 0 && (res.costs||0) < Math.abs(m.totalPnl) * 0.5,
+        t: `売買 ${m.trades} 回、コストは元手の ${((res.costs||0)/state.risk.initialCash*100).toFixed(1)}%`,
+        d: (res.costs||0) > Math.abs(m.totalPnl) * 0.5 && m.trades > 0
+            ? '損益に対してコストの比重が大きすぎます。最低保有日数や再購入までの日数を延ばして売買回数を減らしてください。'
+            : '売買回数に対してコストは抑えられています。'
+    });
+
+    const ngCount = checks.filter(c => !c.ok).length;
+    const head = ngCount === 0
+        ? {c:'var(--green)', t:'この設定は堅実に機能しています', s:'買い持ちを上回り、増え方も安定しています'}
+        : ngCount <= 2
+        ? {c:'var(--amber)', t:'部分的に課題があります', s:ngCount + '項目が基準を満たしていません'}
+        : {c:'var(--rose)', t:'この設定での運用は勧められません', s:ngCount + '項目が基準を満たしていません'};
+
+    document.getElementById('btVerdict').innerHTML = `
+        <div class="rule" style="border-color:${head.c}55;background:${head.c}12">
+            <div class="rh"><span class="name" style="color:${head.c};font-size:1rem">${esc(head.t)}</span></div>
+            <div style="font-size:.8rem;color:var(--muted)">${esc(head.s)}</div>
+        </div>
+        <div class="grid g2" style="margin-top:.7rem">
+        ${checks.map(c => `
+            <div class="rule" style="border-color:${c.ok ? 'rgba(34,197,94,.3)' : 'rgba(251,113,133,.3)'}">
+                <div class="rh" style="margin-bottom:.3rem">
+                    <span>${c.ok ? '✅' : '⚠️'}</span>
+                    <span class="name" style="font-size:.83rem">${esc(c.t)}</span>
+                </div>
+                <div style="font-size:.76rem;color:var(--muted);line-height:1.7">${esc(c.d)}</div>
+            </div>`).join('')}
+        </div>`;
+
+    document.getElementById('btSteady').innerHTML = `
+        ${stat('買い持ちとの差', pct(m.totalRet - bh.totalRet),
+               '買い持ち ' + pct(bh.totalRet), cls(m.totalRet - bh.totalRet))}
+        ${stat('勝ち月率', st.winMonthRate.toFixed(0) + '%', st.winMonths + '/' + st.monthCount + 'か月')}
+        ${stat('最悪の月', pct(st.worstMonth), '1か月の最大下落', 'neg')}
+        ${stat('最長連敗', st.maxLoseStreak + '回', '連続で負けた回数')}
+        ${stat('高値回復', st.stillUnderwater ? '未回復' : (st.recoveryDays != null ? st.recoveryDays + '日' : '—'),
+               '最大下落からの戻り', st.stillUnderwater ? 'neg' : '')}
+        ${stat('買い持ちの最大DD', bh.maxDD.toFixed(1) + '%',
+               '自動売買は ' + m.maxDD.toFixed(1) + '%', m.maxDD > bh.maxDD ? 'pos' : 'neg')}
+    `;
+
+    // 月次リターンの一覧（着実に積み上がっているかを月単位で確認する）
+    const ms = st.months;
+    document.getElementById('btMonthly').innerHTML = ms.length ? `
+        <thead><tr><th>月</th>${ms.map(x => `<th class="num">${esc(x.m.slice(2))}</th>`).join('')}</tr></thead>
+        <tbody><tr><td>損益率</td>${ms.map(x =>
+            `<td class="num ${cls(x.r)}">${x.r.toFixed(1)}</td>`).join('')}</tr>
+        <tr><td>資産</td>${ms.map(x =>
+            `<td class="num" style="color:var(--muted)">${Math.round(x.e/1000)}k</td>`).join('')}</tr></tbody>`
+        : '';
+}
+function drawBtChart(){
+    if(!btLast) return;
+    const code = document.getElementById('btChartSym').value;
+    const c = btLast.ctx.find(x => x.sym.code === code);
+    if(!c) return;
+    const count = parseInt(document.getElementById('btChartBars').value) || 160;
+    drawPriceChart(document.getElementById('btPrice'), c.bars, c.ind, btLast.marks[code] || [], count);
+}
+
+/* ---------- ウォークフォワード検証 ----------
+   期間を分割し、前の区間で最適化した設定を次の区間へ持ち込んで運用する。
+   学習と検証の落差が、その設定が過去に合わせ込まれている度合いを表す */
+function runWalkForward(){
+    const syms = targetSymbols('wfTarget');
+    if(!syms.length){ toast('対象銘柄がありません', true); return; }
+    const folds = parseInt(document.getElementById('wfFolds').value) || 3;
+
+    const dateSet = new Set();
+    syms.forEach(s => s.bars.forEach(b => dateSet.add(b.d)));
+    const all = Array.from(dateSet).sort();
+    const seg = Math.floor(all.length / (folds + 1));
+    if(seg < 60){
+        toast('検証には ' + (60*(folds+1)) + '本以上の日足が必要です（現在 ' + all.length + '本）', true);
+        return;
+    }
+
+    const shorts = [5,10,15,20,25];
+    const longs  = [40,60,75,100];
+    const base = state.strategy;
+    const rows = [];
+
+    for(let k = 0; k < folds; k++){
+        const trainFrom = all[k*seg], trainTo = all[(k+1)*seg - 1];
+        const testFrom  = all[(k+1)*seg], testTo = all[Math.min((k+2)*seg - 1, all.length - 1)];
+
+        let best = null;
+        for(const sh of shorts){
+            for(const lo of longs){
+                if(sh >= lo) continue;
+                const st = JSON.parse(JSON.stringify(base));
+                st.rules.smaCross.short = sh; st.rules.smaCross.long = lo;
+                const r = backtest(syms, st, state.risk, trainFrom, trainTo);
+                if(r && r.metrics && (!best || r.metrics.totalRet > best.ret))
+                    best = {sh, lo, ret:r.metrics.totalRet};
+            }
+        }
+        if(!best) continue;
+
+        const st = JSON.parse(JSON.stringify(base));
+        st.rules.smaCross.short = best.sh; st.rules.smaCross.long = best.lo;
+        const test = backtest(syms, st, state.risk, testFrom, testTo);
+        rows.push({
+            k:k+1, param: best.sh + '/' + best.lo,
+            trainRange: trainFrom.slice(2) + '〜' + trainTo.slice(2),
+            testRange: testFrom.slice(2) + '〜' + testTo.slice(2),
+            trainRet: best.ret,
+            testRet: test && test.metrics ? test.metrics.totalRet : null,
+            testBH: test && test.buyHold ? test.buyHold.totalRet : null,
+            testDD: test && test.metrics ? test.metrics.maxDD : null,
+            trades: test && test.metrics ? test.metrics.trades : 0
+        });
+    }
+
+    const el = document.getElementById('wfTable');
+    if(!rows.length){
+        el.innerHTML = '<tbody><tr><td class="empty">検証できる区間がありませんでした</td></tr></tbody>';
+        return;
+    }
+    el.innerHTML = `
+        <thead><tr><th>回</th><th>学習期間</th><th class="num">最適値</th><th class="num">学習成績</th>
+        <th>検証期間</th><th class="num">検証成績</th><th class="num">買い持ち</th>
+        <th class="num">検証時DD</th><th class="num">取引</th></tr></thead>
+        <tbody>${rows.map(r => `
+            <tr>
+                <td>${r.k}</td>
+                <td style="color:var(--muted)">${esc(r.trainRange)}</td>
+                <td class="num">${esc(r.param)}</td>
+                <td class="num ${cls(r.trainRet)}">${pct(r.trainRet)}</td>
+                <td style="color:var(--muted)">${esc(r.testRange)}</td>
+                <td class="num ${cls(r.testRet)}"><b>${r.testRet == null ? '—' : pct(r.testRet)}</b></td>
+                <td class="num" style="color:var(--muted)">${r.testBH == null ? '—' : pct(r.testBH)}</td>
+                <td class="num neg">${r.testDD == null ? '—' : r.testDD.toFixed(1) + '%'}</td>
+                <td class="num">${r.trades}</td>
+            </tr>`).join('')}</tbody>`;
+
+    const valid = rows.filter(r => r.testRet != null);
+    const avgTrain = valid.reduce((a,r) => a + r.trainRet, 0) / (valid.length || 1);
+    const avgTest = valid.reduce((a,r) => a + r.testRet, 0) / (valid.length || 1);
+    const avgBH = valid.reduce((a,r) => a + (r.testBH || 0), 0) / (valid.length || 1);
+    const posCount = valid.filter(r => r.testRet > 0).length;
+    const gap = avgTrain - avgTest;
+
+    let level, title, msg;
+    if(avgTest > 0 && avgTest > avgBH && posCount >= Math.ceil(valid.length/2)){
+        level = 'ok'; title = '見ていない期間でも通用しています';
+        msg = `検証期間の平均リターンは ${pct(avgTest)}（買い持ち ${pct(avgBH)}）。${valid.length}回中${posCount}回がプラスでした。この設定は過去への合わせ込みだけではない可能性が高いです。`;
+    }else if(avgTest > 0){
+        level = 'warn'; title = 'プラスだが優位性は限定的です';
+        msg = `検証期間の平均は ${pct(avgTest)} ですが、買い持ち ${pct(avgBH)} と比べて明確な差がありません。手間とコストに見合うか検討してください。`;
+    }else{
+        level = 'ng'; title = '見ていない期間では通用していません';
+        msg = `学習期間では平均 ${pct(avgTrain)} でしたが、検証期間では ${pct(avgTest)} です。過去に合わせ込んだだけの設定と考えられます。この設定での実運用は避けてください。`;
+    }
+    if(gap > 30 && level !== 'ng'){
+        msg += ` なお学習と検証の差が ${gap.toFixed(0)}ポイントあり、成績のぶれは大きめです。`;
+    }
+    const color = {ok:'var(--green)', warn:'var(--amber)', ng:'var(--rose)'};
+    const icon = {ok:'✅', warn:'⚠️', ng:'⛔'};
+    document.getElementById('wfVerdict').innerHTML = `
+        <div class="rule" style="border-color:${color[level]}55;background:${color[level]}12">
+            <div class="rh"><span>${icon[level]}</span>
+                <span class="name" style="color:${color[level]}">${esc(title)}</span></div>
+            <div style="font-size:.79rem;color:var(--muted);line-height:1.7">${esc(msg)}</div>
+        </div>`;
+    toast('ウォークフォワード検証が完了しました');
+}
+
+/* ---------- パラメータ最適化 ---------- */
+function runOptimize(){
+    const syms = targetSymbols('optTarget');
+    if(!syms.length){ toast('対象銘柄がありません', true); return; }
+    const metric = document.getElementById('optMetric').value;
+    const shorts = [3,5,8,10,13,20,25];
+    const longs  = [20,25,40,50,60,75,100];
+    const results = [];
+    const base = JSON.parse(JSON.stringify(state.strategy));
+
+    for(const s of shorts){
+        for(const l of longs){
+            if(s >= l) continue;
+            const strat = JSON.parse(JSON.stringify(base));
+            strat.rules.smaCross.short = s;
+            strat.rules.smaCross.long = l;
+            const r = backtest(syms, strat, state.risk, null, null);
+            if(!r || !r.metrics) continue;
+            const m = r.metrics;
+            let sc;
+            if(metric === 'pf') sc = isFinite(m.pf) ? m.pf : 99;
+            else if(metric === 'sharpe') sc = m.sharpe;
+            else if(metric === 'calmar') sc = m.maxDD < 0 ? m.totalRet / Math.abs(m.maxDD) : m.totalRet;
+            else sc = m.totalRet;
+            results.push({s, l, m, sc});
+        }
+    }
+    results.sort((a,b) => b.sc - a.sc);
+    const el = document.getElementById('optTable');
+    el.innerHTML = results.length ? `
+        <thead><tr><th class="num">短期</th><th class="num">長期</th><th class="num">総リターン</th>
+        <th class="num">最大DD</th><th class="num">PF</th><th class="num">シャープ</th>
+        <th class="num">勝率</th><th class="num">取引数</th><th></th></tr></thead>
+        <tbody>${results.slice(0,15).map(r => `
+            <tr>
+                <td class="num">${r.s}</td>
+                <td class="num">${r.l}</td>
+                <td class="num ${cls(r.m.totalRet)}">${pct(r.m.totalRet)}</td>
+                <td class="num neg">${r.m.maxDD.toFixed(1)}%</td>
+                <td class="num">${isFinite(r.m.pf) ? r.m.pf.toFixed(2) : '∞'}</td>
+                <td class="num">${r.m.sharpe.toFixed(2)}</td>
+                <td class="num">${r.m.winRate.toFixed(0)}%</td>
+                <td class="num">${r.m.trades}</td>
+                <td><button class="btn sm" onclick="applyOpt(${r.s},${r.l})">採用</button></td>
+            </tr>`).join('')}</tbody>`
+        : '<tbody><tr><td class="empty">有効な結果が得られませんでした</td></tr></tbody>';
+    toast(results.length + '通りを検証しました');
+}
+function applyOpt(s, l){
+    state.strategy.rules.smaCross.short = s;
+    state.strategy.rules.smaCross.long = l;
+    save();
+    toast('SMA ' + s + '/' + l + ' を戦略に反映しました');
+    renderStrategy();
+}
+
+/* ============================================================
+   デモ運用（過去データの日次再生）
+   実運用と同じ順序で1日ずつ進め、資産の増減を観察する
+   ============================================================ */
+let demoSim = null, demoTimer = null;
+
+function demoSymbols(){
+    const v = document.getElementById('dmTarget').value;
+    const all = state.symbols.filter(s => s.bars.length > 40);
+    if(v === '__all__' || !v) return all;
+    return all.filter(s => s.code === v);
+}
+function demoBuild(){
+    const syms = demoSymbols();
+    if(!syms.length){ toast('40本以上の価格データを持つ銘柄がありません', true); return false; }
+    const days = Math.max(60, parseInt(document.getElementById('dmDays').value) || 250);
+    // 指標の計算に必要な助走期間を確保したうえで、指定日数ぶんを再生する
+    const longest = Math.max(...syms.map(s => s.bars.length));
+    const span = Math.min(longest, days + 40);
+    const trimmed = syms.map(s => ({
+        code:s.code, name:s.name, unit:s.unit,
+        bars: s.bars.slice(Math.max(0, s.bars.length - span))
+    }));
+    demoSim = createSim(trimmed, state.strategy, state.risk, null, null);
+    if(!demoSim){ toast('再生できるデータが不足しています', true); return false; }
+    return true;
+}
+function demoToggle(){
+    if(demoTimer){ demoPause(); return; }
+    if(!demoSim && !demoBuild()) return;
+    if(demoSim.finished){ toast('再生は完了しています。「最初からやり直す」で再開できます'); return; }
+    const stride = parseInt(document.getElementById('dmSpeed').value) || 3;
+    demoTimer = setInterval(() => {
+        for(let i = 0; i < stride; i++){
+            if(simStep(demoSim)){ demoPause(); break; }
+        }
+        renderDemo();
+    }, 220);
+    renderDemo();
+}
+function demoPause(){
+    if(demoTimer){ clearInterval(demoTimer); demoTimer = null; }
+    renderDemo();
+}
+function demoStepOne(){
+    if(!demoSim && !demoBuild()) return;
+    demoPause();
+    if(!demoSim.finished) simStep(demoSim);
+    renderDemo();
+}
+function demoRunToEnd(){
+    if(!demoSim && !demoBuild()) return;
+    demoPause();
+    let guard = 0;
+    while(!demoSim.finished && guard++ < 20000){ if(simStep(demoSim)) break; }
+    renderDemo();
+    toast('再生が完了しました');
+}
+function demoReset(silent){
+    demoPause();
+    demoSim = null;
+    if(!silent){ renderDemo(); toast('デモをリセットしました'); }
+}
+function renderDemo(){
+    const btn = document.getElementById('dmPlay');
+    if(!btn) return;
+    btn.textContent = demoTimer ? '⏸ 一時停止' : '▶ 再生';
+    btn.className = demoTimer ? 'btn danger' : 'btn primary';
+
+    const sim = demoSim;
+    const prog = document.getElementById('dmProgress');
+    const bar = document.getElementById('dmBar');
+    const haltBox = document.getElementById('dmHalt');
+
+    if(!sim){
+        prog.textContent = '未開始 —「再生」を押すと、過去データを1日ずつ進めながら自動売買を実行します';
+        bar.style.width = '0%';
+        haltBox.style.display = 'none';
+        document.getElementById('dmStats').innerHTML =
+            stat('初期資金', yen(state.risk.initialCash), '1銘柄あたり ' + yen(state.risk.initialCash * state.risk.allocPct/100));
+        document.getElementById('dmPositions').innerHTML =
+            '<tbody><tr><td class="empty">デモを開始すると表示されます</td></tr></tbody>';
+        document.getElementById('dmLog').innerHTML = '<div class="empty">売買の記録はまだありません</div>';
+        drawEquityChart(document.getElementById('dmEquity'), [{d:today(), e:state.risk.initialCash}]);
+        return;
+    }
+
+    const done = sim.t - sim.startT;
+    const total = sim.tradeDates.length;
+    bar.style.width = (done/total*100).toFixed(1) + '%';
+    const curDate = sim.dates[Math.min(done, total-1)];
+    prog.textContent = `${curDate}　（${done} / ${total}営業日${sim.finished ? '・完了' : ''}）`;
+
+    haltBox.style.display = sim.halted ? '' : 'none';
+    if(sim.halted) document.getElementById('dmHaltMsg').innerHTML =
+        '<b>安全装置が作動しました：</b>' + esc(sim.haltReason) +
+        '<br>保有中の建玉は損切り・利確の条件で通常どおり手仕舞われます。設定を見直すか、リセットしてやり直してください。';
+
+    const held = mtm(sim.ctx, sim.positions, curDate);
+    const eq = sim.cash + held;
+    const init = sim.risk.initialCash;
+    const pnl = eq - init;
+    const wins = sim.trades.filter(t => t.pnl > 0).length;
+    let peak = -Infinity, dd = 0;
+    sim.equity.forEach(p => { peak = Math.max(peak, p.e); dd = Math.min(dd, (p.e-peak)/peak*100); });
+
+    document.getElementById('dmStats').innerHTML = `
+        ${stat('デモ資産', yen(eq), '初期 ' + yen(init), cls(pnl))}
+        ${stat('損益', yen(pnl), pct(init > 0 ? pnl/init*100 : 0), cls(pnl))}
+        ${stat('現金', yen(sim.cash), '建玉 ' + yen(held))}
+        ${stat('取引回数', sim.trades.length + '回', wins + '勝 ' + (sim.trades.length-wins) + '敗')}
+        ${stat('勝率', sim.trades.length ? (wins/sim.trades.length*100).toFixed(1) + '%' : '—',
+               '最大下落 ' + dd.toFixed(1) + '%')}
+        ${stat('支払った売買コスト', yen(sim.costs),
+               init > 0 ? '元手の' + (sim.costs/init*100).toFixed(1) + '%' : '', sim.costs > 0 ? 'neg' : '')}
+        ${stat('状態', sim.halted ? '停止中' : (sim.finished ? '完了' : (demoTimer ? '再生中' : '一時停止')),
+               '保有 ' + Object.keys(sim.positions).length + '銘柄', sim.halted ? 'neg' : '')}
+    `;
+
+    const codes = Object.keys(sim.positions);
+    document.getElementById('dmPositions').innerHTML = codes.length ? `
+        <thead><tr><th>銘柄</th><th class="num">数量</th><th class="num">取得</th><th class="num">現在値</th>
+        <th class="num">評価損益</th><th class="num">損切</th><th class="num">利確</th><th>取得日</th></tr></thead>
+        <tbody>${codes.map(code => {
+            const pos = sim.positions[code];
+            const c = sim.ctx.find(x => x.sym.code === code);
+            const i = c ? c.idx[curDate] : null;
+            const price = (c && i != null) ? c.bars[i].c : pos.avg;
+            const p = (price - pos.avg) * pos.qty;
+            return `<tr>
+                <td>${esc(code)} ${esc(c ? c.sym.name : '')}</td>
+                <td class="num">${num(pos.qty)}</td>
+                <td class="num">${num(pos.avg,1)}</td>
+                <td class="num">${num(price,1)}</td>
+                <td class="num ${cls(p)}">${yen(p)}</td>
+                <td class="num">${pos.stop ? num(pos.stop,1) : '—'}</td>
+                <td class="num">${pos.take ? num(pos.take,1) : '—'}</td>
+                <td>${esc(pos.entryDate)}</td>
+            </tr>`;
+        }).join('')}</tbody>`
+        : '<tbody><tr><td class="empty">現在の保有はありません</td></tr></tbody>';
+
+    const ev = sim.events.slice().reverse().slice(0,150);
+    document.getElementById('dmLog').innerHTML = ev.length
+        ? ev.map(e => `<div class="row"><span class="t">${esc(e.d)}</span><span>${esc(e.m)}</span></div>`).join('')
+        : '<div class="empty">まだ売買は発生していません</div>';
+
+    drawEquityChart(document.getElementById('dmEquity'),
+        sim.equity.length > 1 ? sim.equity : [{d:curDate, e:init},{d:curDate, e:eq}]);
+}
+
+/* ---------- 設定の自己診断 ---------- */
+function runDiagnostics(){
+    const r = state.risk, items = [];
+    const add = (level, title, msg) => items.push({level, title, msg});
+
+    // データの充足
+    const usable = state.symbols.filter(s => s.bars.length > 40);
+    if(!state.symbols.length) add('ng','銘柄が未登録です','「銘柄・データ」タブでサンプル5銘柄を生成すると、すぐに試せます');
+    else if(!usable.length) add('ng','価格データが不足しています','判定には最低41本、安定した検証には200本以上の日足を推奨します');
+    else add('ok','価格データ', usable.length + '銘柄が利用可能です（最長 ' +
+        Math.max(...usable.map(s=>s.bars.length)) + '本）');
+
+    // 買えるかどうか
+    const budget = r.initialCash * r.allocPct / 100;
+    const tooBig = [], okBuy = [];
+    usable.forEach(s => {
+        const price = s.bars[s.bars.length-1].c;
+        const lot = price * Math.max(1, r.unit);
+        if(lot > r.initialCash) tooBig.push(s.code + '（1単位' + yen(lot) + '）');
+        else if(lot > budget && !r.allowMinUnit) tooBig.push(s.code + '（1単位' + yen(lot) + '＞枠' + yen(budget) + '）');
+        else okBuy.push(s.code);
+    });
+    if(!usable.length){ /* データ無しの場合は判定しない */ }
+    else if(!okBuy.length) add('ng','どの銘柄も購入できません',
+        '単元' + num(r.unit) + '株では資金が不足しています。単元を1株（単元未満株）にするか、投入比率を上げてください。対象：' + tooBig.join('、'));
+    else if(tooBig.length) add('warn', okBuy.length + '銘柄は購入可能、' + tooBig.length + '銘柄は購入不可',
+        '購入できない銘柄：' + tooBig.join('、'));
+    else add('ok','資金と株価の噛み合わせ','登録銘柄はすべて購入可能です（1銘柄あたり枠 ' + yen(budget) + '）');
+
+    // コスト負け
+    const roundTrip = (r.feePct + r.slipPct) * 2;
+    if(r.takePct > 0 && roundTrip >= r.takePct * 0.5)
+        add('ng','売買コストが利確幅に対して大きすぎます',
+            '往復コスト' + roundTrip.toFixed(2) + '%に対し利確幅は' + r.takePct + '%です。勝っても手数料でほとんど残りません');
+    else if(r.takePct > 0 && roundTrip >= r.takePct * 0.33)
+        add('warn','売買コストの負担が重めです',
+            '往復コスト' + roundTrip.toFixed(2) + '%（利確幅の' + (roundTrip/r.takePct*100).toFixed(0) + '%）。利確幅を広げるか、手数料の安い方法をご検討ください');
+    else add('ok','売買コスト','往復' + roundTrip.toFixed(2) + '%。利確幅' + r.takePct + '%に対して許容範囲です');
+
+    // 損切り幅とボラティリティ
+    if(usable.length){
+        const ratios = usable.map(s => {
+            const a = atr(s.bars, r.atrPeriod);
+            const last = s.bars[s.bars.length-1];
+            const v = a[a.length-1];
+            return (v != null && last.c > 0) ? v / last.c * 100 : null;
+        }).filter(v => v != null);
+        if(ratios.length){
+            const avgAtr = ratios.reduce((a,b)=>a+b,0)/ratios.length;
+            if(r.stopPct > 0 && r.stopPct < avgAtr)
+                add('warn','損切り幅が値動きに対して狭すぎます',
+                    '日々の平均変動幅は約' + avgAtr.toFixed(1) + '%です。損切り' + r.stopPct +
+                    '%では通常の揺れで頻繁に切られます。' + Math.ceil(avgAtr*2) + '%程度が目安です');
+            else add('ok','損切り幅','平均変動幅' + avgAtr.toFixed(1) + '%に対して損切り' + r.stopPct + '%は妥当です');
+        }
+    }
+
+    // 資金配分の整合
+    const totalAlloc = r.allocPct * r.maxPositions;
+    const reserve = r.reserveCashPct;
+    if(totalAlloc > 100 - reserve)
+        add('warn','資金配分が上限を超えています',
+            '投入比率' + r.allocPct + '%×最大' + r.maxPositions + '銘柄＝' + totalAlloc +
+            '%は資金を超えるため、実際には途中で現金が尽きて建てられません（残す現金' + reserve + '%）');
+    else add('ok','資金配分', totalAlloc + '%（' + r.allocPct + '%×' + r.maxPositions + '銘柄）で資金内に収まっています');
+
+    // 安全装置
+    const guards = [];
+    if(r.haltDrawdownPct > 0) guards.push('資産下限-' + r.haltDrawdownPct + '%');
+    if(r.maxConsecLosses > 0) guards.push(r.maxConsecLosses + '連敗停止');
+    if(r.maxDailyTrades > 0) guards.push('1日' + r.maxDailyTrades + '回まで');
+    if(r.reserveCashPct > 0) guards.push('現金' + r.reserveCashPct + '%温存');
+    if(!guards.length) add('warn','安全装置が設定されていません',
+        '「資産の下限で停止」を20%程度に設定しておくと、想定外の下落で損失が広がるのを防げます');
+    else add('ok','安全装置', guards.join(' / ') + ' が有効です');
+
+    // 信用取引を行わないことの確認
+    add('ok','自己資金のみで運用','借入や信用取引は行いません。発注は常に保有現金の範囲内に制限されます');
+
+    const color = {ok:'var(--green)', warn:'var(--amber)', ng:'var(--rose)'};
+    const icon = {ok:'✅', warn:'⚠️', ng:'⛔'};
+    document.getElementById('dmDiag').innerHTML = items.map(i => `
+        <div class="rule" style="margin-bottom:.5rem;border-color:${color[i.level]}40">
+            <div class="rh" style="margin-bottom:.25rem">
+                <span>${icon[i.level]}</span>
+                <span class="name" style="color:${color[i.level]}">${esc(i.title)}</span>
+            </div>
+            <div style="font-size:.78rem;color:var(--muted);line-height:1.7">${esc(i.msg)}</div>
+        </div>`).join('');
+    const ng = items.filter(i => i.level === 'ng').length;
+    const warn = items.filter(i => i.level === 'warn').length;
+    toast(ng ? '要修正 ' + ng + '件、注意 ' + warn + '件' : (warn ? '注意 ' + warn + '件' : '問題は見つかりませんでした'));
+}
+
+/* ============================================================
+   自動売買（ペーパートレード）
+   ============================================================ */
+function runDailyJudge(){
+    const syms = state.symbols.filter(s => s.bars.length > 30);
+    if(!syms.length){ toast('30本以上の価格データを持つ銘柄がありません', true); return; }
+
+    const risk = state.risk;
+    const p = state.paper;
+    const signals = [];
+    const equityNow = p.cash + positionsValue();
+    const heldCount = () => Object.keys(p.positions).length;
+
+    // 同じ足で何度も執行しないための制御。
+    // 自動実行を短い間隔で回しても、新しい足が追加されるまで売買は1度だけに限定する。
+    const latestBar = syms.reduce((a, s) => {
+        const d = s.bars[s.bars.length-1].d;
+        return d > a ? d : a;
+    }, '');
+    const isNewBar = p.lastBarDate !== latestBar;
+    const canExecute = state.exec.mode !== 'dry' && isNewBar;
+
+    // 1日の売買回数は営業日ごとに数え直す
+    if(p.dayDate !== latestBar){ p.dayDate = latestBar; p.dayTrades = 0; }
+
+    // 安全装置の判定（資産の下限・連敗）
+    const equityCheck = p.cash + positionsValue();
+    if(!p.halted && risk.haltDrawdownPct > 0){
+        const floor = risk.initialCash * (1 - risk.haltDrawdownPct/100);
+        if(equityCheck <= floor){
+            p.halted = true;
+            p.haltReason = '資産が下限 ' + yen(floor) + '（初期資金の-' + risk.haltDrawdownPct + '%）に到達しました';
+        }
+    }
+    if(!p.halted && risk.maxConsecLosses > 0 && (p.consecLosses||0) >= risk.maxConsecLosses){
+        p.halted = true;
+        p.haltReason = risk.maxConsecLosses + '連敗に到達しました';
+    }
+    if(p.halted){
+        log('⛔ 安全装置が作動中のため新規買いを行いません：' + p.haltReason);
+        if(autoTimer){ clearInterval(autoTimer); autoTimer = null; log('自動実行を停止しました'); }
+    }
+
+    // 1) 保有中のポジションの手仕舞い判定（損切り・利確・トレーリング・期限）
+    if(canExecute) for(const sym of syms){
+        const pos = p.positions[sym.code];
+        if(!pos) continue;
+        const bar = sym.bars[sym.bars.length-1];
+        let reason = null;
+        if(pos.stop != null && bar.l <= pos.stop) reason = '損切り';
+        else if(pos.take != null && bar.h >= pos.take) reason = '利確';
+        else if(risk.maxHoldDays > 0 && daysBetween(pos.entryDate, bar.d) >= risk.maxHoldDays) reason = '期限到来';
+        if(risk.trailPct > 0){
+            pos.peak = Math.max(pos.peak || pos.avg, bar.h);
+            const trail = pos.peak * (1 - risk.trailPct/100);
+            if(pos.stop == null || trail > pos.stop) pos.stop = trail;
+        }
+        if(reason){
+            const price = reason === '損切り' ? pos.stop : (reason === '利確' ? pos.take : bar.c);
+            executeSell(sym, price, bar.d, reason);
+        }
+    }
+
+    // 2) 各銘柄のシグナルを評価
+    for(const sym of syms){
+        const ind = buildIndicators(sym.bars, state.strategy, risk);
+        const i = sym.bars.length - 1;
+        const bar = sym.bars[i];
+        const sig = evalSignal(sym.bars, ind, i, state.strategy);
+        const held = !!p.positions[sym.code];
+
+        let qty = 0, stop = null, take = null, note = '';
+        if(sig.action === 'buy' && !held){
+            const ctxLike = {sym, ind, idx:{[bar.d]: i}};
+            qty = calcQty(ctxLike, i, bar.c, equityNow, p.cash, risk);
+            stop = risk.useAtrStop && ind.atr[i]
+                ? bar.c - ind.atr[i] * risk.atrMult
+                : (risk.stopPct > 0 ? bar.c * (1 - risk.stopPct/100) : null);
+            take = risk.takePct > 0 ? bar.c * (1 + risk.takePct/100) : null;
+            if(qty === 0) note = sizingNote(bar.c, equityNow, p.cash, risk);
+        }else if(sig.action === 'buy' && held){
+            note = '既に保有中のため買い増しはしません';
+        }
+        signals.push({
+            code:sym.code, name:sym.name, date:bar.d, price:bar.c,
+            action: (sig.action === 'sell' && !held) ? 'hold' : sig.action,
+            score:sig.score, votes:sig.votes, qty, stop, take, held, note
+        });
+    }
+
+    signals.sort((a,b) => Math.abs(b.score) - Math.abs(a.score));
+    p.lastSignals = signals;
+    p.lastRun = new Date().toLocaleString('ja-JP');
+
+    // 3) 実行モードに応じて処理
+    const orders = [];
+    for(const s of signals){
+        const sym = syms.find(x => x.code === s.code);
+        if(s.action === 'sell' && s.held){
+            orders.push({symbol:s.code, name:s.name, side:'sell',
+                         quantity:p.positions[s.code].qty, orderType:'market', price:null,
+                         signalScore:s.score, reasons:s.votes.map(v => v.text).filter(Boolean)});
+            if(canExecute) executeSell(sym, s.price, s.date, '売りシグナル');
+        }else if(s.action === 'buy' && !s.held){
+            if(s.qty === 0){
+                if(s.note) log('見送り：' + s.code + ' ' + s.note);
+                continue;
+            }
+            if(heldCount() >= risk.maxPositions){
+                s.note = '最大保有銘柄数(' + risk.maxPositions + ')に到達しているため見送り';
+                log('見送り：' + s.code + ' ' + s.note);
+                continue;
+            }
+            if(p.halted){
+                s.note = '安全装置が作動中のため新規買いを見送り（' + p.haltReason + '）';
+                continue;
+            }
+            if(risk.maxDailyTrades > 0 && (p.dayTrades||0) >= risk.maxDailyTrades){
+                s.note = '1日の最大買い回数(' + risk.maxDailyTrades + '回)に到達したため見送り';
+                log('見送り：' + s.code + ' ' + s.note);
+                continue;
+            }
+            orders.push({symbol:s.code, name:s.name, side:'buy', quantity:s.qty,
+                         orderType:'market', price:null,
+                         stopLoss: s.stop ? Math.round(s.stop*10)/10 : null,
+                         takeProfit: s.take ? Math.round(s.take*10)/10 : null,
+                         signalScore:s.score, reasons:s.votes.map(v => v.text).filter(Boolean)});
+            if(canExecute) executeBuy(sym, s.price, s.qty, s.date, s.stop, s.take);
+        }
+    }
+
+    const buys = orders.filter(o => o.side === 'buy').length;
+    const sells = orders.filter(o => o.side === 'sell').length;
+    const modeName = state.exec.mode === 'dry' ? 'ドライラン' : (state.exec.mode === 'paper' ? 'ペーパー' : 'ブリッジ');
+    log(`判定実行（${modeName}）：買い${buys}件 / 売り${sells}件 / 対象${syms.length}銘柄 / 基準日 ${latestBar}`);
+    if(state.exec.mode !== 'dry' && !isNewBar){
+        log('新しい足が無いため執行を見送りました（同じ足での重複売買を防止）。最新の四本値を追加すると執行されます');
+    }
+
+    p.lastBarDate = latestBar;
+    stampEquity();
+    save();
+    render();
+
+    if(state.exec.mode === 'bridge' && canExecute && orders.length) sendOrders(orders);
+    const suffix = canExecute ? '（注文 ' + orders.length + '件）'
+                              : (state.exec.mode === 'dry' ? '（ドライラン：執行なし）' : '（新しい足待ち：執行なし）');
+    toast('シグナル判定を実行しました' + suffix);
+}
+
+function executeBuy(sym, price, qty, date, stop, take){
+    const p = state.paper, risk = state.risk;
+    const px = price * (1 + risk.slipPct/100);
+    const cost = px * qty * (1 + risk.feePct/100);
+    // 常に残す現金を差し引いた範囲でのみ発注する（借入は行わない）
+    const usable = Math.max(0, p.cash - risk.initialCash * (risk.reserveCashPct||0)/100);
+    if(cost > usable){
+        log('資金不足のため見送り：' + sym.code + ' 必要 ' + yen(cost) + ' / 使用可能 ' + yen(usable));
+        return false;
+    }
+    p.cash -= cost;
+    p.dayTrades = (p.dayTrades || 0) + 1;
+    p.positions[sym.code] = {qty, avg:px, entryDate:date, peak:px, stop:stop || null, take:take || null};
+    log('買い約定：' + sym.code + ' ' + num(qty) + '株 @' + num(px,1) + '（' + yen(cost) + '）');
+    return true;
+}
+function executeSell(sym, price, date, reason){
+    const p = state.paper, risk = state.risk;
+    const pos = p.positions[sym.code];
+    if(!pos) return;
+    const px = price * (1 - risk.slipPct/100);
+    const proceeds = px * pos.qty * (1 - risk.feePct/100);
+    const cost = pos.avg * pos.qty * (1 + risk.feePct/100);
+    p.cash += proceeds;
+    const pnl = proceeds - cost;
+    p.trades.push({
+        code:sym.code, name:sym.name, qty:pos.qty,
+        entryDate:pos.entryDate, entryPrice:pos.avg,
+        exitDate:date, exitPrice:px, pnl,
+        pnlPct: cost > 0 ? pnl/cost*100 : 0, reason,
+        days: daysBetween(pos.entryDate, date)
+    });
+    delete p.positions[sym.code];
+    p.consecLosses = pnl > 0 ? 0 : (p.consecLosses || 0) + 1;
+    log('売り約定：' + sym.code + ' ' + num(pos.qty) + '株 @' + num(px,1) + '（' + reason + ' 損益 ' + yen(pnl) + '）');
+}
+function stampEquity(){
+    const p = state.paper;
+    const e = p.cash + positionsValue();
+    const d = today();
+    if(p.equity.length && p.equity[p.equity.length-1].d === d) p.equity[p.equity.length-1].e = e;
+    else p.equity.push({d, e});
+}
+function manualClose(code){
+    const sym = state.symbols.find(s => s.code === code);
+    if(!sym || !sym.bars.length) return;
+    const bar = sym.bars[sym.bars.length-1];
+    executeSell(sym, bar.c, bar.d, '手動決済');
+    stampEquity(); save(); render();
+    toast(code + ' を決済しました');
+}
+function closeAllPaper(){
+    const codes = Object.keys(state.paper.positions);
+    if(!codes.length){ toast('保有ポジションがありません', true); return; }
+    if(!confirm(codes.length + '銘柄すべてを最新終値で手仕舞いします。よろしいですか？')) return;
+    codes.forEach(c => manualClose(c));
+}
+function releaseHalt(){
+    if(!confirm('安全装置を解除して新規買いを再開します。設定は見直しましたか？')) return;
+    state.paper.halted = false;
+    state.paper.haltReason = '';
+    state.paper.consecLosses = 0;
+    log('安全装置を解除しました');
+    save(); render();
+    toast('安全装置を解除しました');
+}
+function resetPaper(){
+    if(!confirm('ペーパー口座の残高・保有・履歴をすべてリセットします。よろしいですか？')) return;
+    state.paper = {cash:state.risk.initialCash, positions:{}, trades:[], equity:[], log:[],
+                   lastSignals:[], lastRun:null, lastBarDate:null,
+                   halted:false, haltReason:'', consecLosses:0, dayTrades:0, dayDate:null};
+    save(); render();
+    toast('ペーパー口座をリセットしました');
+}
+
+/* ---------- 自動実行タイマー ---------- */
+function toggleAuto(){
+    if(autoTimer){
+        clearInterval(autoTimer); autoTimer = null;
+        log('自動実行を停止しました');
+    }else{
+        const ms = state.exec.interval * 60000;
+        autoTimer = setInterval(() => { runDailyJudge(); }, ms);
+        log('自動実行を開始しました（' + state.exec.interval + '分間隔）');
+        runDailyJudge();
+    }
+    save(); renderExec(); renderLog();
+}
+
+/* ---------- 発注ブリッジ ---------- */
+function buildPayload(orders){
+    return {
+        version:1,
+        generatedAt:new Date().toISOString(),
+        mode:state.exec.mode,
+        account:{currency:'JPY', cash:Math.round(state.paper.cash)},
+        orders
+    };
+}
+async function sendOrders(orders){
+    const url = state.exec.url;
+    if(!url){ toast('エンドポイントURLが未設定です', true); log('送信中止：エンドポイントURL未設定'); return; }
+    const summary = orders.map(o => `${o.side === 'buy' ? '買' : '売'} ${o.symbol} ${o.quantity}株`).join(' / ');
+    if(!confirm('以下の注文を送信します。\n\n' + summary + '\n\n送信先：' + url + '\n\nよろしいですか？')){
+        log('送信キャンセル：' + summary);
+        return;
+    }
+    const headers = {'Content-Type':'application/json'};
+    if(state.exec.token) headers['Authorization'] = 'Bearer ' + state.exec.token;
+    try{
+        const res = await fetch(url, {method:'POST', headers, body:JSON.stringify(buildPayload(orders))});
+        log('注文送信：' + orders.length + '件 → HTTP ' + res.status);
+        document.getElementById('bridgeStatus').textContent = 'HTTP ' + res.status;
+        toast(res.ok ? '注文を送信しました' : '送信先がエラーを返しました：' + res.status, !res.ok);
+    }catch(e){
+        log('送信失敗：' + e.message);
+        document.getElementById('bridgeStatus').textContent = '送信失敗';
+        toast('送信に失敗しました（CORS設定やURLをご確認ください）', true);
+    }
+    save(); renderLog();
+}
+async function testBridge(){
+    const url = state.exec.url;
+    if(!url){ toast('エンドポイントURLを入力してください', true); return; }
+    const el = document.getElementById('bridgeStatus');
+    el.textContent = '接続中…';
+    const headers = {'Content-Type':'application/json'};
+    if(state.exec.token) headers['Authorization'] = 'Bearer ' + state.exec.token;
+    try{
+        const res = await fetch(url, {method:'POST', headers, body:JSON.stringify(buildPayload([]))});
+        el.textContent = 'HTTP ' + res.status + '（接続成功）';
+        log('接続テスト：HTTP ' + res.status);
+        toast('接続テスト完了：HTTP ' + res.status);
+    }catch(e){
+        el.textContent = '接続失敗';
+        log('接続テスト失敗：' + e.message);
+        toast('接続できませんでした：' + e.message, true);
+    }
+    save(); renderLog();
+}
+
+/* ============================================================
+   入出力
+   ============================================================ */
+function exportJSON(){
+    const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '株式自動売買_' + today() + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('設定とデータを書き出しました');
+}
+function importJSON(ev){
+    const file = ev.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        try{
+            const d = JSON.parse(e.target.result);
+            if(!d.symbols) throw new Error('形式が正しくありません');
+            const base = defaultState();
+            state = Object.assign(base, d);
+            state.strategy = Object.assign(base.strategy, d.strategy||{});
+            state.strategy.rules = Object.assign(base.strategy.rules, (d.strategy||{}).rules||{});
+            state.risk = Object.assign(base.risk, d.risk||{});
+            state.exec = Object.assign(base.exec, d.exec||{});
+            state.paper = Object.assign(base.paper, d.paper||{});
+            save(); renderTabs(); render();
+            toast('読み込みました（' + state.symbols.length + '銘柄）');
+        }catch(err){ toast('読み込みに失敗しました：' + err.message, true); }
+    };
+    reader.readAsText(file, 'UTF-8');
+    ev.target.value = '';
+}
+function exportTradesCSV(){
+    const t = state.paper.trades;
+    if(!t.length){ toast('書き出す履歴がありません', true); return; }
+    const head = '銘柄コード,銘柄名,数量,取得日,取得単価,決済日,決済単価,保有日数,損益,損益率,理由';
+    const rows = t.map(x => [x.code, x.name, x.qty, x.entryDate, x.entryPrice.toFixed(1),
+        x.exitDate, x.exitPrice.toFixed(1), x.days, Math.round(x.pnl), x.pnlPct.toFixed(2), x.reason].join(','));
+    const blob = new Blob(['﻿' + head + '\n' + rows.join('\n')], {type:'text/csv'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '約定履歴_' + today() + '.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('約定履歴を書き出しました');
+}
+function resetAll(){
+    if(!confirm('すべてのデータ（銘柄・戦略・履歴）を消去して初期状態に戻します。よろしいですか？')) return;
+    if(autoTimer){ clearInterval(autoTimer); autoTimer = null; }
+    state = defaultState();
+    save(); renderTabs(); render();
+    toast('初期化しました');
+}
+
+/* ============================================================
+   初期化
+   ============================================================ */
+function init(){
+    load();
+    document.getElementById('barDate').value = today();
+    renderTabs();
+    TABS.forEach(t => {
+        document.getElementById('tab-' + t.id).style.display = (t.id === state.ui.tab) ? '' : 'none';
+    });
+    renderStrategy();
+    renderRisk();
+    renderPresets();
+    renderExec();
+    render();
+    window.addEventListener('resize', () => {
+        clearTimeout(window._rz);
+        window._rz = setTimeout(() => {
+            if(state.ui.tab === 'dash') renderDash();
+            if(state.ui.tab === 'backtest' && btLast){ renderBacktest(btLast); }
+        }, 200);
+    });
+}
+init();
+</script>
+</body>
+</html>

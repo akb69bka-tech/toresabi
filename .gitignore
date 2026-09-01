@@ -1,0 +1,9 @@
+# 自走エンジンの実行時ファイル（口座状態・キャッシュ・認証情報）
+state/
+data_cache/
+data_csv/
+config.yaml
+STOP
+__pycache__/
+*.pyc
+.pytest_cache/
