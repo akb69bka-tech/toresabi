@@ -193,7 +193,7 @@ table.mini th{color:var(--muted);font-weight:700}
         <div class="logo">🌀</div>
         <div style="min-width:0">
             <h1 id="stormName">台風進路予測システム</h1>
-            <div class="sub" id="stormSub">データ未読込 — 「データ」から取得または入力してください</div>
+            <div class="sub"><span id="engBadge" class="chip">—</span> <span id="stormSub">データ未読込 — 「データ」から取得または入力してください</span></div>
         </div>
     </div>
     <div id="topActions">
@@ -235,7 +235,9 @@ table.mini th{color:var(--muted);font-weight:700}
         <button class="btn on" data-layer="ensemble">🕸 アンサンブル</button>
         <button class="btn on" data-layer="storm">🔴 暴風域</button>
         <button class="btn on" data-layer="past">〰 実況経路</button>
+        <button class="btn on" data-layer="models" style="grid-column:1 / -1">📈 モデル比較（ECMWF / GFS / ICON）</button>
     </div>
+    <div id="modelLegend" style="display:none;margin-top:.4rem"></div>
     <label class="f">地図スタイル</label>
     <select id="baseSel">
         <option value="dark">ダーク（標準）</option>
@@ -383,16 +385,33 @@ table.mini th{color:var(--muted);font-weight:700}
 <div class="modal" id="setModal">
   <div class="modal-box">
     <h2>予測設定</h2>
-    <p class="lead">自前の外挿モデルのパラメータです。数値を変えると即座に再計算されます。</p>
+    <p class="lead">数値を変えると即座に再計算されます。</p>
+
+    <p class="sec-title">予測エンジン <span id="engChip" class="chip">—</span></p>
+    <select id="spEngine">
+        <option value="auto">自動：数値予報の誘導風があれば使用（推奨）</option>
+        <option value="simple">簡易外挿のみ（通信なし）</option>
+    </select>
+    <label class="f">使用する数値予報モデル（Open-Meteo 経由で高層風・海面水温を取得）</label>
+    <div class="row wrap" id="modelChecks"></div>
+    <div class="row" style="margin-top:.5rem">
+        <button class="btn" id="btnFetchNwp">🌐 数値予報を取得（再取得）</button>
+        <span class="note" id="nwpMsg" style="flex:1"></span>
+    </div>
+    <div class="note" style="margin-top:.4rem">
+        誘導風は 850/700/500/300/200hPa の深層平均流。弱い台風は下層、強い台風は深い層の風に流されるとして重みを変えます。
+        複数モデルの平均を主予測に、各モデル単独の進路を細線で表示します。解析時刻が3日以上前の場合や通信できない場合は簡易外挿になります。
+    </div>
+    <hr class="sep">
 
     <label class="f">予測時間 <b id="lbHorizon">120</b> 時間</label>
     <input type="range" id="spHorizon" min="24" max="168" step="12" value="120">
 
-    <label class="f">気候値（転向）の効き <b id="lbClim">50</b> %</label>
+    <label class="f">気候値（転向）の効き <b id="lbClim">50</b> %（簡易外挿時のみ）</label>
     <input type="range" id="spClim" min="0" max="100" step="5" value="50">
     <div class="note">0%＝現在の進行方向をそのまま直進。100%＝緯度に応じて偏西風による転向を強く反映。</div>
 
-    <label class="f">旋回の持続 <b id="lbTurn">100</b> %</label>
+    <label class="f">旋回の持続 <b id="lbTurn">100</b> %（簡易外挿時のみ）</label>
     <input type="range" id="spTurn" min="0" max="200" step="10" value="100">
     <div class="note">直近の進路の曲がり具合を、この先どれだけ続くとみなすか。</div>
 
@@ -408,12 +427,15 @@ table.mini th{color:var(--muted);font-weight:700}
     <hr class="sep">
     <p class="sec-title">モデルの中身（要約）</p>
     <div class="note">
-        <b>①進行ベクトル</b>：直近24時間の中心位置に時間重み付き最小二乗を当てて移動速度・方位を推定。<br>
-        <b>②旋回の持続</b>：直近24hと24〜48h前のベクトル差から旋回率(°/h)を求め、時定数36hで減衰させながら適用。<br>
-        <b>③気候値</b>：緯度22〜34°Nで西進(WNW)→転向(ENE)へ方位を、速度を20→55km/hへ、リードタイムに応じて漸近ブレンド。<br>
-        <b>④強度</b>：海面水温の代理として緯度を使い、低緯度＝緩やかに発達、高緯度・上陸＝充填（気圧上昇）。<br>
-        <b>⑤風速</b>：Atkinson–Holliday型の 風速≒6.7×(1010−P)^0.644 [kt] と、修正ランキン渦（内側は線形、外側は r^−0.55）で分布を生成。<br>
-        <b>⑥アンサンブル</b>：方位・速度・旋回率・気候値の効きを乱数で振り、70%の広がりが予報円半径と一致するよう再スケール。
+        <b>①進路（数値予報あり）</b>：Beta-and-Advection Model（Marks 1992）。850〜200hPa の深層平均流に β効果（北西向き約2m/s）を加え、
+        実況の移動との初期不整合は時定数12hで解消。複数モデルの平均を主予測とし、アンサンブルは各モデルに振り分け。<br>
+        <b>②進路（数値予報なし）</b>：直近24hの移動ベクトルの持続＋旋回の持続（時定数36h）＋緯度依存の気候値（22〜34°Nで転向・加速）。<br>
+        <b>③強度</b>：海面水温から可能最大強度（DeMaria &amp; Kaplan 1994）を求めて緩和、850–200hPa鉛直シアで減衰、
+        上陸後は Kaplan &amp; DeMaria (1995) の指数減衰 α=0.095/h。直近24hは実況の発達／衰弱トレンドを優先。<br>
+        <b>④風速換算</b>：Atkinson–Holliday の Vmax=6.7(1010−P)^0.644 [kt] を気象庁の10分平均に合わせ0.88倍。
+        分布は修正ランキン渦（内側は線形、外側は r^−0.55）。<br>
+        <b>⑤陸地</b>：主要な陸地を低解像度ポリゴンで保持し、上陸判定に使用。<br>
+        <b>⑥アンサンブル</b>：初期運動・誘導層の深さ・β効果・可能最大強度・気候値の効きを乱数で振り、70%の広がりが予報円半径と一致するよう再スケール。
     </div>
     <div class="row" style="margin-top:1rem;justify-content:flex-end">
         <button class="btn" id="btnResetSet">初期値に戻す</button>
@@ -442,8 +464,10 @@ table.mini th{color:var(--muted);font-weight:700}
     <hr class="sep">
     <p class="sec-title">データの扱い</p>
     <div class="note">
-        入力した経路・地点・設定はこの端末の <code>localStorage</code> にのみ保存されます。サーバーへは送信しません。
-        ただしCORSプロキシを設定した場合、取得リクエストはそのプロキシ事業者を経由します。
+        入力した経路・地点・設定はこの端末の <code>localStorage</code> にのみ保存されます。
+        数値予報の取得時は、台風の解析位置を中心とした格子の座標（あなたの指定地点ではありません）が
+        Open-Meteo（<code>api.open-meteo.com</code> / <code>marine-api.open-meteo.com</code>）へ送られます。
+        CORSプロキシを設定した場合、気象庁JSONの取得リクエストはそのプロキシ事業者を経由します。
     </div>
     <div class="row" style="margin-top:1rem;justify-content:flex-end">
         <button class="btn primary" data-close>閉じる</button>
@@ -522,15 +546,28 @@ function gauss(rnd){                            // Box-Muller
 
 /* ---------------- 気象まわりの換算 ---------------- */
 const MET = {
-    /* Atkinson & Holliday (1977) 型の 気圧-風速 関係（西部北太平洋・10分平均） */
+    /* 気圧-風速関係：Atkinson & Holliday (1977) の Vmax[kt] = 6.7 (1010−P)^0.644 を基礎にする。
+       この式は1分平均に近く、気象庁が用いる10分平均の最大風速より1割ほど大きく出るため、
+       0.88 倍して気象庁の発表値のオーダーに合わせている（係数は概算）。 */
+    AH_K: 6.7 * 0.5144 * 0.88,
     presToWind(p){                              // hPa -> m/s
-        const d = Math.max(0, 1010 - p);
-        return 6.7 * Math.pow(d, 0.644) * 0.5144;
+        return MET.AH_K * Math.pow(Math.max(0, 1010 - p), 0.644);
     },
     windToPres(v){                              // m/s -> hPa
-        const kt = v / 0.5144;
-        return 1010 - Math.pow(Math.max(0, kt) / 6.7, 1 / 0.644);
+        return 1010 - Math.pow(Math.max(0, v) / MET.AH_K, 1 / 0.644);
     },
+    /* 海面水温から可能最大強度 MPI [m/s]。DeMaria & Kaplan (1994) の経験式
+       Vmpi[kt] = 66.5 + 108.5 exp(0.1813 (SST − 30)) を 10分平均へ 0.88 倍。
+       26℃未満は式の適用外なので、20℃付近でほぼ維持不能になるよう線形に減衰させる。 */
+    mpi(sst){
+        if (sst == null || !isFinite(sst)) return null;
+        let v = (66.5 + 108.5 * Math.exp(0.1813 * (sst - 30))) * 0.5144 * 0.88;
+        if (sst < 26) v *= clamp((sst - 19) / 7, 0.12, 1);
+        return v;
+    },
+    /* 上陸後の減衰：Kaplan & DeMaria (1995) V(t) = Vb + (V0 − Vb) e^{−αt}, α=0.095/h, Vb=26.7kt */
+    LAND_ALPHA: 0.095,
+    LAND_VB: 26.7 * 0.5144,
     /* 最大風速半径の目安：強い台風ほど小さい */
     rmax(p){ return clamp(18 + 0.62 * (p - 900), 18, 110); },
     /* 修正ランキン渦：中心からの距離 r[km] における接線風速 [m/s] */
@@ -579,24 +616,84 @@ function windColor(v){
 }
 const windCss = v => { const c = windColor(v); return `rgb(${c[0]},${c[1]},${c[2]})`; };
 
-/* ---------------- 簡易陸地マスク（上陸減衰の判定用・かなり粗い） ---------------- */
-/* 目的は「陸に乗ったら弱まる」を表現することだけ。地形図としての精度はありません。 */
+/* ---------------- 陸地マスク（上陸減衰の判定用） ---------------- */
+/* 主要な陸地を低解像度ポリゴン（頂点は概ね20〜40km精度）で持つ。地形図としての精度はないが、
+   「本州の南岸を離れて通る台風が上陸扱いにならない」程度の分解能は確保している。 */
+const LAND_POLYS = [
+    /* 本州 */
+    [[34.0,130.9],[34.4,130.95],[34.7,131.6],[35.0,132.2],[35.5,133.0],[35.55,133.6],[35.6,134.3],[35.7,135.2],
+     [35.5,135.45],[35.75,136.0],[36.25,136.1],[36.7,136.7],[37.35,136.8],[37.5,137.3],[37.1,137.15],[36.8,137.3],
+     [37.0,137.9],[37.3,138.5],[37.95,139.0],[38.5,139.5],[39.0,139.9],[39.6,140.0],[40.2,139.95],[40.7,140.0],
+     [41.2,140.3],[41.5,140.9],[41.4,141.4],[40.8,141.4],[40.3,141.8],[39.6,142.0],[39.0,141.8],[38.4,141.5],
+     [38.25,141.0],[37.8,140.95],[37.0,141.0],[36.5,140.65],[35.9,140.7],[35.7,140.85],[35.2,140.4],[34.9,139.85],
+     [35.3,139.85],[35.55,139.95],[35.3,139.7],[35.1,139.6],[35.15,139.1],[34.6,138.85],[34.9,138.75],[34.7,138.2],
+     [34.6,137.3],[34.55,136.9],[35.0,136.8],[34.55,136.75],[34.3,136.9],[33.95,136.2],[33.45,135.75],[33.7,135.35],
+     [34.2,135.1],[34.6,135.4],[34.65,135.0],[34.7,134.5],[34.55,134.0],[34.45,133.5],[34.3,133.0],[34.2,132.5],
+     [34.05,132.0],[33.95,131.5]],
+    /* 九州 */
+    [[33.95,130.9],[33.6,130.35],[33.5,129.9],[33.3,129.6],[32.75,129.7],[32.55,130.2],[32.2,130.15],[31.8,130.2],
+     [31.3,130.2],[31.0,130.65],[31.25,130.7],[31.0,131.1],[31.4,131.35],[32.0,131.6],[32.7,131.9],[33.2,131.8],
+     [33.6,131.7],[33.85,131.2]],
+    /* 四国 */
+    [[34.2,133.0],[34.4,133.6],[34.35,134.2],[34.0,134.65],[33.6,134.35],[33.25,134.2],[33.5,133.6],[33.0,133.0],
+     [32.7,132.95],[33.05,132.6],[33.6,132.45],[33.95,132.85]],
+    /* 北海道 */
+    [[41.7,140.7],[42.1,139.85],[42.65,139.85],[43.2,140.4],[43.3,141.3],[43.9,141.4],[44.4,141.7],[45.45,141.65],
+     [45.5,141.95],[44.9,142.5],[44.3,143.4],[44.0,144.3],[43.6,145.3],[43.4,145.8],[43.0,145.0],[42.8,144.3],
+     [42.3,143.3],[41.95,143.2],[42.4,142.2],[42.55,141.3],[42.35,140.9]],
+    /* 朝鮮半島 */
+    [[34.5,126.3],[35.1,126.35],[35.7,126.5],[36.7,126.2],[37.4,126.5],[37.75,126.3],[38.0,125.0],[38.6,124.9],
+     [39.5,125.3],[40.0,124.4],[42.0,126.0],[43.0,128.0],[42.4,130.6],[40.8,129.7],[39.8,127.5],[38.8,128.3],
+     [37.5,129.2],[36.5,129.4],[35.5,129.4],[35.1,129.0],[34.7,128.4],[34.5,127.5],[34.3,126.6]],
+    /* 台湾 */
+    [[25.3,121.5],[25.0,122.0],[24.5,121.85],[23.5,121.5],[22.0,120.9],[22.5,120.4],[23.5,120.1],[24.5,120.55],[25.1,121.0]],
+    /* 中国大陸（東岸のみ形状を持ち、内陸側は大きく囲う） */
+    [[18.2,109.6],[20.0,110.5],[20.3,110.3],[21.5,110.5],[22.2,113.5],[22.5,114.5],[23.0,116.5],[23.7,117.2],
+     [24.5,118.2],[25.5,119.5],[26.5,119.8],[27.5,120.8],[28.5,121.6],[29.5,121.8],[30.0,122.0],[30.9,121.9],
+     [32.0,121.7],[33.5,120.5],[34.5,119.8],[35.0,119.3],[36.0,120.3],[36.9,122.3],[37.5,122.5],[37.6,121.0],
+     [37.3,119.0],[38.2,118.5],[39.0,118.0],[39.2,119.5],[40.0,121.0],[40.5,122.0],[39.5,122.3],[38.8,121.2],
+     [39.8,124.2],[40.0,124.4],[42.0,126.0],[45.0,130.0],[48.0,130.0],[48.0,105.0],[20.0,105.0],[18.0,108.5]],
+    /* ロシア沿海地方 */
+    [[42.3,130.6],[43.2,131.9],[44.0,135.0],[46.0,138.0],[48.0,140.0],[50.0,140.5],[52.0,141.2],[53.0,140.0],
+     [56.0,138.0],[56.0,120.0],[48.0,120.0],[48.0,130.0],[45.0,130.0]],
+    /* サハリン */
+    [[46.0,141.9],[46.7,141.8],[48.0,142.0],[49.5,142.2],[51.0,143.2],[52.5,143.1],[53.5,142.8],[54.3,142.7],
+     [53.5,143.5],[52.0,143.4],[50.0,143.7],[48.9,144.5],[48.0,143.0],[47.0,143.0],[46.2,143.5],[46.0,142.5]],
+    /* ルソン島 */
+    [[18.6,120.6],[18.4,122.1],[16.2,122.3],[14.9,121.6],[13.8,121.7],[13.7,123.3],[12.6,123.9],[12.8,122.7],
+     [13.6,121.2],[14.4,120.5],[16.0,119.8],[16.5,120.3]],
+    /* フィリピン中南部（粗い） */
+    [[12.5,121.0],[12.0,125.5],[9.0,126.5],[6.0,126.0],[5.5,124.5],[7.5,122.0],[8.5,123.5],[10.0,122.5],[11.5,122.0]],
+    /* インドシナ半島東岸 */
+    [[21.5,108.0],[20.0,106.5],[18.0,106.0],[16.0,108.2],[13.0,109.3],[11.0,109.0],[8.5,105.0],[10.0,104.0],[21.5,104.0]]
+].map(pts => {
+    let la0 = 90, la1 = -90, lo0 = 180, lo1 = -180;
+    for (const p of pts){ la0 = Math.min(la0, p[0]); la1 = Math.max(la1, p[0]); lo0 = Math.min(lo0, p[1]); lo1 = Math.max(lo1, p[1]); }
+    return { pts, bbox: [la0, la1, lo0, lo1] };
+});
+/* 小さな島は矩形で代用 [lat0, lat1, lon0, lon1] */
 const LAND_BOXES = [
-    // [lat0, lat1, lon0, lon1]
-    [30.9, 34.9, 129.3, 132.1],   // 九州
-    [32.6, 34.6, 132.0, 134.9],   // 四国
-    [33.4, 41.6, 130.8, 142.1],   // 本州（粗い外接）
-    [41.3, 45.6, 139.3, 145.9],   // 北海道
     [24.0, 24.9, 123.6, 125.5],   // 八重山・宮古
     [26.0, 26.9, 127.6, 128.4],   // 沖縄本島
-    [21.9, 25.3, 120.0, 122.0],   // 台湾
-    [33.0, 38.7, 126.0, 129.6],   // 朝鮮半島
-    [20.0, 41.0, 105.0, 122.0],   // 中国大陸東部（大きめ）
-    [12.5, 18.6, 120.0, 124.2]    // ルソン島
+    [28.1, 28.5, 129.2, 129.7],   // 奄美大島
+    [30.2, 30.9, 130.4, 131.1]    // 屋久島・種子島
 ];
+function pointInPoly(lat, lon, pts){
+    let inside = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++){
+        const yi = pts[i][0], xi = pts[i][1], yj = pts[j][0], xj = pts[j][1];
+        if (((yi > lat) !== (yj > lat)) && (lon < (xj - xi) * (lat - yi) / (yj - yi) + xi)) inside = !inside;
+    }
+    return inside;
+}
 function isLand(lat, lon){
     for (const b of LAND_BOXES)
         if (lat >= b[0] && lat <= b[1] && lon >= b[2] && lon <= b[3]) return true;
+    for (const P of LAND_POLYS){
+        const b = P.bbox;
+        if (lat < b[0] || lat > b[1] || lon < b[2] || lon > b[3]) continue;
+        if (pointInPoly(lat, lon, P.pts)) return true;
+    }
     return false;
 }
 
@@ -613,6 +710,269 @@ function circleRadius(leadH){
         }
     }
     return T[T.length-1][1];
+}
+
+/* =========================================================================
+   数値予報の誘導風（Open-Meteo 経由で ECMWF / GFS / ICON などの高層風を取得）
+   - 台風の進路は 850〜200hPa の「深層平均流」に流されるという古典的な事実に基づき、
+     Beta-and-Advection Model (Marks 1992, NOAA Tech. Memo. NWS NMC-70) を実装する。
+   - 弱い台風ほど下層（浅い層）の風に、強い台風ほど深い層の風に流される（BAMS/BAMM/BAMD の考え方）。
+   - 複数モデルの平均（マルチモデル・コンセンサス）を主予測に用いる。
+   ========================================================================= */
+const Steering = {
+    LEVELS: [850, 700, 500, 300, 200],
+    MODELS: {
+        ecmwf_ifs025: { name: 'ECMWF IFS',  color: '#ff7b7b' },
+        gfs_global  : { name: 'NOAA GFS',   color: '#4ade80' },
+        icon_global : { name: 'DWD ICON',   color: '#60a5fa' },
+        jma_gsm     : { name: '気象庁 GSM', color: '#fbbf24' }
+    },
+    fields: {},          // model -> 3次元風データ
+    sst: null,           // { grid, vals } 海面水温 [℃]
+    grid: null,
+    status: 'none',      // none | loading | ok | error | stale
+    msg: '',
+    gen: 0,
+    fetchedDays: 0,
+
+    clear(){ this.fields = {}; this.sst = null; this.grid = null; this.status = 'none'; this.msg = ''; },
+    active(){ return Object.keys(this.fields); },
+
+    /* 解析位置を基準に 25°×30° の格子（2.5°間隔、北〜東寄りに広め） */
+    buildGrid(track){
+        const last = track[track.length - 1];
+        const g = { lat0: clamp(Math.floor(last.lat) - 8, -60, 60), lon0: Math.floor(last.lon) - 12,
+                    dLat: 2.5, dLon: 2.5, nLat: 11, nLon: 13, lats: [], lons: [] };
+        for (let j = 0; j < g.nLat; j++)
+            for (let i = 0; i < g.nLon; i++){
+                g.lats.push(+(g.lat0 + j * g.dLat).toFixed(2));
+                g.lons.push(+(((g.lon0 + i * g.dLon + 540) % 360) - 180).toFixed(2));
+            }
+        return g;
+    },
+
+    async fetchJson(url, ms){
+        const ctl = new AbortController();
+        const timer = setTimeout(() => ctl.abort(), ms || 40000);
+        try{
+            const r = await fetch(url, { signal: ctl.signal, cache: 'no-store' });
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return await r.json();
+        } finally { clearTimeout(timer); }
+    },
+
+    /* 1モデル分を取得。層数や時間解像度の指定が通らない場合は段階的に緩めて再試行 */
+    async fetchModel(model, grid, days){
+        const attempts = [
+            { levels: this.LEVELS, tr: 'hourly_3' },
+            { levels: this.LEVELS, tr: null },
+            { levels: [850, 500, 300], tr: null }
+        ];
+        let lastErr = null;
+        for (const a of attempts){
+            const vars = ['wind_speed_10m', 'wind_direction_10m'];
+            for (const L of a.levels) vars.push(`wind_speed_${L}hPa`, `wind_direction_${L}hPa`);
+            const q = new URLSearchParams({
+                latitude: grid.lats.join(','), longitude: grid.lons.join(','),
+                hourly: vars.join(','), models: model, forecast_days: String(days), past_days: '1',
+                timezone: 'UTC', timeformat: 'unixtime', wind_speed_unit: 'ms'
+            });
+            if (a.tr) q.set('temporal_resolution', a.tr);
+            try{
+                const j = await this.fetchJson('https://api.open-meteo.com/v1/forecast?' + q.toString());
+                return this.ingest(j, grid, a.levels, model);
+            }catch(e){ lastErr = e; }
+        }
+        throw lastErr || new Error('unknown');
+    },
+
+    /* 応答を Float32Array（[時刻][地点]）に詰め替える。風向は「吹いてくる向き」なので符号反転 */
+    ingest(j, grid, levels, model){
+        const arr = Array.isArray(j) ? j : [j];
+        const nP = grid.nLat * grid.nLon;
+        if (arr.length !== nP) throw new Error('地点数の不一致 ' + arr.length + '/' + nP);
+        const times = arr[0].hourly && arr[0].hourly.time;
+        if (!times || times.length < 2) throw new Error('時刻列がありません');
+        const nT = times.length;
+        const f = { model, levels, nP, nT, grid, t0: times[0] * 1000, dt: (times[1] - times[0]) * 1000,
+                    u: {}, v: {}, u10: new Float32Array(nT * nP), v10: new Float32Array(nT * nP) };
+        for (const L of levels){ f.u[L] = new Float32Array(nT * nP); f.v[L] = new Float32Array(nT * nP); }
+        const fill = (sp, dr, U, V, p) => {
+            if (!sp || !dr) return;
+            for (let k = 0; k < nT; k++){
+                const s = sp[k], d = dr[k];
+                if (s == null || d == null){ U[k * nP + p] = 0; V[k * nP + p] = 0; continue; }
+                U[k * nP + p] = -s * Math.sin(d * D2R);
+                V[k * nP + p] = -s * Math.cos(d * D2R);
+            }
+        };
+        for (let p = 0; p < nP; p++){
+            const h = arr[p].hourly || {};
+            fill(h.wind_speed_10m, h.wind_direction_10m, f.u10, f.v10, p);
+            for (const L of levels) fill(h[`wind_speed_${L}hPa`], h[`wind_direction_${L}hPa`], f.u[L], f.v[L], p);
+        }
+        return f;
+    },
+
+    async fetchSst(grid){
+        const q = new URLSearchParams({
+            latitude: grid.lats.join(','), longitude: grid.lons.join(','),
+            hourly: 'sea_surface_temperature', forecast_days: '1', timezone: 'UTC', timeformat: 'unixtime'
+        });
+        const j = await this.fetchJson('https://marine-api.open-meteo.com/v1/marine?' + q.toString());
+        const arr = Array.isArray(j) ? j : [j];
+        const vals = new Float32Array(grid.nLat * grid.nLon).fill(NaN);
+        arr.forEach((o, p) => {
+            const a = (o.hourly && o.hourly.sea_surface_temperature) || [];
+            const v = a.filter(x => x != null && isFinite(x));
+            if (v.length) vals[p] = v.reduce((s, x) => s + x, 0) / v.length;
+        });
+        return { grid, vals };
+    },
+
+    /* 全モデル＋海面水温をまとめて取得（失敗したモデルは黙って除外） */
+    async fetchAll(track, horizonH, models, onStatus){
+        const last = track[track.length - 1];
+        const ageH = (Date.now() - last.t) / 3.6e6;
+        const gen = ++this.gen;
+        if (ageH > 72){
+            this.clear(); this.status = 'stale';
+            this.msg = '解析時刻が3日以上前のため数値予報は使いません（簡易外挿）';
+            if (onStatus) onStatus(); return;
+        }
+        if (!models.length){
+            this.clear(); this.status = 'none'; this.msg = 'モデルが選択されていません（簡易外挿）';
+            if (onStatus) onStatus(); return;
+        }
+        this.status = 'loading'; this.msg = '数値予報を取得中…';
+        if (onStatus) onStatus();
+        const grid = this.buildGrid(track);
+        const days = clamp(Math.ceil((horizonH + Math.max(0, ageH)) / 24) + 1, 2, 7);
+        const jobs = models.map(m => this.fetchModel(m, grid, days));
+        jobs.push(this.fetchSst(grid));
+        const res = await Promise.allSettled(jobs);
+        if (gen !== this.gen) return;                     // 取得中に別の取得が始まった
+        this.fields = {};
+        models.forEach((m, i) => { if (res[i].status === 'fulfilled') this.fields[m] = res[i].value; });
+        const sstRes = res[models.length];
+        this.sst = sstRes.status === 'fulfilled' ? sstRes.value : null;
+        this.grid = grid; this.fetchedDays = days;
+        const got = this.active();
+        if (got.length){
+            this.status = 'ok';
+            this.msg = got.map(k => this.MODELS[k].name).join(' / ') + (this.sst ? ' ＋ 海面水温' : '');
+        } else {
+            this.status = 'error';
+            const why = res[0] && res[0].reason ? String(res[0].reason.message || res[0].reason) : '';
+            this.msg = '数値予報を取得できませんでした（簡易外挿で予測）' + (why ? ' — ' + why : '');
+        }
+        if (onStatus) onStatus();
+    },
+
+    /* 格子データの空間（双一次）＋時間（線形）補間。範囲外は null */
+    sampleField(f, U, V, lat, lon, t, clampEdge){
+        const g = f.grid;
+        let dl = lon - g.lon0; if (dl < -180) dl += 360; else if (dl > 180) dl -= 360;
+        let fi = dl / g.dLon, fj = (lat - g.lat0) / g.dLat;
+        if (fi < 0 || fj < 0 || fi > g.nLon - 1 || fj > g.nLat - 1){
+            if (!clampEdge) return null;
+            fi = clamp(fi, 0, g.nLon - 1); fj = clamp(fj, 0, g.nLat - 1);   // 描画用：端の値を外へ延長
+        }
+        let ft = (t - f.t0) / f.dt;
+        if (ft < 0) ft = 0;
+        if (ft > f.nT - 1) return null;
+        const i0 = Math.min(Math.floor(fi), g.nLon - 2), j0 = Math.min(Math.floor(fj), g.nLat - 2);
+        const k0 = Math.min(Math.floor(ft), f.nT - 2);
+        const wi = fi - i0, wj = fj - j0, wk = ft - k0;
+        const nL = g.nLon, nP = f.nP;
+        const bil = (A, k) => {
+            const b = k * nP + j0 * nL + i0;
+            return (A[b] * (1 - wi) + A[b + 1] * wi) * (1 - wj) + (A[b + nL] * (1 - wi) + A[b + nL + 1] * wi) * wj;
+        };
+        return { u: bil(U, k0) * (1 - wk) + bil(U, k0 + 1) * wk,
+                 v: bil(V, k0) * (1 - wk) + bil(V, k0 + 1) * wk };
+    },
+
+    /* 強度に応じた層の重み：弱い台風は浅い層、強い台風は深い層の風に流される */
+    levelWeights(levels, V){
+        const f = clamp((V - 18) / 30, 0, 1);
+        const shallow = { 850: .45, 700: .35, 500: .20, 300: 0,   200: 0   };
+        const deep    = { 850: .15, 700: .20, 500: .25, 300: .20, 200: .20 };
+        const w = {}; let sum = 0;
+        for (const L of levels){ w[L] = lerp(shallow[L] || 0, deep[L] || 0, f); sum += w[L]; }
+        for (const L of levels) w[L] /= (sum || 1);
+        return w;
+    },
+
+    /* 1モデルの誘導流 [m/s] と 850–200hPa 鉛直シア [m/s] */
+    sampleModel(model, lat, lon, t, V){
+        const f = this.fields[model];
+        if (!f) return null;
+        const w = this.levelWeights(f.levels, V);
+        let u = 0, v = 0, lo = null, hi = null;
+        for (const L of f.levels){
+            const s = this.sampleField(f, f.u[L], f.v[L], lat, lon, t);
+            if (!s) return null;
+            u += s.u * w[L]; v += s.v * w[L];
+            if (L === 850) lo = s;
+            if (L === 200 || (L === 300 && !hi)) hi = s;
+        }
+        const shear = (lo && hi) ? Math.hypot(hi.u - lo.u, hi.v - lo.v) : null;
+        return { u, v, shear };
+    },
+
+    /* マルチモデル平均 */
+    sample(lat, lon, t, V){
+        let u = 0, v = 0, sh = 0, n = 0, ns = 0;
+        for (const m of this.active()){
+            const s = this.sampleModel(m, lat, lon, t, V);
+            if (!s) continue;
+            u += s.u; v += s.v; n++;
+            if (s.shear != null){ sh += s.shear; ns++; }
+        }
+        if (!n) return null;
+        return { u: u / n, v: v / n, shear: ns ? sh / ns : null };
+    },
+    samplerFor(model){ return (lat, lon, t, V) => this.sampleModel(model, lat, lon, t, V); },
+    consensus(){ return this.active().length ? (lat, lon, t, V) => this.sample(lat, lon, t, V) : null; },
+
+    /* 地上10m風（風の場の遠方環境流に使う） */
+    sample10m(lat, lon, t){
+        let u = 0, v = 0, n = 0;
+        for (const m of this.active()){
+            const f = this.fields[m];
+            const s = this.sampleField(f, f.u10, f.v10, lat, lon, t, true);
+            if (!s) continue;
+            u += s.u; v += s.v; n++;
+        }
+        return n ? { u: u / n, v: v / n } : null;
+    },
+
+    /* 海面水温 [℃]（欠損の格子点は無視して平均）。範囲外・全欠損は null */
+    sstAt(lat, lon){
+        const S = this.sst;
+        if (!S) return null;
+        const g = S.grid;
+        let dl = lon - g.lon0; if (dl < -180) dl += 360; else if (dl > 180) dl -= 360;
+        const fi = dl / g.dLon, fj = (lat - g.lat0) / g.dLat;
+        if (fi < 0 || fj < 0 || fi > g.nLon - 1 || fj > g.nLat - 1) return null;
+        const i0 = Math.min(Math.floor(fi), g.nLon - 2), j0 = Math.min(Math.floor(fj), g.nLat - 2);
+        const wi = fi - i0, wj = fj - j0;
+        const cells = [[j0, i0, (1 - wi) * (1 - wj)], [j0, i0 + 1, wi * (1 - wj)], [j0 + 1, i0, (1 - wi) * wj], [j0 + 1, i0 + 1, wi * wj]];
+        let s = 0, w = 0;
+        for (const c of cells){
+            const v = S.vals[c[0] * g.nLon + c[1]];
+            if (isFinite(v)){ s += v * c[2]; w += c[2]; }
+        }
+        return w > 0.05 ? s / w : null;
+    }
+};
+
+/* β効果による北西向きドリフト [m/s]（Holland 1983; Fiorino & Elsberry 1989 のオーダー 1〜3 m/s）。
+   βは緯度とともに小さくなるので cosφ で緩く減らす。 */
+function betaDrift(lat){
+    const mag = 2.2 * Math.cos(lat * D2R) / Math.cos(20 * D2R);
+    return { u: mag * Math.sin(320 * D2R), v: mag * Math.cos(320 * D2R) };
 }
 
 /* =========================================================================
@@ -668,9 +1028,11 @@ const Model = {
     },
 
     /* 予測経路を1時間刻みで生成
-       opts: { horizon, climWeight, turnWeight, seed, jitter } */
+       opts: { horizon, climWeight, turnWeight, jitter,
+               steer: (lat,lon,t,V) => {u,v,shear}|null   数値予報の誘導流（無ければ簡易外挿）
+               sst  : (lat,lon) => ℃|null                 海面水温（無ければ緯度で代用） } */
     forecast(track, opts){
-        const o = Object.assign({ horizon: 120, climWeight: .5, turnWeight: 1, jitter: null }, opts);
+        const o = Object.assign({ horizon: 120, climWeight: .5, turnWeight: 1, jitter: null, steer: null, sst: null }, opts);
         const n = track.length, last = track[n-1];
         const mot = this.motion(track, n-1, 24) || { spd: 20, dir: 315, u: 0, v: 0 };
         let dir = mot.dir;
@@ -678,82 +1040,126 @@ const Model = {
         let turn0 = this.turnRate(track) * o.turnWeight;
 
         /* アンサンブル用の初期擾乱 */
-        let climW = o.climWeight, dirBias = 0, spdFac = 1;
-        if (o.jitter){
-            dir  += o.jitter.dir;
-            spd  *= o.jitter.spd;
-            turn0 += o.jitter.turn;
-            climW = clamp(climW * o.jitter.clim, 0, 1.6);
-            dirBias = o.jitter.drift;               // 1時間あたりの追加旋回 [°/h]
+        let climW = o.climWeight, dirBias = 0, betaFac = 1, lvlShift = 0, mpiFac = 1;
+        const j = o.jitter;
+        if (j){
+            dir  += j.dir;
+            spd  *= j.spd;
+            turn0 += j.turn;
+            climW = clamp(climW * j.clim, 0, 1.6);
+            dirBias = j.drift;                       // 追加の旋回 [°/h]
+            betaFac = j.beta;                        // β効果の強さ
+            lvlShift = j.lvl;                        // 誘導層の深さ（強度換算のずらし）[m/s]
+            mpiFac = j.mpi;                          // 可能最大強度のずらし
         }
 
         let lat = last.lat, lon = last.lon;
-        let pres = last.pres != null ? last.pres : MET.windToPres(last.wind || 25);
+        const pres0 = last.pres != null ? last.pres : MET.windToPres(last.wind || 25);
+        let V = MET.presToWind(pres0);               // 強度の状態変数は最大風速 [m/s]
 
-        /* 実況から求めた気圧の変化傾向 [hPa/h]（発達中か衰弱中か） */
-        let dPdt0 = 0;
+        /* 実況から求めた強度の変化傾向 [m/s / h]（発達中か衰弱中か） */
+        let dVdt0 = 0;
         for (let i = n - 2; i >= 0; i--){
             const dtH = (last.t - track[i].t) / 3.6e6;
             if (dtH >= 12){
-                dPdt0 = clamp((pres - track[i].pres) / dtH, -1.2, 1.0);
+                dVdt0 = clamp((V - MET.presToWind(track[i].pres)) / dtH, -1.5, 1.2);
                 break;
             }
         }
-        if (o.jitter) dPdt0 += o.jitter.dp || 0;
+        if (j) dVdt0 += j.dv || 0;
 
-        const out = [{ t: last.t, lead: 0, lat, lon, pres, wind: MET.presToWind(pres), dir, spd }];
+        /* BAM：初期運動と誘導流の差（持続性補正）。実況の動きと数値予報の流れのずれを
+           時定数12hで消しながら加える（初期時刻の不整合を吸収する常套手段）。 */
+        let biasU = 0, biasV = 0;
+        if (o.steer){
+            const s0 = o.steer(lat, lon, last.t, V + lvlShift);
+            if (s0){
+                const b = betaDrift(lat);
+                biasU = clamp(mot.u / 3.6 - (s0.u + b.u * betaFac), -8, 8);
+                biasV = clamp(mot.v / 3.6 - (s0.v + b.v * betaFac), -8, 8);
+            }
+        }
+
+        const sst0 = o.sst ? o.sst(lat, lon) : null;
+        const out = [{ t: last.t, lead: 0, lat, lon, pres: pres0, wind: V, dir, spd, sst: sst0, nwp: false }];
 
         const dt = 1; // hour
         for (let h = dt; h <= o.horizon; h += dt){
-            /* --- 旋回の持続（時定数36hで減衰） --- */
-            const turn = turn0 * Math.exp(-h / 36) + dirBias;
-            dir = (dir + turn * dt + 360) % 360;
+            const t = last.t + h * 3.6e6;
+            const s = o.steer ? o.steer(lat, lon, t, V + lvlShift) : null;
 
-            /* --- 気候値へのブレンド（緯度が上がるほど転向・加速） --- */
-            const wLat  = clamp((lat - 22) / 12, 0, 1);       // 22N以下:0 / 34N以上:1
-            const dirClim = blendAngle(300, 60, wLat);        // WNW -> ENE
-            const spdClim = lerp(18, 55, wLat);               // km/h
-            const blend = climW * (1 - Math.exp(-h / 60)) * (0.25 + 0.75 * wLat);
-            const kb = clamp(blend * dt / 24, 0, 0.35);
-            dir = blendAngle(dir, dirClim, kb);
-            spd = lerp(spd, spdClim, kb);
-            spd = clamp(spd, 3, 95);
+            if (s){
+                /* --- Beta-and-Advection：深層平均流 + β効果 + 減衰する持続性補正 --- */
+                const b = betaDrift(lat), decay = Math.exp(-h / 12);
+                const um = s.u + b.u * betaFac + biasU * decay;
+                const vm = s.v + b.v * betaFac + biasV * decay;
+                spd = clamp(Math.hypot(um, vm) * 3.6, 2, 110);
+                dir = (Math.atan2(um, vm) * R2D + dirBias * Math.min(h, 48) + 360) % 360;
+            } else {
+                /* --- 簡易外挿：旋回の持続（時定数36hで減衰） --- */
+                const turn = turn0 * Math.exp(-h / 36) + dirBias;
+                dir = (dir + turn * dt + 360) % 360;
+
+                /* --- 気候値へのブレンド（緯度が上がるほど転向・加速） --- */
+                const wLat  = clamp((lat - 22) / 12, 0, 1);       // 22N以下:0 / 34N以上:1
+                const dirClim = blendAngle(300, 60, wLat);        // WNW -> ENE
+                const spdClim = lerp(18, 55, wLat);               // km/h
+                const blend = climW * (1 - Math.exp(-h / 60)) * (0.25 + 0.75 * wLat);
+                const kb = clamp(blend * dt / 24, 0, 0.35);
+                dir = blendAngle(dir, dirClim, kb);
+                spd = clamp(lerp(spd, spdClim, kb), 3, 95);
+            }
 
             const np = destPoint(lat, lon, dir, spd * dt);
             lat = np[0]; lon = np[1];
 
             /* --- 強度の時間変化 ---
-               緯度を海面水温の代理として「均衡気圧 Peq」を決め、そこへ緩和させる。
-               直近24時間は実況の発達／衰弱トレンドを優先し、時定数24hで気候値へ移行。 */
-            const warm = clamp((30 - lat) / 8, 0, 1);         // 1: 低緯度の暖かい海 / 0: 高緯度
+               可能最大強度 Vmpi（海面水温があれば DeMaria–Kaplan、なければ緯度で代用）へ緩和し、
+               鉛直シアで減衰、上陸後は Kaplan–DeMaria の指数減衰。直近24時間は実況の
+               発達／衰弱トレンドを優先し、時定数24hでモデル値へ移行する。 */
             const land = isLand(lat, lon);
-            const Peq  = land ? 1004 : lerp(1002, 920, warm);
-            const rate = land ? 0.075
-                       : (pres > Peq ? 0.002 + 0.010 * warm            // 発達
-                                     : 0.006 + 0.010 * (1 - warm));    // 充填
-            const dPclim = (Peq - pres) * rate;
-            const wTrend = Math.exp(-h / 24);
-            pres += ((1 - wTrend) * dPclim + wTrend * dPdt0) * dt;
-            pres = clamp(pres, 895, 1010);
+            const sst = o.sst ? o.sst(lat, lon) : null;
+            const warm = clamp((30 - lat) / 8, 0, 1);
+            const Vmpi = (sst != null ? MET.mpi(sst) : lerp(15, 62, warm)) * mpiFac;
+            const shear = (s && s.shear != null) ? s.shear : 0;
+            let dV;
+            if (land){
+                dV = -MET.LAND_ALPHA * Math.max(0, V - MET.LAND_VB) - 0.01 * V;
+            } else {
+                const gap = Vmpi - V;
+                dV = gap > 0 ? 0.012 * gap : 0.022 * gap;
+                dV -= 0.035 * Math.max(0, shear - 7);
+                if (sst == null && lat > 36) dV -= 0.15;        // 水温不明時：温帯低気圧化の目安
+            }
+            const wTrend = land ? 0 : Math.exp(-h / 24);
+            V = clamp(V + ((1 - wTrend) * dV + wTrend * dVdt0) * dt, 8, 85);
 
-            out.push({ t: last.t + h * 3.6e6, lead: h, lat, lon, pres, wind: MET.presToWind(pres), dir, spd });
+            out.push({ t, lead: h, lat, lon, pres: MET.windToPres(V), wind: V, dir, spd,
+                       sst, shear: s ? s.shear : null, nwp: !!s, land });
         }
         return out;
     },
 
-    /* アンサンブル：70%の広がりが予報円半径に一致するよう再スケールして返す */
+    /* アンサンブル：70%の広がりが予報円半径に一致するよう再スケールして返す。
+       数値予報が複数ある場合はメンバーを各モデルに振り分ける（マルチモデル・アンサンブル） */
     ensemble(track, opts, count, uncScale){
         const rnd = mulberry32(Math.floor(track[track.length-1].t / 6e5) ^ (count * 2654435761));
+        const models = opts.models || [];
         const members = [];
         for (let i = 0; i < count; i++){
+            const mk = models.length ? models[i % models.length] : null;
             members.push(this.forecast(track, Object.assign({}, opts, {
+                steer: mk ? Steering.samplerFor(mk) : opts.steer,
                 jitter: {
                     dir  : gauss(rnd) * 7,
                     spd  : clamp(1 + gauss(rnd) * 0.16, 0.55, 1.6),
                     turn : gauss(rnd) * 0.16,
                     clim : clamp(1 + gauss(rnd) * 0.45, 0.15, 2.0),
                     drift: gauss(rnd) * 0.045,
-                    dp   : gauss(rnd) * 0.18
+                    beta : clamp(1 + gauss(rnd) * 0.35, 0.2, 2.0),
+                    lvl  : gauss(rnd) * 10,
+                    mpi  : clamp(1 + gauss(rnd) * 0.08, 0.75, 1.25),
+                    dv   : gauss(rnd) * 0.15
                 }
             })));
         }
@@ -810,10 +1216,16 @@ function windAt(st, lat, lon){
     u += trans * Math.sin(td) * (0.55 * w + 0.35);
     v += trans * Math.cos(td) * (0.55 * w + 0.35);
 
-    /* 遠方は環境流（低緯度：東風、中高緯度：偏西風）へ漸近 */
+    /* 遠方は環境流へ漸近。数値予報の地上風があればそれを、なければ気候値的な
+       東風（低緯度）〜偏西風（中高緯度）を使う */
     const far = clamp((r - 6 * rm) / (12 * rm), 0, 1);
-    const wLat = clamp((lat - 24) / 12, 0, 1);
-    const envU = lerp(-4.5, 11, wLat), envV = lerp(1.2, 3.5, wLat);
+    let envU, envV;
+    const e = (Steering.status === 'ok' && st.t != null) ? Steering.sample10m(lat, lon, st.t) : null;
+    if (e){ envU = e.u; envV = e.v; }
+    else {
+        const wLat = clamp((lat - 24) / 12, 0, 1);
+        envU = lerp(-4.5, 11, wLat); envV = lerp(1.2, 3.5, wLat);
+    }
     u = lerp(u, envU, far * 0.85);
     v = lerp(v, envV, far * 0.85);
 
@@ -823,7 +1235,8 @@ function windAt(st, lat, lon){
 /* =========================================================================
    アプリ状態
    ========================================================================= */
-const DEFAULT_SET = { horizon:120, clim:50, turn:100, unc:100, ens:40, parts:2200 };
+const DEFAULT_SET = { horizon:120, clim:50, turn:100, unc:100, ens:40, parts:2200,
+                      engine:'auto', models:['ecmwf_ifs025','gfs_global','icon_global'] };
 const STATE = {
     name   : '',
     track  : [],            // 実況 [{t,lat,lon,pres,wind}]
@@ -834,8 +1247,10 @@ const STATE = {
     point  : null,          // {lat,lon,name}
     pickMode: false,
     impact : null,          // 地点影響の計算結果キャッシュ
-    set    : Object.assign({}, DEFAULT_SET),
-    layers : { particles:true, fill:true, circle:true, ensemble:true, storm:true, past:true },
+    modelTracks: {},        // モデル別の決定論的進路 {model: track}
+    engineUsed: 'simple',   // 'nwp' | 'simple'
+    set    : Object.assign({}, DEFAULT_SET, { models: DEFAULT_SET.models.slice() }),
+    layers : { particles:true, fill:true, circle:true, ensemble:true, storm:true, past:true, models:true },
     proxy  : '',
     demoWarn: ''
 };
@@ -1054,12 +1469,55 @@ function currentState(){
     const i = clamp(Math.round(STATE.lead), 0, STATE.fc.length - 1);
     return STATE.fc[i];
 }
+function useNwp(){ return STATE.set.engine !== 'simple' && Steering.status === 'ok'; }
 function fcOpts(){
+    const nwp = useNwp();
     return {
         horizon   : STATE.set.horizon,
         climWeight: STATE.set.clim / 100,
-        turnWeight: STATE.set.turn / 100
+        turnWeight: STATE.set.turn / 100,
+        steer     : nwp ? Steering.consensus() : null,
+        sst       : nwp ? ((la, lo) => Steering.sstAt(la, lo)) : null,
+        models    : nwp ? Steering.active() : []
     };
+}
+/* 数値予報の取得（必要なときだけ）。完了したら再計算する */
+function maybeFetchNwp(force){
+    if (STATE.track.length < 2) return;
+    if (STATE.set.engine === 'simple'){ Steering.clear(); renderEngine(); return; }
+    const need = clamp(Math.ceil((STATE.set.horizon + Math.max(0, (Date.now() - STATE.track[STATE.track.length-1].t) / 3.6e6)) / 24) + 1, 2, 7);
+    const sameModels = Steering.grid && STATE.set.models.every(m => Steering.fields[m]) && Steering.active().length === STATE.set.models.length;
+    if (!force && Steering.status === 'ok' && sameModels && Steering.fetchedDays >= need &&
+        Steering.grid && haversine(Steering.grid.lat0 + 8, Steering.grid.lon0 + 12,
+                                   STATE.track[STATE.track.length-1].lat, STATE.track[STATE.track.length-1].lon) < 300) return;
+    Steering.fetchAll(STATE.track, STATE.set.horizon, STATE.set.models.slice(), () => {
+        renderEngine();
+        if (Steering.status !== 'loading'){
+            rebuild(true);
+            if (Steering.status === 'ok') toast('数値予報を取り込みました：' + Steering.msg, 'ok');
+            else if (Steering.status === 'error') toast('数値予報を取得できず簡易外挿で予測しています', 'err');
+        }
+    });
+}
+function renderEngine(){
+    const nwp = useNwp();
+    const chip = $('engChip'), badge = $('engBadge');
+    let txt, cls;
+    if (Steering.status === 'loading'){ txt = '数値予報 取得中…'; cls = 'chip warn'; }
+    else if (nwp){ txt = '数値予報 誘導'; cls = 'chip ok'; }
+    else { txt = '簡易外挿'; cls = 'chip'; }
+    chip.textContent = txt; chip.className = cls;
+    badge.textContent = txt; badge.className = cls;
+    $('nwpMsg').textContent = Steering.msg || (STATE.set.engine === 'simple' ? '簡易外挿のみを使用' : '未取得');
+    /* モデル別進路の凡例 */
+    const lg = $('modelLegend');
+    if (nwp && STATE.layers.models){
+        lg.innerHTML = Steering.active().map(k =>
+            `<span style="display:inline-flex;align-items:center;gap:.3rem;margin:.15rem .5rem .15rem 0;font-size:.68rem">
+               <i style="display:inline-block;width:16px;height:2px;background:${Steering.MODELS[k].color}"></i>${Steering.MODELS[k].name}</span>`
+        ).join('') + `<span style="display:inline-flex;align-items:center;gap:.3rem;font-size:.68rem"><i style="display:inline-block;width:16px;height:3px;background:#f8fafc"></i>平均</span>`;
+        lg.style.display = '';
+    } else { lg.innerHTML = ''; lg.style.display = 'none'; }
 }
 
 /* 実況＋設定から予測一式を作り直す */
@@ -1072,9 +1530,16 @@ function rebuild(keepLead){
         return;
     }
     STATE.track.sort((a, b) => a.t - b.t);
-    const r = Model.ensemble(STATE.track, fcOpts(), STATE.set.ens, STATE.set.unc / 100);
+    const opts = fcOpts();
+    const r = Model.ensemble(STATE.track, opts, STATE.set.ens, STATE.set.unc / 100);
     STATE.fc = r.base;
     STATE.ens = r.members;
+    STATE.engineUsed = opts.steer && STATE.fc.some(p => p.nwp) ? 'nwp' : 'simple';
+    /* モデル別の決定論的進路（モデル比較表示用） */
+    STATE.modelTracks = {};
+    for (const mk of opts.models)
+        STATE.modelTracks[mk] = Model.forecast(STATE.track, Object.assign({}, opts, { steer: Steering.samplerFor(mk) }));
+    renderEngine();
     if (!keepLead) STATE.lead = 0;
     STATE.lead = clamp(STATE.lead, 0, STATE.fc.length - 1);
 
@@ -1115,7 +1580,20 @@ function drawStatic(){
         }
     }
 
-    /* --- 予測経路 --- */
+    /* --- モデル別進路（細線） --- */
+    if (STATE.layers.models){
+        for (const mk of Object.keys(STATE.modelTracks)){
+            const tr = STATE.modelTracks[mk], M = Steering.MODELS[mk] || { color:'#fff', name: mk };
+            L.polyline(tr.map(p => [p.lat, p.lon]), { color: M.color, weight:1.8, opacity:.8 })
+                .bindPopup(`<b>${M.name}</b> 単独の誘導流による進路`).addTo(gFuture);
+            [24, 48, 72, 96, 120].forEach(h => {
+                const p = tr[h]; if (!p) return;
+                L.circleMarker([p.lat, p.lon], { radius:2.5, color:M.color, weight:1, fillColor:M.color, fillOpacity:.9, interactive:false }).addTo(gFuture);
+            });
+        }
+    }
+
+    /* --- 予測経路（主予測） --- */
     const fpts = STATE.fc.map(p => [p.lat, p.lon]);
     L.polyline(fpts, { color:'#f8fafc', weight:3, opacity:.9, dashArray:'7 6' }).addTo(gFuture);
 
@@ -1413,7 +1891,7 @@ $$('[data-layer]').forEach(b => b.addEventListener('click', () => {
     b.classList.toggle('on', STATE.layers[k]);
     if (k === 'fill'){ fillDirty = true; if (!STATE.layers.fill) fillCtx.clearRect(0,0,fillCv.width,fillCv.height); }
     if (k === 'particles' && !STATE.layers.particles) windCtx.clearRect(0,0,windCv.width,windCv.height);
-    drawStatic(); updateDynamic(); saveLocal();
+    drawStatic(); updateDynamic(); renderEngine(); saveLocal();
 }));
 $('baseSel').addEventListener('change', e => setBase(e.target.value));
 
@@ -1461,12 +1939,43 @@ SLIDERS.forEach(([sid, lid, key]) => {
         $(lid).textContent = e.target.value;
         if (key === 'parts'){ seedParticles(false); saveLocal(); return; }
         rebuild(true);
+        if (key === 'horizon') maybeFetchNwp(false);
     });
 });
 $('btnResetSet').addEventListener('click', () => {
-    Object.assign(STATE.set, DEFAULT_SET);
-    syncSliders(); seedParticles(true); rebuild(true);
+    Object.assign(STATE.set, DEFAULT_SET, { models: DEFAULT_SET.models.slice() });
+    syncSliders(); syncEngineUI(); seedParticles(true); rebuild(true); maybeFetchNwp(false);
     toast('設定を初期値に戻しました', 'ok');
+});
+
+/* 予測エンジン関連の設定UI */
+function syncEngineUI(){
+    $('spEngine').value = STATE.set.engine;
+    const box = $('modelChecks');
+    box.innerHTML = Object.keys(Steering.MODELS).map(k => {
+        const on = STATE.set.models.includes(k);
+        return `<button class="btn sm${on ? ' on' : ''}" data-model="${k}">
+                  <i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${Steering.MODELS[k].color}"></i>${Steering.MODELS[k].name}</button>`;
+    }).join('');
+    box.querySelectorAll('[data-model]').forEach(b => b.addEventListener('click', () => {
+        const k = b.dataset.model, list = STATE.set.models.slice();
+        const i = list.indexOf(k);
+        if (i >= 0) list.splice(i, 1); else list.push(k);
+        STATE.set.models = list;
+        b.classList.toggle('on', i < 0);
+        saveLocal(); maybeFetchNwp(true);
+    }));
+    renderEngine();
+}
+$('spEngine').addEventListener('change', e => {
+    STATE.set.engine = e.target.value;
+    saveLocal();
+    if (STATE.set.engine === 'simple'){ Steering.clear(); rebuild(true); }
+    else maybeFetchNwp(true);
+});
+$('btnFetchNwp').addEventListener('click', () => {
+    if (STATE.set.engine === 'simple'){ toast('エンジンを「自動」にしてください', 'err'); return; }
+    maybeFetchNwp(true);
 });
 
 /* 地点指定 */
@@ -1579,10 +2088,12 @@ function applyTrack(track, name, warn){
     STATE.track = track;
     STATE.name = name || '台風';
     STATE.demoWarn = warn || '';
+    Steering.clear();
     rebuild(false);
     const st = currentState();
     if (st) map.setView([st.lat + 4, st.lon], map.getZoom() < 5 ? 5 : map.getZoom());
     toast(`${STATE.name} を読み込みました（${track.length}点）`, 'ok');
+    maybeFetchNwp(true);
     return true;
 }
 $('btnLoadCsv').addEventListener('click', () => {
@@ -1597,7 +2108,9 @@ $('btnExportJson').addEventListener('click', () => {
     if (!STATE.fc){ toast('データがありません', 'err'); return; }
     download('typhoon_forecast.json', JSON.stringify({
         name: STATE.name, generatedAt: new Date().toISOString(),
-        model: '簡易外挿モデル（本アプリ独自・公式予報ではありません）',
+        model: (STATE.engineUsed === 'nwp'
+                  ? 'Beta-and-Advection（誘導風: ' + Steering.active().join(', ') + '）'
+                  : '簡易外挿モデル') + '（本アプリ独自・公式予報ではありません）',
         settings: STATE.set, observed: STATE.track,
         forecast: STATE.fc.map(p => ({ time:new Date(p.t).toISOString(), lead:p.lead, lat:+p.lat.toFixed(3),
             lon:+p.lon.toFixed(3), pres:Math.round(p.pres), wind:+MET.presToWind(p.pres).toFixed(1),
@@ -1769,6 +2282,8 @@ document.addEventListener('keydown', e => {
     syncSliders();
     $('proxyUrl').value = STATE.proxy;
     $$('[data-layer]').forEach(b => b.classList.toggle('on', !!STATE.layers[b.dataset.layer]));
+    if (!Array.isArray(STATE.set.models)) STATE.set.models = DEFAULT_SET.models.slice();
+    syncEngineUI();
     resizeCanvases();
 
     if (STATE.point) setPoint(STATE.point.lat, STATE.point.lon, STATE.point.name);
@@ -1777,6 +2292,7 @@ document.addEventListener('keydown', e => {
         $('mName').value = STATE.name;
         $('mCsv').value = trackToCsv();
         rebuild(false);
+        maybeFetchNwp(true);
     }else{
         applyTrack(relTrack(DEMO_A), 'デモA：南西諸島へ北上（架空）', 'デモデータです（実際の台風ではありません）');
         $('mCsv').value = trackToCsv();
