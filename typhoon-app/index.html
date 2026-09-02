@@ -6,7 +6,15 @@
 <title>台風進路予測システム</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230b1220'/%3E%3Cpath d='M50 50C50 22 22 14 14 36c10-8 30-4 36 14z' fill='%2338bdf8'/%3E%3Cpath d='M50 50c0 28 28 36 36 14-10 8-30 4-36-14z' fill='%23a78bfa'/%3E%3Ccircle cx='50' cy='50' r='7' fill='%23fff'/%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#070d18">
+<meta name="application-name" content="台風進路予測">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="台風進路予測">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <style>
 :root{
     --bg:#070d18;
@@ -200,6 +208,7 @@ table.mini th{color:var(--muted);font-weight:700}
         <button class="btn" id="btnData">📡 <span class="lbl-hide">データ</span></button>
         <button class="btn" id="btnSettings">⚙️ <span class="lbl-hide">予測設定</span></button>
         <button class="btn icon" id="btnHelp" title="使い方・免責">❔</button>
+        <button class="btn primary" id="btnInstall" title="アプリとしてインストール" style="display:none">⬇ <span class="lbl-hide">インストール</span></button>
     </div>
 </div>
 
@@ -311,6 +320,7 @@ table.mini th{color:var(--muted);font-weight:700}
 </div>
 
 <div id="toast"></div>
+<div id="offlineBar" class="chip warn" style="display:none;position:absolute;left:50%;top:4.4rem;transform:translateX(-50%);z-index:1500;padding:.3rem .7rem;font-size:.72rem">📴 オフライン — 地図タイルと数値予報はキャッシュ済みの範囲のみ</div>
 
 <!-- ===== DATA MODAL ===== -->
 <div class="modal" id="dataModal">
@@ -475,7 +485,7 @@ table.mini th{color:var(--muted);font-weight:700}
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="vendor/leaflet/leaflet.js"></script>
 <script>
 "use strict";
 /* =========================================================================
@@ -2275,6 +2285,58 @@ document.addEventListener('keydown', e => {
     else if (e.key === 'ArrowLeft'  && STATE.fc){ STATE.lead = clamp(STATE.lead - 1, 0, STATE.fc.length-1); $('tlSlider').value = STATE.lead; updateDynamic(); }
     else if (e.key === 'Escape') $$('.modal').forEach(m => m.classList.remove('show'));
 });
+
+/* =========================================================================
+   PWA（インストール・オフライン・更新）
+   ========================================================================= */
+(function pwa(){
+    const secure = location.protocol === 'https:' || ['localhost', '127.0.0.1'].includes(location.hostname);
+    if ('serviceWorker' in navigator && secure){
+        navigator.serviceWorker.register('sw.js').then(reg => {
+            /* 新しい版が待機状態になったら知らせる */
+            const notify = () => {
+                const el = document.createElement('div');
+                el.className = 'toast ok';
+                el.style.pointerEvents = 'auto'; el.style.cursor = 'pointer';
+                el.textContent = '新しい版があります — タップして更新';
+                el.onclick = () => { if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' }); };
+                $('toast').appendChild(el);
+            };
+            if (reg.waiting) notify();
+            reg.addEventListener('updatefound', () => {
+                const nw = reg.installing;
+                if (!nw) return;
+                nw.addEventListener('statechange', () => { if (nw.state === 'installed' && navigator.serviceWorker.controller) notify(); });
+            });
+        }).catch(() => { /* 登録できなくても通常のWebページとして動く */ });
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => { if (!refreshing){ refreshing = true; location.reload(); } });
+    }
+    /* インストール（Android / PC Chrome・Edge）。iOS は共有メニューの「ホーム画面に追加」 */
+    let deferred = null;
+    window.addEventListener('beforeinstallprompt', e => {
+        e.preventDefault(); deferred = e;
+        $('btnInstall').style.display = '';
+    });
+    $('btnInstall').addEventListener('click', async () => {
+        if (!deferred){
+            toast('iPhone/iPad は Safari の共有 → 「ホーム画面に追加」でインストールできます');
+            return;
+        }
+        deferred.prompt();
+        const r = await deferred.userChoice;
+        if (r && r.outcome === 'accepted') toast('インストールしました', 'ok');
+        deferred = null; $('btnInstall').style.display = 'none';
+    });
+    window.addEventListener('appinstalled', () => { $('btnInstall').style.display = 'none'; });
+    /* iOS Safari（beforeinstallprompt が無い）向けにボタンを出す */
+    const isIos = /iP(hone|ad|od)/.test(navigator.userAgent) && !window.MSStream;
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+    if (isIos && !standalone) $('btnInstall').style.display = '';
+    /* オフライン表示 */
+    const sync = () => { $('offlineBar').style.display = navigator.onLine ? 'none' : ''; };
+    window.addEventListener('online', sync); window.addEventListener('offline', sync); sync();
+})();
 
 (function init(){
     buildLegend();
