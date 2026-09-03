@@ -112,8 +112,24 @@
     .pane .placeholder{color:var(--muted);font-size:.95rem;font-weight:500}
     .pane-actions{display:flex;gap:.4rem;margin-top:.6rem}
 
+    /* 交互モード：ターンバナー */
+    .turn-banner{
+        display:none;width:100%;border:1px solid rgba(167,139,250,.45);border-radius:16px;cursor:pointer;
+        background:linear-gradient(135deg,rgba(129,140,248,.2),rgba(167,139,250,.14));color:var(--text);
+        padding:.9rem 1rem;font-family:inherit;margin-bottom:.9rem;text-align:center;transition:all .2s ease;
+        flex-direction:column;gap:.3rem;align-items:center;
+    }
+    .turn-banner.show{display:flex}
+    .turn-banner:hover{background:linear-gradient(135deg,rgba(129,140,248,.3),rgba(167,139,250,.22))}
+    .turn-banner .turn-main{font-size:1.25rem;font-weight:800;line-height:1.4}
+    .turn-banner .turn-hint{font-size:.75rem;color:var(--muted);font-weight:600}
+
     /* マイクボタン */
     .mic-row{display:flex;gap:.8rem;margin-top:1rem;flex-wrap:wrap}
+    .mic-btn.auto{flex-basis:100%;border-color:rgba(167,139,250,.4)}
+    .mic-btn.auto .icon{background:rgba(167,139,250,.2)}
+    .mic-btn.auto.active{border-color:rgba(251,113,133,.55);background:rgba(251,113,133,.12);box-shadow:0 0 0 3px rgba(251,113,133,.1)}
+    .mic-btn.auto.active .icon{background:var(--rose);color:#2d040d;animation:mic 1.4s infinite}
     .mic-btn{
         flex:1;min-width:180px;border:1px solid var(--border);border-radius:16px;cursor:pointer;
         background:rgba(255,255,255,.05);color:var(--text);padding:.9rem 1rem;font-family:inherit;
@@ -261,6 +277,11 @@
             <span class="pill" id="pillEngine">エンジン: 自動</span>
         </div>
 
+        <button class="turn-banner" id="turnBanner">
+            <span class="turn-main" id="turnText">…</span>
+            <span class="turn-hint" id="turnHint">タップで話す言語を切替 / Tap to switch</span>
+        </button>
+
         <div class="live-panes">
             <div class="pane source">
                 <div class="pane-head">🗣️ 原文 <span class="badge" id="srcBadge">日本語</span></div>
@@ -281,6 +302,10 @@
         </div>
 
         <div class="mic-row">
+            <button class="mic-btn auto" id="btnAuto">
+                <div class="icon">🔁</div>
+                <div class="txt"><strong id="btnAutoLabel">交互モードで会話を開始</strong><span id="btnAutoSub">話し終えると自動でもう一方の言語に切り替わります</span></div>
+            </button>
             <button class="mic-btn" id="micA">
                 <div class="icon">🎙️</div>
                 <div class="txt"><strong id="micALabel">日本語で話す</strong><span id="micASub">→ English に翻訳</span></div>
@@ -394,6 +419,7 @@
         </div>
     </div>
     <div class="sub-bar">
+        <button class="btn" id="subAuto">🔁 自動交互</button>
         <button class="btn" id="subMicA">🎙️ <span id="subMicALabel">日本語</span></button>
         <button class="btn" id="subMicB">🎙️ <span id="subMicBLabel">English</span></button>
         <button class="btn ghost" id="btnCloseSubtitle">✕ 閉じる</button>
@@ -436,8 +462,31 @@ const LANGS = [
 ];
 const langOf = c => LANGS.find(l => l.code === c) || LANGS[0];
 
+// 言語ごとの文字体系（交互モードで「順番と違う言語で話された」ときの補正に使う）
+const SCRIPTS = {
+    ja:/[\u3040-\u30ff\u31f0-\u31ff\u3400-\u9fff]/g,
+    'zh-CN':/[\u3400-\u9fff]/g, 'zh-TW':/[\u3400-\u9fff]/g,
+    ko:/[\uac00-\ud7af]/g, th:/[\u0e00-\u0e7f]/g, ar:/[\u0600-\u06ff]/g,
+    hi:/[\u0900-\u097f]/g, ne:/[\u0900-\u097f]/g, ru:/[\u0400-\u04ff]/g,
+    my:/[\u1000-\u109f]/g, km:/[\u1780-\u17ff]/g
+};
+const LATIN_RE = /[A-Za-z\u00c0-\u024f]/g;
+const scriptRe = code => SCRIPTS[code] || LATIN_RE;
+const countRe = (re, text) => (text.match(re) || []).length;
+
+// 「◯◯語で話してください」の各言語表記
+const SPEAK_PROMPTS = {
+    ja:'日本語で話してください', en:'Please speak in English',
+    id:'Silakan bicara dalam Bahasa Indonesia', 'zh-CN':'请说中文', 'zh-TW':'請說中文',
+    ko:'한국어로 말씀해 주세요', vi:'Hãy nói bằng tiếng Việt', th:'กรุณาพูดภาษาไทย',
+    tl:'Magsalita po sa Filipino', hi:'हिंदी में बोलें', pt:'Fale em português',
+    es:'Hable en español', fr:'Parlez en français', de:'Bitte auf Deutsch sprechen',
+    it:'Parla in italiano', ru:'Говорите по-русски', ar:'تحدث بالعربية',
+    nl:'Spreek Nederlands', tr:'Türkçe konuşun'
+};
+
 const DEFAULTS = {
-    langA:'ja', langB:'en',
+    langA:'ja', langB:'id',
     engine:'auto', gcloudKey:'', libreUrl:'', libreKey:'',
     autoSpeak:true, interim:true, pauseMic:true, continuous:true,
     rate:1.0, flip:0
@@ -452,6 +501,7 @@ let activeSide = null;      // 'A' | 'B' | null
 let wantListening = false;
 let restartTimer = null;
 let recFatalError = false;
+let autoMode = false;       // 交互モード：発話が確定するたびに認識言語をもう一方へ自動で切り替える
 let interimTimer = null;
 let seq = 0;                // 翻訳リクエストの世代管理
 let lastPair = {src:'', tgt:'', srcLang:'ja', tgtLang:'en'};
@@ -631,6 +681,18 @@ function dirFor(side){
 }
 function currentDir(){ return dirFor(activeSide || 'A'); }
 
+// 認識結果の文字体系から、実際に話された側を推定する。
+// 同じ文字体系のペア（例: 英語とインドネシア語）は判別できないため期待側をそのまま返す。
+function guessSide(text, expected){
+    const other = expected === 'A' ? 'B' : 'A';
+    const expRe = scriptRe(dirFor(expected).from);
+    const othRe = scriptRe(dirFor(other).from);
+    if(expRe.source === othRe.source) return expected;
+    const expCnt = countRe(expRe, text);
+    const othCnt = countRe(othRe, text);
+    return (othCnt >= 3 && othCnt > expCnt * 2) ? other : expected;
+}
+
 function setStatus(text, cls){
     $('statusText').textContent = text;
     $('pillStatus').className = 'pill' + (cls ? ' ' + cls : '');
@@ -651,6 +713,7 @@ function renderLangUI(){
     $('tgtBadge').textContent = langOf(d.to).name;
     const engineLabel = {auto:'自動', gtx:'Google（無料）', mymemory:'MyMemory', gcloud:'Google Cloud', libre:'LibreTranslate'};
     $('pillEngine').textContent = 'エンジン: ' + (engineLabel[settings.engine] || settings.engine);
+    updateTurnUI();
 }
 function setPane(which, text, isInterim){
     const el = $(which === 'src' ? 'srcBody' : 'tgtBody');
@@ -794,10 +857,17 @@ function buildRecognition(side){
         if(finalText.trim()){
             clearTimeout(interimTimer);
             const text = finalText.trim();
+            const actual = autoMode ? guessSide(text, side) : side;   // 文字種が明らかに逆なら方向を補正
+            const ad = dirFor(actual);
             setPane('src', text, false);
-            lastPair.srcLang = d.from; lastPair.tgtLang = d.to;
-            runTranslate(text, d.from, d.to, side, true);
-            if(!settings.continuous) stopRecognition();
+            lastPair.srcLang = ad.from; lastPair.tgtLang = ad.to;
+            runTranslate(text, ad.from, ad.to, actual, true);
+            if(autoMode){
+                // 次の話者の言語で即座に聞き直す（読み上げで一時停止しても再開はこの言語）
+                startRecognition(actual === 'A' ? 'B' : 'A');
+            }else if(!settings.continuous){
+                stopRecognition();
+            }
         }
     };
 
@@ -807,6 +877,8 @@ function buildRecognition(side){
         if(err === 'not-allowed' || err === 'service-not-allowed'){
             wantListening = false;
             recFatalError = true;
+            autoMode = false;
+            updateTurnUI();
             activeSide = null;
             setStatus('マイク未許可', 'err');
             toast('マイクの使用が許可されていません。ブラウザの設定を確認してください。', true);
@@ -874,17 +946,50 @@ function toggleMic(side){
     else startRecognition(side, true);
 }
 function updateMicUI(){
-    $('micA').classList.toggle('active', wantListening && activeSide === 'A');
-    $('micB').classList.toggle('active', wantListening && activeSide === 'B');
-    $('subMicA').classList.toggle('primary', wantListening && activeSide === 'A');
-    $('subMicB').classList.toggle('primary', wantListening && activeSide === 'B');
+    const manual = !autoMode;
+    $('micA').classList.toggle('active', manual && wantListening && activeSide === 'A');
+    $('micB').classList.toggle('active', manual && wantListening && activeSide === 'B');
+    $('subMicA').classList.toggle('primary', manual && wantListening && activeSide === 'A');
+    $('subMicB').classList.toggle('primary', manual && wantListening && activeSide === 'B');
+    $('btnAuto').classList.toggle('active', autoMode);
+    $('btnAutoLabel').textContent = autoMode ? '会話を終了' : '交互モードで会話を開始';
+    $('btnAutoSub').textContent = autoMode ? 'タップで交互モードを終了します' : '話し終えると自動でもう一方の言語に切り替わります';
+    $('subAuto').classList.toggle('primary', autoMode);
+}
+
+function toggleAuto(){
+    if(autoMode){
+        autoMode = false;
+        stopRecognition();
+    }else{
+        if(!SR){ toast('このブラウザは音声認識に対応していません（Chrome / Edge を推奨）', true); return; }
+        autoMode = true;
+        startRecognition('A', true);
+        toast('交互モード開始：' + langOf(settings.langA).name + ' から話してください');
+    }
+    updateMicUI();
+    updateTurnUI();
+}
+function updateTurnUI(){
+    $('turnBanner').classList.toggle('show', autoMode);
+    if(!autoMode) return;
+    const cur = langOf(dirFor(activeSide || 'A').from);
+    const oth = langOf(dirFor((activeSide || 'A') === 'A' ? 'B' : 'A').from);
+    $('turnText').textContent = cur.flag + ' ' + (SPEAK_PROMPTS[cur.code] || ('Please speak in ' + cur.name));
+    $('turnHint').textContent = 'タップで切替 / Tap to switch → ' + oth.flag + ' ' + oth.name;
 }
 
 /* ---------- イベント登録 ---------- */
-$('micA').addEventListener('click', () => toggleMic('A'));
-$('micB').addEventListener('click', () => toggleMic('B'));
-$('subMicA').addEventListener('click', () => toggleMic('A'));
-$('subMicB').addEventListener('click', () => toggleMic('B'));
+function manualMic(side){ autoMode = false; updateTurnUI(); toggleMic(side); }
+$('micA').addEventListener('click', () => manualMic('A'));
+$('micB').addEventListener('click', () => manualMic('B'));
+$('subMicA').addEventListener('click', () => manualMic('A'));
+$('subMicB').addEventListener('click', () => manualMic('B'));
+$('btnAuto').addEventListener('click', toggleAuto);
+$('subAuto').addEventListener('click', toggleAuto);
+$('turnBanner').addEventListener('click', () => {
+    if(autoMode) startRecognition((activeSide || 'A') === 'A' ? 'B' : 'A');
+});
 
 $('btnSwap').addEventListener('click', () => {
     const t = settings.langA; settings.langA = settings.langB; settings.langB = t;
