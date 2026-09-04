@@ -4,231 +4,242 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>同時翻訳アプリ</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
     :root{
-        --primary:#38bdf8;
-        --primary-hover:#0ea5e9;
-        --bg:#0b1220;
-        --card-bg:rgba(22,34,54,0.72);
-        --card-solid:#16223a;
-        --text:#f1f5f9;
-        --muted:#8ea3bf;
-        --border:rgba(255,255,255,0.10);
-        --sky:#38bdf8;
-        --indigo:#818cf8;
-        --amber:#f59e0b;
-        --rose:#fb7185;
-        --teal:#2dd4bf;
-        --green:#22c55e;
-        --violet:#a78bfa;
+        --paper:#f5efe2;
+        --card:#fffdf6;
+        --ink:#33302a;
+        --ink-soft:#7a7261;
+        --shu:#cf4a37;        /* 朱色 */
+        --shu-soft:#f9ded3;
+        --shu-deep:#a53525;
+        --ai:#35577e;         /* 藍色 */
+        --ai-soft:#dfe9f3;
+        --ai-deep:#2b4767;
+        --leaf:#4c7a3f;
+        --leaf-soft:#e4efdb;
+        --amber:#b9821e;
+        --shadow:rgba(51,48,42,.85);
     }
     *{box-sizing:border-box}
     body{
-        margin:0;font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
-        background:linear-gradient(140deg,#0b1220 0%,#101a33 55%,#0d1728 100%);
-        background-attachment:fixed;color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;
+        margin:0;color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;
+        font-family:'Zen Maru Gothic','Hiragino Maru Gothic ProN','Yu Gothic',"Noto Sans JP",sans-serif;
+        background:
+            radial-gradient(rgba(51,48,42,.05) 1px, transparent 1.3px) 0 0/22px 22px,
+            linear-gradient(160deg,#f7f1e4 0%,#f2eadb 60%,#efe5d2 100%);
+        background-attachment:fixed;
     }
     .container{max-width:1080px;margin:0 auto;padding:1.6rem 1rem 4rem}
 
-    /* Header */
+    /* ヘッダー */
     header{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.4rem;flex-wrap:wrap}
-    .brand{display:flex;align-items:center;gap:.8rem}
+    .brand{display:flex;align-items:center;gap:.85rem}
     .brand .logo{
-        width:48px;height:48px;border-radius:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.6rem;
-        background:linear-gradient(135deg,#38bdf8,#818cf8);box-shadow:0 6px 20px rgba(56,189,248,.35);
+        width:52px;height:52px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+        background:var(--shu);color:#fffdf6;font-size:1.55rem;font-weight:900;
+        border:3px solid var(--shu-deep);transform:rotate(-8deg);
+        box-shadow:3px 3px 0 var(--shadow);font-family:'Zen Maru Gothic',serif;
     }
-    .brand h1{font-size:1.5rem;margin:0;line-height:1.2;font-weight:800;letter-spacing:.02em}
-    .brand .sub{color:var(--muted);font-size:.8rem;margin-top:2px}
-    .header-actions{display:flex;gap:.5rem;flex-wrap:wrap}
+    .brand h1{font-size:1.5rem;margin:0;line-height:1.2;font-weight:900;letter-spacing:.06em}
+    .brand .sub{color:var(--ink-soft);font-size:.78rem;margin-top:2px;font-weight:500}
+    .header-actions{display:flex;gap:.55rem;flex-wrap:wrap}
 
+    /* ボタン共通：紙にベタ落ち影 */
     .btn{
-        border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);
-        padding:.55rem .95rem;border-radius:999px;font-size:.85rem;font-weight:600;cursor:pointer;
-        transition:all .18s ease;display:inline-flex;align-items:center;gap:.4rem;font-family:inherit;
+        border:2px solid var(--ink);background:var(--card);color:var(--ink);
+        padding:.5rem .95rem;border-radius:12px;font-size:.85rem;font-weight:700;cursor:pointer;
+        transition:all .12s ease;display:inline-flex;align-items:center;gap:.4rem;font-family:inherit;
+        box-shadow:3px 3px 0 var(--shadow);
     }
-    .btn:hover{background:rgba(255,255,255,.12);transform:translateY(-1px)}
+    .btn:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--shadow)}
+    .btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shadow)}
     .btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
-    .btn.primary{background:var(--primary);border-color:transparent;color:#042232}
-    .btn.primary:hover{background:var(--primary-hover);color:#fff}
-    .btn.ghost{background:transparent}
-    .btn.danger{color:var(--rose);border-color:rgba(251,113,133,.35)}
-    .btn.danger:hover{background:rgba(251,113,133,.15)}
-    .btn.sm{padding:.35rem .6rem;font-size:.78rem}
+    .btn.primary{background:var(--shu);border-color:var(--shu-deep);color:#fffdf6}
+    .btn.ghost{box-shadow:none;border-color:transparent;background:transparent;color:var(--ink-soft)}
+    .btn.ghost:hover{color:var(--ink);background:rgba(51,48,42,.06);transform:none}
+    .btn.danger{color:var(--shu-deep)}
+    .btn.sm{padding:.3rem .6rem;font-size:.76rem;box-shadow:2px 2px 0 var(--shadow)}
+    .btn.sm.ghost{box-shadow:none}
 
     .card{
-        background:var(--card-bg);border:1px solid var(--border);border-radius:22px;
-        padding:1.1rem;backdrop-filter:blur(10px);margin-bottom:1.1rem;
+        background:var(--card);border:2px solid var(--ink);border-radius:16px;
+        padding:1.05rem;margin-bottom:1.1rem;box-shadow:4px 4px 0 var(--shadow);
     }
-    .card h2{margin:0 0 .8rem;font-size:1rem;font-weight:700;display:flex;align-items:center;gap:.45rem}
-    .card h2 .tag{margin-left:auto;font-size:.72rem;color:var(--muted);font-weight:600}
 
     /* 言語バー */
     .langbar{display:flex;align-items:center;gap:.6rem;flex-wrap:nowrap}
     .lang-select{
-        flex:1;min-width:0;appearance:none;background:rgba(255,255,255,.05);color:var(--text);
-        border:1px solid var(--border);border-radius:12px;padding:.7rem .9rem;font-size:.95rem;font-weight:600;
-        font-family:inherit;cursor:pointer;text-align:center;
+        flex:1;min-width:0;appearance:none;background:var(--card);color:var(--ink);
+        border:2px solid var(--ink);border-radius:12px;padding:.65rem .9rem;font-size:.98rem;font-weight:700;
+        font-family:inherit;cursor:pointer;text-align:center;box-shadow:2px 2px 0 var(--shadow);
     }
-    .lang-select:focus{outline:none;border-color:var(--primary)}
-    .lang-select option{background:var(--card-solid);color:var(--text)}
+    .lang-select:focus{outline:none;border-color:var(--shu)}
+    .lang-select option{background:var(--card);color:var(--ink)}
     .swap-btn{
-        flex-shrink:0;width:42px;height:42px;border-radius:12px;border:1px solid var(--border);
-        background:rgba(255,255,255,.05);color:var(--sky);font-size:1.1rem;cursor:pointer;transition:all .18s ease;
+        flex-shrink:0;width:44px;height:44px;border-radius:50%;border:2px solid var(--ink);
+        background:var(--card);color:var(--shu);font-size:1.15rem;font-weight:900;cursor:pointer;
+        transition:all .15s ease;box-shadow:2px 2px 0 var(--shadow);
     }
-    .swap-btn:hover{background:rgba(56,189,248,.18);transform:rotate(180deg)}
+    .swap-btn:hover{transform:rotate(180deg)}
 
-    /* ヒーロー（ライブ翻訳） */
+    /* 会話エリア */
     .live-hero{
-        background:radial-gradient(120% 140% at 15% 0%,rgba(56,189,248,.16),transparent 55%),
-                   radial-gradient(120% 140% at 100% 100%,rgba(129,140,248,.16),transparent 55%),
-                   var(--card-bg);
-        border:1px solid var(--border);border-radius:26px;padding:1.2rem;margin-bottom:1.1rem;backdrop-filter:blur(10px);
+        background:var(--card);border:2px solid var(--ink);border-radius:18px;
+        padding:1.15rem;margin-bottom:1.1rem;box-shadow:5px 5px 0 var(--shadow);
     }
-    .status-row{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.9rem}
+    .status-row{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.9rem}
     .pill{
-        display:inline-flex;align-items:center;gap:.4rem;padding:.32rem .7rem;border-radius:999px;
-        font-size:.76rem;font-weight:700;background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--muted);
+        display:inline-flex;align-items:center;gap:.4rem;padding:.24rem .65rem;border-radius:8px;
+        font-size:.74rem;font-weight:700;background:transparent;border:1.5px solid var(--ink-soft);color:var(--ink-soft);
     }
-    .pill .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
-    .pill.on{color:var(--green);border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.12)}
-    .pill.on .dot{background:var(--green);animation:pulse 1.2s infinite}
-    .pill.busy{color:var(--amber);border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.12)}
+    .pill .dot{width:8px;height:8px;border-radius:50%;background:var(--ink-soft)}
+    .pill.on{color:var(--leaf);border-color:var(--leaf)}
+    .pill.on .dot{background:var(--leaf);animation:pulse 1.2s infinite}
+    .pill.busy{color:var(--amber);border-color:var(--amber)}
     .pill.busy .dot{background:var(--amber)}
-    .pill.err{color:var(--rose);border-color:rgba(251,113,133,.4);background:rgba(251,113,133,.12)}
-    .pill.err .dot{background:var(--rose)}
+    .pill.err{color:var(--shu-deep);border-color:var(--shu-deep)}
+    .pill.err .dot{background:var(--shu-deep)}
     @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(1.35)}}
 
-    /* 交互モード：ターンバナー */
+    /* ターン札（荷札風） */
     .turn-banner{
-        display:none;width:100%;border:none;border-radius:18px;cursor:pointer;text-align:center;
-        background:linear-gradient(135deg,rgba(129,140,248,.2),rgba(56,189,248,.14));color:var(--text);
-        padding:.75rem 1rem;font-family:inherit;margin:.1rem 0 .5rem;transition:all .2s ease;
+        display:none;width:100%;border:2px dashed var(--ink);border-radius:14px;cursor:pointer;text-align:center;
+        background:var(--paper);color:var(--ink);
+        padding:.75rem 1rem;font-family:inherit;margin:.1rem 0 .5rem;transition:all .15s ease;
         flex-direction:column;gap:.2rem;align-items:center;
     }
     .turn-banner.show{display:flex}
-    .turn-banner:hover{background:linear-gradient(135deg,rgba(129,140,248,.3),rgba(56,189,248,.22))}
-    .turn-banner .turn-main{font-size:1.2rem;font-weight:800;line-height:1.4}
-    .turn-banner .turn-hint{font-size:.72rem;color:var(--muted);font-weight:600}
+    .turn-banner:hover{background:var(--shu-soft)}
+    .turn-banner .turn-main{font-size:1.2rem;font-weight:900;line-height:1.4}
+    .turn-banner .turn-hint{font-size:.72rem;color:var(--ink-soft);font-weight:700}
 
-    /* 中央の会話ボタン */
+    /* 中央の「話す」判子ボタン */
     .center-controls{display:flex;flex-direction:column;align-items:center;gap:.4rem;margin:.3rem 0 .2rem}
     .big-mic{
-        width:88px;height:88px;border-radius:50%;border:none;cursor:pointer;font-size:2.3rem;
-        background:linear-gradient(135deg,#38bdf8,#818cf8);color:#fff;
-        box-shadow:0 10px 30px rgba(56,189,248,.4);transition:all .2s ease;
-        display:flex;align-items:center;justify-content:center;
+        width:94px;height:94px;border-radius:50%;cursor:pointer;
+        border:3px solid var(--shu-deep);background:var(--shu);color:#fffdf6;
+        font-family:inherit;font-size:1.6rem;font-weight:900;letter-spacing:.08em;
+        box-shadow:5px 5px 0 var(--shadow);transition:all .12s ease;
+        display:flex;align-items:center;justify-content:center;transform:rotate(-4deg);
     }
-    .big-mic:hover{transform:scale(1.06)}
-    .big-mic.active{background:linear-gradient(135deg,#fb7185,#f59e0b);box-shadow:0 10px 30px rgba(251,113,133,.45);animation:mic 1.4s infinite}
-    @keyframes mic{0%,100%{box-shadow:0 0 0 0 rgba(251,113,133,.5)}70%{box-shadow:0 0 0 16px rgba(251,113,133,0)}}
-    .big-label{font-size:.95rem;font-weight:800}
-    .big-sub{font-size:.74rem;color:var(--muted)}
+    .big-mic:hover{transform:rotate(-4deg) translate(-1px,-1px);box-shadow:6px 6px 0 var(--shadow)}
+    .big-mic:active{transform:rotate(-4deg) translate(3px,3px);box-shadow:1px 1px 0 var(--shadow)}
+    .big-mic.active{background:var(--ink);border-color:#191713;animation:mic 1.5s infinite}
+    @keyframes mic{0%,100%{box-shadow:5px 5px 0 var(--shadow),0 0 0 0 rgba(207,74,55,.5)}70%{box-shadow:5px 5px 0 var(--shadow),0 0 0 18px rgba(207,74,55,0)}}
+    .big-label{font-size:.95rem;font-weight:900;margin-top:.2rem}
+    .big-sub{font-size:.74rem;color:var(--ink-soft);font-weight:500}
     .chip-row{display:flex;gap:.5rem;margin-top:.35rem;flex-wrap:wrap;justify-content:center}
     .chip{
-        border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--muted);
-        border-radius:999px;padding:.42rem .9rem;font-size:.8rem;font-weight:700;cursor:pointer;
-        font-family:inherit;transition:all .18s ease;
+        border:2px solid var(--ink);background:transparent;color:var(--ink-soft);
+        border-radius:999px;padding:.4rem .95rem;font-size:.8rem;font-weight:700;cursor:pointer;
+        font-family:inherit;transition:all .15s ease;
     }
-    .chip:hover{background:rgba(255,255,255,.12);color:var(--text)}
-    .chip.active{background:rgba(34,197,94,.16);border-color:rgba(34,197,94,.5);color:var(--green)}
-
-    /* 入力バー */
-    .manual-row{display:flex;gap:.5rem;align-items:flex-end;margin-top:.7rem}
-    textarea.input{
-        flex:1;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:22px;color:var(--text);
-        padding:.65rem 1rem;font-size:.95rem;font-family:inherit;resize:none;min-height:44px;max-height:120px;line-height:1.5;
-    }
-    textarea.input:focus{outline:none;border-color:var(--primary)}
-    .btn.send{border-radius:50%;width:44px;height:44px;padding:0;font-size:1.05rem;justify-content:center;flex-shrink:0}
+    .chip:hover{background:rgba(51,48,42,.06);color:var(--ink)}
+    .chip.active{background:var(--leaf-soft);border-color:var(--leaf);color:var(--leaf)}
 
     /* チャット */
     .chat-head{display:flex;align-items:center;gap:.5rem;margin-top:.7rem}
-    .chat-head .tag{font-size:.72rem;color:var(--muted);font-weight:600;margin-right:auto}
+    .chat-head .tag{font-size:.72rem;color:var(--ink-soft);font-weight:700;margin-right:auto}
     .chat-wrap{
-        max-height:46vh;min-height:170px;overflow-y:auto;display:flex;flex-direction:column;gap:.55rem;
-        padding:.35rem .15rem;margin-top:.3rem;
+        max-height:46vh;min-height:170px;overflow-y:auto;display:flex;flex-direction:column;gap:.6rem;
+        padding:.7rem .55rem;margin-top:.3rem;
+        background:rgba(51,48,42,.05);border-radius:12px;border:1.5px solid rgba(51,48,42,.18);
     }
-    .chat{display:flex;flex-direction:column;gap:.55rem}
+    .chat{display:flex;flex-direction:column;gap:.6rem}
     .bubble{
-        max-width:80%;padding:.65rem .95rem;border-radius:20px;cursor:pointer;line-height:1.5;
-        animation:pop .28s ease;transition:transform .15s ease,box-shadow .15s ease;word-break:break-word;
+        max-width:80%;padding:.65rem .95rem;border-radius:14px;cursor:pointer;line-height:1.55;
+        border:2px solid var(--ink);animation:pop .25s ease;word-break:break-word;
+        transition:transform .12s ease,box-shadow .12s ease;background:var(--card);
     }
-    .bubble:hover{transform:translateY(-1px)}
-    .bubble.right{align-self:flex-end;background:linear-gradient(135deg,rgba(34,197,94,.34),rgba(45,212,191,.26));border-bottom-right-radius:7px}
-    .bubble.left{align-self:flex-start;background:rgba(255,255,255,.1);border-bottom-left-radius:7px}
+    .bubble:hover{transform:translate(-1px,-1px)}
+    .bubble.right{align-self:flex-end;background:var(--shu-soft);border-bottom-right-radius:3px;box-shadow:3px 3px 0 var(--shadow)}
+    .bubble.left{align-self:flex-start;background:var(--ai-soft);border-bottom-left-radius:3px;box-shadow:-3px 3px 0 var(--shadow)}
     .bubble .orig{font-size:1.02rem;font-weight:700}
-    .bubble .trans{font-size:.95rem;margin-top:.25rem;font-weight:600;color:#bae6fd}
-    .bubble.right .trans{color:#ecfdf5}
-    .bubble .meta{font-size:.66rem;color:var(--muted);margin-top:.3rem;font-weight:600;opacity:.85}
-    .bubble.right .meta{text-align:right;color:rgba(236,253,245,.65)}
-    .bubble.speaking{box-shadow:0 0 0 3px rgba(56,189,248,.4)}
-    .bubble.live{opacity:.6;border:1.5px dashed var(--border);background:rgba(255,255,255,.05);cursor:default}
-    .trans .dots{color:var(--muted);animation:blink 1s infinite}
+    .bubble .trans{font-size:.95rem;margin-top:.25rem;font-weight:700;color:var(--ai-deep)}
+    .bubble.right .trans{color:var(--shu-deep)}
+    .bubble .meta{font-size:.66rem;color:var(--ink-soft);margin-top:.3rem;font-weight:700;opacity:.9}
+    .bubble.right .meta{text-align:right}
+    .bubble.speaking{box-shadow:0 0 0 3px var(--shu) !important}
+    .bubble.live{opacity:.65;border-style:dashed;background:transparent;cursor:default;box-shadow:none !important}
+    .trans .dots{color:var(--ink-soft);animation:blink 1s infinite}
     @keyframes blink{50%{opacity:.35}}
     @keyframes pop{from{opacity:0;transform:translateY(10px) scale(.95)}}
-    .empty{color:var(--muted);text-align:center;padding:2.2rem 1rem;font-size:.92rem}
+    .empty{color:var(--ink-soft);text-align:center;padding:2.2rem 1rem;font-size:.92rem;font-weight:500}
+
+    /* 入力バー */
+    .manual-row{display:flex;gap:.55rem;align-items:flex-end;margin-top:.75rem}
+    textarea.input{
+        flex:1;background:var(--card);border:2px solid var(--ink);border-radius:14px;color:var(--ink);
+        padding:.62rem 1rem;font-size:.95rem;font-family:inherit;resize:none;min-height:46px;max-height:120px;line-height:1.5;
+        box-shadow:2px 2px 0 var(--shadow);
+    }
+    textarea.input::placeholder{color:var(--ink-soft)}
+    textarea.input:focus{outline:none;border-color:var(--shu)}
+    .btn.send{border-radius:50%;width:46px;height:46px;padding:0;font-size:1.05rem;justify-content:center;flex-shrink:0;font-weight:900}
 
     /* モーダル */
     .modal-bg{
-        position:fixed;inset:0;background:rgba(4,9,18,.72);backdrop-filter:blur(4px);
+        position:fixed;inset:0;background:rgba(51,48,42,.45);
         display:none;align-items:center;justify-content:center;padding:1rem;z-index:60;
     }
     .modal-bg.show{display:flex}
     .modal{
-        background:var(--card-solid);border:1px solid var(--border);border-radius:18px;width:100%;max-width:560px;
-        max-height:88vh;overflow-y:auto;padding:1.3rem;
+        background:var(--card);border:2px solid var(--ink);border-radius:16px;width:100%;max-width:560px;
+        max-height:88vh;overflow-y:auto;padding:1.3rem;box-shadow:6px 6px 0 var(--shadow);
     }
-    .modal h3{margin:0 0 1rem;font-size:1.1rem;font-weight:800}
+    .modal h3{margin:0 0 1rem;font-size:1.1rem;font-weight:900}
     .field{margin-bottom:1rem}
-    .field label{display:block;font-size:.78rem;color:var(--muted);font-weight:700;margin-bottom:.35rem}
+    .field label{display:block;font-size:.78rem;color:var(--ink-soft);font-weight:700;margin-bottom:.35rem}
     .field input[type=text],.field input[type=password],.field select{
-        width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;
-        color:var(--text);padding:.6rem .8rem;font-size:.9rem;font-family:inherit;
+        width:100%;background:var(--card);border:2px solid var(--ink);border-radius:10px;
+        color:var(--ink);padding:.55rem .8rem;font-size:.9rem;font-family:inherit;
     }
-    .field input:focus,.field select:focus{outline:none;border-color:var(--primary)}
-    .field select option{background:var(--card-solid)}
-    .field .hint{font-size:.72rem;color:var(--muted);margin-top:.35rem;line-height:1.5}
-    .switch-row{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.6rem 0;border-bottom:1px solid var(--border)}
+    .field input:focus,.field select:focus{outline:none;border-color:var(--shu)}
+    .field select option{background:var(--card)}
+    .field .hint{font-size:.72rem;color:var(--ink-soft);margin-top:.35rem;line-height:1.5}
+    .switch-row{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.6rem 0;border-bottom:1.5px dashed rgba(51,48,42,.25)}
     .switch-row:last-of-type{border-bottom:none}
-    .switch-row .label{font-size:.88rem;font-weight:600}
-    .switch-row .label small{display:block;color:var(--muted);font-weight:500;font-size:.72rem;margin-top:2px}
-    .switch{position:relative;width:46px;height:26px;flex-shrink:0}
+    .switch-row .label{font-size:.88rem;font-weight:700}
+    .switch-row .label small{display:block;color:var(--ink-soft);font-weight:500;font-size:.72rem;margin-top:2px}
+    .switch{position:relative;width:48px;height:27px;flex-shrink:0}
     .switch input{opacity:0;width:0;height:0}
-    .slider{position:absolute;inset:0;background:rgba(255,255,255,.14);border-radius:999px;cursor:pointer;transition:.2s}
-    .slider:before{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
-    .switch input:checked+.slider{background:var(--primary)}
-    .switch input:checked+.slider:before{transform:translateX(20px)}
+    .slider{position:absolute;inset:0;background:var(--paper);border:2px solid var(--ink);border-radius:999px;cursor:pointer;transition:.2s}
+    .slider:before{content:"";position:absolute;width:17px;height:17px;left:3px;top:3px;background:var(--ink);border-radius:50%;transition:.2s}
+    .switch input:checked+.slider{background:var(--leaf-soft);border-color:var(--leaf)}
+    .switch input:checked+.slider:before{transform:translateX(20px);background:var(--leaf)}
     .modal-actions{display:flex;gap:.6rem;justify-content:flex-end;margin-top:1.2rem}
-    input[type=range]{width:100%;accent-color:var(--primary)}
+    input[type=range]{width:100%;accent-color:var(--shu)}
 
-    /* 字幕モード */
-    .subtitle-mode{
-        position:fixed;inset:0;background:#05070d;z-index:80;display:none;flex-direction:column;
-    }
+    /* 字幕モード（投影用に暗色のまま） */
+    .subtitle-mode{position:fixed;inset:0;background:#211d17;z-index:80;display:none;flex-direction:column;color:#f5efe2}
     .subtitle-mode.show{display:flex}
     .sub-half{flex:1;display:flex;align-items:center;justify-content:center;padding:1.5rem;overflow:hidden}
     .sub-half.flip{transform:rotate(180deg)}
     .sub-half .inner{max-width:900px;width:100%;text-align:center}
-    .sub-half .lbl{font-size:.8rem;color:var(--muted);font-weight:700;margin-bottom:.6rem;letter-spacing:.08em}
-    .sub-half .text{font-size:clamp(1.5rem,4.5vw,3.2rem);font-weight:700;line-height:1.4;word-break:break-word}
-    .sub-half.src .text{color:#cbd5e1}
-    .sub-half.tgt .text{color:var(--sky)}
-    .sub-divider{height:1px;background:var(--border)}
-    .sub-bar{display:flex;gap:.6rem;align-items:center;justify-content:center;padding:.9rem;border-top:1px solid var(--border);flex-wrap:wrap}
+    .sub-half .lbl{font-size:.8rem;color:#a89c85;font-weight:700;margin-bottom:.6rem;letter-spacing:.12em}
+    .sub-half .text{font-size:clamp(1.5rem,4.5vw,3.2rem);font-weight:900;line-height:1.4;word-break:break-word}
+    .sub-half.src .text{color:#efe7d4}
+    .sub-half.tgt .text{color:#ff9d84}
+    .sub-divider{height:2px;background:rgba(245,239,226,.25)}
+    .sub-bar{display:flex;gap:.6rem;align-items:center;justify-content:center;padding:.9rem;border-top:2px solid rgba(245,239,226,.25);flex-wrap:wrap}
+    .sub-bar .btn{background:#2e2a22;color:#f5efe2;border-color:#f5efe2;box-shadow:3px 3px 0 rgba(0,0,0,.6)}
+    .sub-bar .btn.primary{background:var(--shu);border-color:var(--shu-deep)}
 
     .toast{
-        position:fixed;bottom:1.4rem;left:50%;transform:translateX(-50%) translateY(120%);
-        background:var(--card-solid);border:1px solid var(--border);color:var(--text);
-        padding:.7rem 1.1rem;border-radius:12px;font-size:.85rem;font-weight:600;z-index:120;
-        transition:transform .25s ease;box-shadow:0 10px 30px rgba(0,0,0,.4);max-width:90vw;text-align:center;
+        position:fixed;bottom:1.4rem;left:50%;transform:translateX(-50%) translateY(140%);
+        background:var(--card);border:2px solid var(--ink);color:var(--ink);
+        padding:.65rem 1.1rem;border-radius:12px;font-size:.85rem;font-weight:700;z-index:120;
+        transition:transform .25s ease;box-shadow:4px 4px 0 var(--shadow);max-width:90vw;text-align:center;
     }
     .toast.show{transform:translateX(-50%) translateY(0)}
-    .toast.err{border-color:rgba(251,113,133,.5);color:var(--rose)}
+    .toast.err{color:var(--shu-deep);border-color:var(--shu-deep)}
 
     .notice{
-        background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);color:#fcd34d;
+        background:#fbf3d9;border:2px solid var(--amber);color:#6d4e12;
         border-radius:12px;padding:.8rem 1rem;font-size:.85rem;line-height:1.6;margin-bottom:1.1rem;display:none;
+        box-shadow:3px 3px 0 var(--shadow);
     }
     .notice.show{display:block}
 
@@ -243,16 +254,16 @@
 <div class="container">
     <header>
         <div class="brand">
-            <div class="logo">🌐</div>
+            <div class="logo">訳</div>
             <div>
                 <h1>同時翻訳アプリ</h1>
                 <div class="sub">話すそばから翻訳・読み上げ（Web Speech API）</div>
             </div>
         </div>
         <div class="header-actions">
-            <button class="btn" id="btnSubtitle">🖥️ 字幕モード</button>
-            <button class="btn" id="btnExport">⬇️ 書き出し</button>
-            <button class="btn" id="btnSettings">⚙️ 設定</button>
+            <button class="btn" id="btnSubtitle">字幕モード</button>
+            <button class="btn" id="btnExport">書き出し</button>
+            <button class="btn" id="btnSettings">設定</button>
         </div>
     </header>
 
@@ -271,9 +282,9 @@
     <div class="live-hero">
         <div class="status-row">
             <span class="pill" id="pillStatus"><span class="dot"></span><span id="statusText">待機中</span></span>
-            <span class="pill" id="pillDirection">🎙️ 日本語 → Indonesia</span>
+            <span class="pill" id="pillDirection">日本語 → Indonesia</span>
             <span class="pill" id="pillEngine">エンジン: 自動</span>
-            <span class="pill on" id="pillMic" style="display:none">🎙️ マイク: 常時ON</span>
+            <span class="pill on" id="pillMic" style="display:none">マイク 常時ON</span>
         </div>
 
         <button class="turn-banner" id="turnBanner">
@@ -282,18 +293,18 @@
         </button>
 
         <div class="center-controls">
-            <button class="big-mic" id="btnAuto" title="交互モードで会話"><span id="btnAutoIcon">🎤</span></button>
+            <button class="big-mic" id="btnAuto" title="交互モードで会話"><span id="btnAutoIcon">話す</span></button>
             <div class="big-label" id="btnAutoLabel">タップして会話を開始</div>
             <div class="big-sub" id="btnAutoSub">話し終えると自動でもう一方の言語に切り替わります</div>
             <div class="chip-row">
-                <button class="chip" id="micA"><span id="micALabel">🎙️ 日本語</span></button>
-                <button class="chip" id="micB"><span id="micBLabel">🎙️ Indonesia</span></button>
+                <button class="chip" id="micA"><span id="micALabel">日本語</span></button>
+                <button class="chip" id="micB"><span id="micBLabel">Indonesia</span></button>
             </div>
         </div>
 
         <div class="chat-head">
             <span class="tag" id="histCount">0 件</span>
-            <button class="btn sm ghost danger" id="btnClear">🗑️ クリア</button>
+            <button class="btn sm ghost danger" id="btnClear">クリア</button>
         </div>
         <div class="chat-wrap" id="chatWrap">
             <div class="chat" id="history"></div>
@@ -305,7 +316,7 @@
 
         <div class="manual-row">
             <textarea class="input" id="manualText" placeholder="メッセージを入力して翻訳…" rows="1"></textarea>
-            <button class="btn primary send" id="btnManual" title="翻訳して送信">➤</button>
+            <button class="btn primary send" id="btnManual" title="翻訳して送信">訳</button>
         </div>
     </div>
 </div>
@@ -398,9 +409,9 @@
         </div>
     </div>
     <div class="sub-bar">
-        <button class="btn" id="subAuto">🔁 自動交互</button>
-        <button class="btn" id="subMicA">🎙️ <span id="subMicALabel">日本語</span></button>
-        <button class="btn" id="subMicB">🎙️ <span id="subMicBLabel">English</span></button>
+        <button class="btn" id="subAuto">自動交互</button>
+        <button class="btn" id="subMicA"><span id="subMicALabel">日本語</span></button>
+        <button class="btn" id="subMicB"><span id="subMicBLabel">English</span></button>
         <button class="btn ghost" id="btnCloseSubtitle">✕ 閉じる</button>
     </div>
 </div>
@@ -680,12 +691,12 @@ function renderLangUI(){
     const a = langOf(settings.langA), b = langOf(settings.langB);
     $('langA').value = settings.langA;
     $('langB').value = settings.langB;
-    $('micALabel').textContent = '🎙️ ' + a.name;
-    $('micBLabel').textContent = '🎙️ ' + b.name;
+    $('micALabel').textContent = a.name;
+    $('micBLabel').textContent = b.name;
     $('subMicALabel').textContent = a.name;
     $('subMicBLabel').textContent = b.name;
     const d = currentDir();
-    $('pillDirection').textContent = '🎙️ ' + langOf(d.from).name + ' → ' + langOf(d.to).name;
+    $('pillDirection').textContent = langOf(d.from).name + ' → ' + langOf(d.to).name;
     const engineLabel = {auto:'自動', gtx:'Google（無料）', mymemory:'MyMemory', gcloud:'Google Cloud', libre:'LibreTranslate'};
     $('pillEngine').textContent = 'エンジン: ' + (engineLabel[settings.engine] || settings.engine);
     updateTurnUI();
@@ -740,7 +751,7 @@ function bubbleHtml(h){
     return '<div class="bubble ' + sideCls + '" data-id="' + h.id + '" title="タップで読み上げ">' +
         '<div class="orig">' + esc(h.src) + '</div>' +
         '<div class="trans">' + tgtHtml + '</div>' +
-        '<div class="meta">' + langOf(h.from).flag + '→' + langOf(h.to).flag + '  ' + time + '  🔊</div>' +
+        '<div class="meta">' + langOf(h.from).flag + '→' + langOf(h.to).flag + '  ' + time + '  ▶</div>' +
         '</div>';
 }
 function scrollChat(){ const w = $('chatWrap'); w.scrollTop = w.scrollHeight; }
@@ -754,7 +765,7 @@ function renderHistory(){
     const box = $('history');
     $('histCount').textContent = history.length + ' 件';
     if(!history.length){
-        box.innerHTML = '<div class="empty">下の 🎤 ボタンを押して話しかけてみてください</div>';
+        box.innerHTML = '<div class="empty">下の「話す」ボタンを押して話しかけてみてください</div>';
         return;
     }
     box.innerHTML = history.map(bubbleHtml).join('');
@@ -850,7 +861,7 @@ function updateMicPill(){
     const on = !!(micStream && micStream.active);
     const pill = $('pillMic');
     pill.style.display = on ? '' : 'none';
-    if(on) pill.innerHTML = '🎙️ マイク: 常時ON';
+    if(on) pill.innerHTML = 'マイク 常時ON';
 }
 
 function buildRecognition(side){
@@ -983,7 +994,7 @@ function updateMicUI(){
     $('subMicA').classList.toggle('primary', manual && wantListening && activeSide === 'A');
     $('subMicB').classList.toggle('primary', manual && wantListening && activeSide === 'B');
     $('btnAuto').classList.toggle('active', autoMode);
-    $('btnAutoIcon').textContent = autoMode ? '⏹' : '🎤';
+    $('btnAutoIcon').textContent = autoMode ? '停止' : '話す';
     $('btnAutoLabel').textContent = autoMode ? 'タップで会話を終了' : 'タップして会話を開始';
     $('btnAutoSub').textContent = autoMode ? '吹き出しをタップするともう一度読み上げます' : '話し終えると自動でもう一方の言語に切り替わります';
     $('subAuto').classList.toggle('primary', autoMode);
