@@ -393,7 +393,7 @@
             <label class="switch"><input type="checkbox" id="setInterim"><span class="slider"></span></label>
         </div>
         <div class="switch-row">
-            <div class="label">読み上げ中はマイクを止める<small>スピーカーの音を拾う誤認識を防ぎます</small></div>
+            <div class="label">読み上げ中は音声を無視する<small>認識は止めずに、スピーカーの音を拾った誤認識だけ防ぎます</small></div>
             <label class="switch"><input type="checkbox" id="setPauseMic"><span class="slider"></span></label>
         </div>
         <div class="switch-row">
@@ -661,7 +661,8 @@ function pickVoice(speechLang){
         || null;
 }
 let speakSeq = 0;
-let ttsPausedSide = null;                   // 読み上げのためにマイクを止めた話者（読み上げ完了時に再開する）
+let ttsMuting = false;   // 読み上げ中は認識を「止めず」に結果だけ無視する。
+                         // 認識を再起動すると環境によっては毎回マイク許可の確認が出るため。
 function speak(text, langCode){
     if(!text || !('speechSynthesis' in window)) return;
     const lang = langOf(langCode);
@@ -669,17 +670,18 @@ function speak(text, langCode){
     try{ window.speechSynthesis.cancel(); }catch(e){}
 
     if(settings.pauseMic && wantListening){
-        ttsPausedSide = activeSide;
-        stopRecognition(true);
+        ttsMuting = true;
+        setStatus('読み上げ中', 'busy');
     }
-    if(ttsPausedSide) setStatus('読み上げ中', 'busy');
 
     const resume = () => {
         if(mySpeak !== speakSeq) return;
-        const side = ttsPausedSide;
-        ttsPausedSide = null;
-        if(side) startRecognition(side);
-        else if(!wantListening) setStatus('待機中', '');
+        // スピーカー音の拾い残しを避けるため、少し置いてからミュート解除
+        setTimeout(() => {
+            if(mySpeak !== speakSeq) return;
+            ttsMuting = false;
+            setStatus(wantListening ? '認識中' : '待機中', wantListening ? 'on' : '');
+        }, 300);
     };
     try{
         const u = new SpeechSynthesisUtterance(text);
@@ -862,6 +864,24 @@ async function runTranslate(text, from, to, side, record){
 /* ---------- 音声認識 ---------- */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+// 会話中は画面をスリープさせない（スリープでマイクと認識が切れるのを防ぐ）
+let wakeLock = null;
+async function acquireWakeLock(){
+    try{
+        if('wakeLock' in navigator && !wakeLock){
+            wakeLock = await navigator.wakeLock.request('screen');
+            wakeLock.addEventListener('release', () => { wakeLock = null; });
+        }
+    }catch(e){ /* 非対応・省電力設定などは無視 */ }
+}
+function releaseWakeLock(){
+    try{ if(wakeLock) wakeLock.release(); }catch(e){}
+    wakeLock = null;
+}
+document.addEventListener('visibilitychange', () => {
+    if(!document.hidden && wantListening) acquireWakeLock();
+});
+
 // 一度マイクが許可されたら音声ストリームを保持し続け、
 // 認識の再開やページ操作のたびに許可確認が出ないようにする
 let micStream = null;
@@ -907,6 +927,7 @@ function buildRecognition(side){
     rec.onstart = () => { setStatus('認識中', 'on'); };
 
     rec.onresult = ev => {
+        if(ttsMuting) return;               // 読み上げ中はスピーカーの音を拾わない
         let interim = '', finalText = '';
         for(let i = ev.resultIndex; i < ev.results.length; i++){
             const r = ev.results[i];
@@ -937,8 +958,13 @@ function buildRecognition(side){
             lastPair.srcLang = ad.from; lastPair.tgtLang = ad.to;
             runTranslate(text, ad.from, ad.to, actual, true);
             if(autoMode){
-                // 次の話者の言語で即座に聞き直す（読み上げで一時停止しても再開はこの言語）
-                startRecognition(actual === 'A' ? 'B' : 'A');
+                const next = actual === 'A' ? 'B' : 'A';
+                if(next !== side){
+                    startRecognition(next);  // 認識言語が変わるときだけ再起動する（許可確認の頻度を抑える）
+                }else{
+                    activeSide = next;
+                    renderLangUI();
+                }
             }else if(!settings.continuous){
                 stopRecognition();
             }
@@ -986,7 +1012,8 @@ function startRecognition(side, clearPanes){
     if(!SR){ toast('このブラウザは音声認識に対応していません（Chrome / Edge を推奨）', true); return; }
     stopRecognition(true);
     recFatalError = false;
-    ttsPausedSide = null;
+    ttsMuting = false;
+    acquireWakeLock();
     activeSide = side;
     wantListening = true;
     renderLangUI();
@@ -1009,7 +1036,8 @@ function stopRecognition(silent){
     }
     if(!silent){
         activeSide = null;
-        ttsPausedSide = null;
+        ttsMuting = false;
+        releaseWakeLock();
         setStatus('待機中', '');
         renderLangUI();
     }
@@ -1221,8 +1249,8 @@ function init(){
 
     const warn = [];
     if(!SR) warn.push('このブラウザは<strong>音声認識に未対応</strong>です。Google Chrome または Microsoft Edge でお使いください（手入力での翻訳は利用できます）。');
-    if(location.protocol === 'file:') warn.push('<strong>ファイルを直接開いています。</strong>音声認識はマイク権限の関係で HTTPS 経由（またはローカルサーバー）でないと動作しません。');
-    else if(location.protocol !== 'https:' && location.hostname !== 'localhost') warn.push('HTTPS でないため、マイクが使えない場合があります。');
+    if(location.protocol === 'file:') warn.push('<strong>ファイルを直接開いています。</strong>この開き方ではブラウザの仕様でマイク許可が記憶されず、確認が何度も表示されます。HTTPS のURL（GitHub Pages など）で開くと、<strong>1回の許可がずっと記憶されます</strong>。');
+    else if(location.protocol !== 'https:' && location.hostname !== 'localhost') warn.push('HTTP で開いているため、ブラウザの仕様でマイク許可が毎回確認されます。HTTPS で開くと1回の許可で済みます。');
     if(!('speechSynthesis' in window)) warn.push('このブラウザは音声読み上げに未対応です。');
     notice(warn.length ? warn.join('<br>') : '');
 }
