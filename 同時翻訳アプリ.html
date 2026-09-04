@@ -909,6 +909,20 @@ function releaseMicStream(){
     }
     updateMicPill();
 }
+// 対応ブラウザ（Chrome 136+ など）では、保持しているマイクの音声トラックを
+// 認識に直接渡す。認識が自前でマイクを取得しなくなるため、開始・再開のたびの
+// 許可確認が出なくなる。未対応なら通常の start() に自動フォールバック。
+function startRec(rec){
+    if(micStream && micStream.active && typeof micStream.getAudioTracks === 'function'){
+        const track = micStream.getAudioTracks()[0];
+        if(track && track.readyState === 'live'){
+            try{ rec.start(track); return; }
+            catch(e){ /* start(track) 未対応。通常開始へ */ }
+        }
+    }
+    rec.start();
+}
+
 function updateMicPill(){
     const on = !!(micStream && micStream.active);
     const pill = $('pillMic');
@@ -996,7 +1010,7 @@ function buildRecognition(side){
             clearTimeout(restartTimer);
             restartTimer = setTimeout(() => {
                 if(wantListening && activeSide){
-                    try{ recognition.start(); }
+                    try{ startRec(recognition); }
                     catch(e){ /* すでに開始済みなら無視 */ }
                 }
             }, 250);
@@ -1022,7 +1036,7 @@ function startRecognition(side, clearPanes){
         setPane('tgt', '', false);
     }
     recognition = buildRecognition(side);
-    try{ recognition.start(); }
+    try{ startRec(recognition); }
     catch(e){ toast('音声認識を開始できませんでした：' + e.message, true); wantListening = false; }
     updateMicUI();
 }
