@@ -273,6 +273,7 @@
             <span class="pill" id="pillStatus"><span class="dot"></span><span id="statusText">待機中</span></span>
             <span class="pill" id="pillDirection">🎙️ 日本語 → Indonesia</span>
             <span class="pill" id="pillEngine">エンジン: 自動</span>
+            <span class="pill on" id="pillMic" style="display:none">🎙️ マイク: 常時ON</span>
         </div>
 
         <button class="turn-banner" id="turnBanner">
@@ -355,6 +356,10 @@
         <div class="switch-row">
             <div class="label">連続モード<small>1文ごとに止めず、マイクを開いたままにします</small></div>
             <label class="switch"><input type="checkbox" id="setContinuous"><span class="slider"></span></label>
+        </div>
+        <div class="switch-row">
+            <div class="label">マイクを常時ONに保つ<small>一度許可したら保持し、許可の再確認を防ぎます</small></div>
+            <label class="switch"><input type="checkbox" id="setKeepMic"><span class="slider"></span></label>
         </div>
 
         <div class="field" style="margin-top:1rem">
@@ -462,7 +467,7 @@ const SPEAK_PROMPTS = {
 const DEFAULTS = {
     langA:'ja', langB:'id',
     engine:'auto', gcloudKey:'', libreUrl:'', libreKey:'',
-    autoSpeak:true, interim:true, pauseMic:true, continuous:true,
+    autoSpeak:true, interim:true, pauseMic:true, continuous:true, keepMic:true,
     rate:1.0, flip:0
 };
 const S_KEY = 'trans_settings_v1';
@@ -814,6 +819,40 @@ async function runTranslate(text, from, to, side, record){
 /* ---------- 音声認識 ---------- */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+// 一度マイクが許可されたら音声ストリームを保持し続け、
+// 認識の再開やページ操作のたびに許可確認が出ないようにする
+let micStream = null;
+async function ensureMicStream(){
+    if(!settings.keepMic) return true;
+    if(micStream && micStream.active) return true;
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return true;
+    try{
+        micStream = await navigator.mediaDevices.getUserMedia({audio:true});
+        updateMicPill();
+        return true;
+    }catch(e){
+        console.warn('マイクの取得に失敗', e);
+        micStream = null;
+        updateMicPill();
+        // 明確に「許可しない」とされた場合のみ開始を止める。
+        // それ以外（マイク未接続・非対応環境など）は音声認識側の判断に任せる
+        return !(e && (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError'));
+    }
+}
+function releaseMicStream(){
+    if(micStream){
+        try{ micStream.getTracks().forEach(t => t.stop()); }catch(e){}
+        micStream = null;
+    }
+    updateMicPill();
+}
+function updateMicPill(){
+    const on = !!(micStream && micStream.active);
+    const pill = $('pillMic');
+    pill.style.display = on ? '' : 'none';
+    if(on) pill.innerHTML = '🎙️ マイク: 常時ON';
+}
+
 function buildRecognition(side){
     const d = dirFor(side);
     const rec = new SR();
@@ -950,12 +989,16 @@ function updateMicUI(){
     $('subAuto').classList.toggle('primary', autoMode);
 }
 
-function toggleAuto(){
+async function toggleAuto(){
     if(autoMode){
         autoMode = false;
         stopRecognition();
     }else{
         if(!SR){ toast('このブラウザは音声認識に対応していません（Chrome / Edge を推奨）', true); return; }
+        if(!(await ensureMicStream())){
+            toast('マイクの使用が許可されませんでした。ブラウザの設定を確認してください。', true);
+            return;
+        }
         autoMode = true;
         startRecognition('A', true);
         toast('交互モード開始：' + langOf(settings.langA).name + ' から話してください');
@@ -973,7 +1016,16 @@ function updateTurnUI(){
 }
 
 /* ---------- イベント登録 ---------- */
-function manualMic(side){ autoMode = false; updateTurnUI(); toggleMic(side); }
+async function manualMic(side){
+    autoMode = false;
+    updateTurnUI();
+    const starting = !(wantListening && activeSide === side);
+    if(starting && SR && !(await ensureMicStream())){
+        toast('マイクの使用が許可されませんでした。ブラウザの設定を確認してください。', true);
+        return;
+    }
+    toggleMic(side);
+}
 $('micA').addEventListener('click', () => manualMic('A'));
 $('micB').addEventListener('click', () => manualMic('B'));
 $('subMicA').addEventListener('click', () => manualMic('A'));
@@ -1050,6 +1102,7 @@ function openSettings(){
     $('setInterim').checked = settings.interim;
     $('setPauseMic').checked = settings.pauseMic;
     $('setContinuous').checked = settings.continuous;
+    $('setKeepMic').checked = settings.keepMic;
     $('setRate').value = settings.rate;
     $('rateVal').textContent = Number(settings.rate).toFixed(1);
     $('setFlip').value = String(settings.flip);
@@ -1075,6 +1128,8 @@ $('btnSaveSettings').addEventListener('click', () => {
     settings.interim = $('setInterim').checked;
     settings.pauseMic = $('setPauseMic').checked;
     settings.continuous = $('setContinuous').checked;
+    settings.keepMic = $('setKeepMic').checked;
+    if(!settings.keepMic) releaseMicStream();
     settings.rate = Number($('setRate').value);
     settings.flip = Number($('setFlip').value);
     saveSettings();
