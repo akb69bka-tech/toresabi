@@ -245,12 +245,14 @@
         </div>
 
         <div class="chips" id="chips">
-            <span class="chip" onclick="askExample(this)">今日の作業は？</span>
-            <span class="chip" onclick="askExample(this)">トマトの圃場はどこ？</span>
+            <span class="chip" onclick="askExample(this)">去年の今頃は？</span>
+            <span class="chip" onclick="askExample(this)">一番採れたのはどこ？</span>
             <span class="chip" onclick="askExample(this)">今週の収穫量は？</span>
+            <span class="chip" onclick="askExample(this)">ダコニールは何回使った？</span>
+            <span class="chip" onclick="askExample(this)">うどんこはいつ出た？</span>
+            <span class="chip" onclick="askExample(this)">去年の12月の収穫は？</span>
             <span class="chip" onclick="askExample(this)">最後の防除はいつ？</span>
-            <span class="chip" onclick="askExample(this)">A圃場の生育状況</span>
-            <span class="chip" onclick="askExample(this)">今日の気温は？</span>
+            <span class="chip" onclick="askExample(this)">去年の今日の気温は？</span>
         </div>
     </section>
 
@@ -259,6 +261,7 @@
 
     <!-- ==================== タブ ==================== -->
     <div class="tabs" id="tabs">
+        <div class="tab" data-tab="lastyear" onclick="switchTab('lastyear')">📅 去年の今頃</div>
         <div class="tab active" data-tab="fields" onclick="switchTab('fields')">🌾 圃場・作物</div>
         <div class="tab" data-tab="tasks" onclick="switchTab('tasks')">📋 作業記録</div>
         <div class="tab" data-tab="growth" onclick="switchTab('growth')">📈 生育・環境</div>
@@ -267,6 +270,31 @@
     </div>
 
     <!-- 圃場・作物 -->
+    <!-- 去年の今頃 -->
+    <section class="panel" id="panel-lastyear">
+        <div class="card">
+            <div class="card-head">
+                <div><h3>📅 去年の今頃（同日 ±1週間）</h3><div class="desc" id="lyRange">昨年の同時期の記録と、穴内地区の気象を並べて確認できます。</div></div>
+                <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
+                    <input type="date" id="ly_base" onchange="renderLastYear()" style="background:rgba(0,0,0,.28);border:1px solid var(--border);border-radius:9px;padding:.45rem .6rem;color:var(--text);font-size:.85rem;font-family:inherit">
+                    <select id="ly_span" onchange="renderLastYear()" style="background:rgba(0,0,0,.28);border:1px solid var(--border);border-radius:9px;padding:.45rem .6rem;color:var(--text);font-size:.85rem;font-family:inherit">
+                        <option value="7" selected>±1週間</option><option value="3">±3日</option><option value="14">±2週間</option>
+                    </select>
+                    <button class="btn ghost sm" onclick="loadWeather(true)">🌤 気象を取得</button>
+                </div>
+            </div>
+            <div id="lySummary"></div>
+        </div>
+        <div class="card">
+            <div class="card-head"><div><h3>🌤 穴内地区の気象</h3><div class="desc" id="wxDesc">最高・最低・平均気温と降水量。Open-Meteo の観測アーカイブから取得し、この端末に保存します。</div></div></div>
+            <div id="lyWeather"></div>
+        </div>
+        <div class="card">
+            <div class="card-head"><div><h3>🗂 昨年同時期の記録</h3><div class="desc">収穫・作業・生育・資材を日付順にまとめて表示します。</div></div></div>
+            <div id="lyRecords"></div>
+        </div>
+    </section>
+
     <section class="panel active" id="panel-fields">
         <div class="card">
             <div class="card-head">
@@ -525,7 +553,7 @@ function delRecord(type,id){ Store.del(type,id); }
 /* ======================================================================
    一覧レンダリング
    ====================================================================== */
-function renderAll(){ renderStats(); renderList('fields'); renderList('tasks'); renderList('growth'); renderList('harvests'); renderList('materials'); refreshFieldSelects(); }
+function renderAll(){ renderStats(); renderList('fields'); renderList('tasks'); renderList('growth'); renderList('harvests'); renderList('materials'); refreshFieldSelects(); try{ renderLastYear(); }catch(e){} }
 
 function renderStats(){
     const conf = [
@@ -592,7 +620,24 @@ const REL_DATE = {
     '一昨日':()=>{const d=addDays(-2);return [d,d];},
     '今週':()=>weekRange(0), '先週':()=>weekRange(-1),
     '今月':()=>monthRange(0), '先月':()=>monthRange(-1),
+    '今年':()=>yearRange(0), '去年':()=>yearRange(-1), '昨年':()=>yearRange(-1),
+    '全期間':()=>null, 'すべて':()=>null, '通算':()=>null, '年間':()=>null,
 };
+/* 漢数字・全角も拾う月表記（「4月」「四月」「去年の12月」） */
+const KANJI_NUM = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10,'十一':11,'十二':12};
+function parseMonthQuery(q){
+    let m = q.match(/(去年|昨年|今年)?\s*([0-9０-９]{1,2}|[一二三四五六七八九十]{1,3})月/);
+    if(!m) return null;
+    let mon = m[2].replace(/[０-９]/g, c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+    mon = /^\d+$/.test(mon) ? parseInt(mon,10) : KANJI_NUM[mon];
+    if(!mon || mon<1 || mon>12) return null;
+    const now = new Date();
+    let year = now.getFullYear();
+    if(m[1]==='去年'||m[1]==='昨年') year -= 1;
+    else if(!m[1] && mon > now.getMonth()+1) year -= 1;   // 未来の月なら前年とみなす
+    const first = new Date(year, mon-1, 1), last = new Date(year, mon, 0);
+    return { range:[fmt(first), fmt(last)], label:`${year}年${mon}月` };
+}
 const CATEGORY_KW = [
     {key:'harvests', label:'収穫', kw:['収穫','収量','取れ高','とれ高','出荷']},
     {key:'materials',label:'資材・農薬', kw:['農薬','防除','消毒','散布','肥料','施肥','資材','薬']},
@@ -604,35 +649,74 @@ const CATEGORY_KW = [
 function runQuery(qRaw){
     const q = normalize(qRaw);
 
-    // 1) 日付範囲
-    let dateRange=null, dateLabel='';
-    for(const key in REL_DATE){ if(q.includes(key)){ dateRange=REL_DATE[key](); dateLabel=key; break; } }
+    // 1) 日付範囲（相対表現 → 月指定の順で判定）
+    let dateRange=null, dateLabel='', hasDate=false;
+    for(const key in REL_DATE){ if(q.includes(key)){ dateRange=REL_DATE[key](); dateLabel=key; hasDate=true; break; } }
+    const mq = parseMonthQuery(q);
+    if(mq){ dateRange = mq.range; dateLabel = mq.label; hasDate = true; }
 
-    // 2) 圃場エンティティ
-    let field = matchField(q);
+    // 2) エンティティ
+    const field = matchField(q);
+    const crop  = matchCrop(q);
+    const fields2 = matchFields(q);          // 比較用に複数拾う
+    const material = matchMaterial(q);       // 農薬・肥料の名称
+    const pest = matchPest(q);               // 病害虫名
+    const worker = matchWorker(q);           // 担当者
 
-    // 3) 作物エンティティ
-    let crop = matchCrop(q);
+    // 3) 意図フラグ
+    const wantCount   = /何回|なんかい|回数|何度|使った回数/.test(q);
+    const wantCompare = /どっち|どちら|くらべ|比べ|比較|一番|いちばん|最も|多い順|ランキング|多かった/.test(q);
+    const wantLastYear= /去年の今頃|昨年の今頃|去年の今|昨年の今|一年前|1年前|前年の今/.test(q);
+    const wantWeather = /天気|気象|降水|雨量|日照/.test(q) || (/気温|温度|最高|最低/.test(q) && !/設定|管理/.test(q));
+    const wantTemp    = /気温|温度|最高|最低/.test(q);
+    const wantHumidity= q.includes('湿度');
+    const wantLatest  = /最後|直近|いつ|前回|最新/.test(q);
+    const wantWhere   = /どこ|場所/.test(q);
+
+    const hasWx = !!(WX.d && Object.keys(WX.d).length);
+
+    // ---- 天気・気温（気象データ優先、なければ生育記録へ） ----
+    // 「去年の今日の気温」のように期間指定が去年なら、その窓に絞る
+    if(wantWeather && hasWx){
+        if(wantLastYear){
+            const lyBase = lastYearOf(val('ly_base')||today());
+            const isDay = /今日|同日|その日/.test(q);
+            return answerWeather(isDay ? [lyBase,lyBase] : windowAround(lyBase,7),
+                                 isDay ? `昨年の同日（${lyBase}）` : '昨年の同時期', q);
+        }
+        return answerWeather(dateRange, dateLabel, q);
+    }
+
+    // ---- 去年の今頃 ----
+    if(wantLastYear) return answerLastYear(field);
+
+    // ---- 資材名の指定（「ダコニールは何回？」「いつ使った？」） ----
+    if(material) return answerMaterialName(material, dateRange, dateLabel, field, wantCount);
+
+    // ---- 病害虫の指定（「うどんこはいつ出た？」） ----
+    if(pest) return answerPest(pest, dateRange, dateLabel, field);
+
+    // ---- 担当者の指定 ----
+    if(worker && !field) return answerWorker(worker, dateRange, dateLabel);
 
     // 4) カテゴリ判定
     let cat=null;
     for(const c of CATEGORY_KW){ if(c.kw.some(k=>q.includes(k))){ cat=c; break; } }
 
-    // 気温・湿度など環境の特定質問
-    const wantTemp = q.includes('気温')||q.includes('温度');
-    const wantHumidity = q.includes('湿度');
-    const wantLatest = q.includes('最後')||q.includes('直近')||q.includes('いつ')||q.includes('前回');
-    const wantWhere = q.includes('どこ')||q.includes('場所');
+    // ---- 比較・ランキング ----
+    if(wantCompare) return answerCompare(cat && cat.key==='materials' ? 'materials' : 'harvests', dateRange, dateLabel, fields2);
 
     // ---- 圃場・作物の場所照会 ----
-    if((cat && cat.key==='fields') || (crop && !cat) || wantWhere){
+    if((cat && cat.key==='fields') || (crop && !cat && !hasDate) || wantWhere){
         return answerFields(crop, field);
     }
 
     // カテゴリが決まらない場合の推定
     if(!cat){
-        if(field) cat = CATEGORY_KW.find(c=>c.key==='tasks');
-        else return {ok:false, main:'質問の内容を認識できませんでした。', detail:'「今日の作業」「トマトの圃場」「今週の収穫量」のように話してください。'};
+        if(field && !hasDate) return answerFieldSummary(field);
+        if(field || hasDate)  cat = CATEGORY_KW.find(c=>c.key==='tasks');
+        else return {ok:false, main:'質問の内容を認識できませんでした。',
+            detail:'「今日の作業」「4号の収穫量は？」「一番採れたのは？」「ダコニールは何回使った？」「去年の今頃は？」のように話してください。'};
     }
 
     // ---- 各カテゴリ照会 ----
@@ -641,6 +725,174 @@ function runQuery(qRaw){
     if(cat.key==='growth')    return answerGrowth(dateRange,dateLabel,field,wantTemp,wantHumidity);
     if(cat.key==='tasks')     return answerTasks(dateRange,dateLabel,field);
     return {ok:false, main:'該当するデータが見つかりませんでした。', detail:''};
+}
+
+/* --- 比較・ランキング --- */
+function answerCompare(kind, range, label, only){
+    const scope = label||'全期間';
+    if(kind==='materials'){
+        const list = filterByDate(DB.materials, range);
+        const cnt = {};
+        list.forEach(r=>{ if(r.name) cnt[r.name]=(cnt[r.name]||0)+1; });
+        const rank = Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,10);
+        if(!rank.length) return noData('資材・農薬', scope, 'materials');
+        return {ok:true, tab:'materials',
+            main:`${scope}で最も使ったのは「${rank[0][0]}」の${rank[0][1]}回です。`,
+            detail: rank.map((r,i)=>`<div class="row">${i+1}. <b>${esc(r[0])}</b> … ${r[1]}回</div>`).join('')};
+    }
+    let list = filterByDate(DB.harvests, range);
+    if(only && only.length) list = list.filter(r=>only.includes(r.fieldName));
+    if(!list.length) return noData('収穫', scope, 'harvests');
+    const by = {};
+    list.forEach(r=>{ (by[r.fieldName]=by[r.fieldName]||[]).push(r); });
+    // 主要単位（最も多く使われている単位）で順位付け
+    const unitCount={}; list.forEach(r=>unitCount[r.unit]=(unitCount[r.unit]||0)+1);
+    const mainUnit = Object.entries(unitCount).sort((a,b)=>b[1]-a[1])[0][0];
+    const rank = Object.entries(by).map(([f,l])=>{
+        const s = sumHarvest(l);
+        return {f, main:s[mainUnit]||0, all:sumStr(s), n:l.length};
+    }).sort((a,b)=>b.main-a.main);
+    const top = rank[0];
+    let main;
+    if(only && only.length>=2){
+        const a=rank.find(r=>r.f===only[0]), b=rank.find(r=>r.f===only[1]);
+        const diff = a&&b ? round(Math.abs(a.main-b.main)) : null;
+        main = a&&b ? `${scope}は ${top.f} の方が多く、${a.f} ${a.all} に対し ${b.f} ${b.all}（差 ${diff}${mainUnit}）です。`
+                    : `${scope}で最も多いのは ${top.f} の ${top.all} です。`;
+    }else{
+        main = `${scope}で最も収穫が多いのは ${top.f} の ${top.all} です。`;
+    }
+    return {ok:true, tab:'harvests', main,
+        detail: rank.map((r,i)=>`<div class="row">${i+1}. <b>${esc(r.f)}</b> … ${r.all}（${r.n}回）</div>`).join('')};
+}
+
+/* --- 資材名の指定 --- */
+function matchMaterial(q){
+    const names = [...new Set(DB.materials.map(r=>r.name).filter(Boolean))].sort((a,b)=>b.length-a.length);
+    for(const n of names){
+        const core = normalize(n).replace(/[0-9０-９]/g,'');
+        if(q.includes(normalize(n))) return n;
+        if(core.length>=4 && q.includes(core.slice(0,5))) return n;   // 「ダコニール」で「ダコニール1000」に一致
+    }
+    return null;
+}
+function answerMaterialName(name, range, label, field, wantCount){
+    let list = filterByDate(DB.materials.filter(r=>r.name===name), range);
+    if(field) list = list.filter(r=>r.fieldName===field);
+    const scope = [label, field].filter(Boolean).join('・')||'全期間';
+    if(!list.length) return {ok:false, tab:'materials', main:`${scope}の「${name}」の使用記録は見つかりませんでした。`, detail:''};
+    list = sortByDate(list);
+    const byField = {}; list.forEach(r=>byField[r.fieldName]=(byField[r.fieldName]||0)+1);
+    const main = wantCount
+        ? `${scope}で「${name}」は ${list.length}回 使用しています。（最終 ${list[0].date}）`
+        : `「${name}」の最終使用は ${list[0].date}（${list[0].fieldName}）です。${scope}で計${list.length}回。`;
+    const detail = `<div class="row">📊 圃場別：${Object.entries(byField).map(([f,n])=>`${f} ${n}回`).join('、')}</div>`
+        + list.slice(0,10).map(r=>`<div class="row">🧴 ${esc(r.date)} ｜ ${esc(r.fieldName)} ｜ ${esc(r.amount)||''} ｜ ${esc(r.note)||''}</div>`).join('');
+    return {ok:true, tab:'materials', main, detail};
+}
+
+/* --- 病害虫 --- */
+const PESTS = ['うどんこ','うどん粉','黒枯','黒ガレ','黒がれ','灰色かび','ハイカビ','すすかび','菌核','青枯','褐色斑点',
+    'コナジラミ','ハダニ','赤ダニ','アザミウマ','スリップス','ハモグリ','ヨトウ','オオタバコガ','ハムシ','カメムシ',
+    'カスミ','コオロギ','ヨコバイ','センチュウ','アブラムシ','チャノホコリダニ'];
+function matchPest(q){ for(const p of PESTS){ if(q.includes(normalize(p))) return p; } return null; }
+function answerPest(pest, range, label, field){
+    const hit = [];
+    ['growth','materials','harvests','tasks'].forEach(k=>{
+        filterByDate(DB[k], range).forEach(r=>{
+            if(field && r.fieldName!==field) return;
+            const blob = normalize([r.note,r.content,r.stage,r.name].filter(Boolean).join(' '));
+            if(blob.includes(normalize(pest))) hit.push({k, r});
+        });
+    });
+    const scope = [label, field].filter(Boolean).join('・')||'全期間';
+    if(!hit.length) return {ok:false, tab:'growth', main:`${scope}で「${pest}」の記録は見つかりませんでした。`, detail:''};
+    hit.sort((a,b)=>(b.r.date||'').localeCompare(a.r.date||''));
+    const fieldsHit = [...new Set(hit.map(h=>h.r.fieldName))];
+    const ico = {growth:'📈', materials:'🧴', harvests:'🧺', tasks:'📋'};
+    return {ok:true, tab:'growth',
+        main:`${scope}の「${pest}」は ${hit.length}件、直近は ${hit[0].r.date}（${hit[0].r.fieldName}）です。`,
+        detail:`<div class="row">📍 該当圃場：${fieldsHit.join('、')}</div>`
+            + hit.slice(0,10).map(h=>`<div class="row">${ico[h.k]} ${esc(h.r.date)} ｜ ${esc(h.r.fieldName)} ｜ ${esc(h.r.note||h.r.content||h.r.name||'')}</div>`).join('')};
+}
+
+/* --- 担当者 --- */
+function matchWorker(q){
+    const set = new Set();
+    DB.tasks.forEach(r=>String(r.worker||'').split(/[,、]/).forEach(w=>{ w=w.trim(); if(w) set.add(w); }));
+    const names = [...set].sort((a,b)=>b.length-a.length);
+    for(const n of names){ if(n.length>=2 && q.includes(normalize(n))) return n; }
+    return null;
+}
+function answerWorker(worker, range, label){
+    const list = sortByDate(filterByDate(DB.tasks, range).filter(r=>String(r.worker||'').includes(worker)));
+    const scope = label||'全期間';
+    if(!list.length) return {ok:false, tab:'tasks', main:`${scope}の${worker}さんの作業記録はありません。`, detail:''};
+    const byType={}; list.forEach(r=>byType[r.type]=(byType[r.type]||0)+1);
+    return {ok:true, tab:'tasks',
+        main:`${scope}の${worker}さんの作業は ${list.length}件です。（直近 ${list[0].date}）`,
+        detail:`<div class="row">📊 内訳：${Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([t,n])=>`${t} ${n}件`).join('、')}</div>`
+            + list.slice(0,8).map(r=>`<div class="row">📋 ${esc(r.date)} ｜ ${esc(r.fieldName)} ｜ <b>${esc(r.type)}</b> ${esc(r.content)||''}</div>`).join('')};
+}
+
+/* --- 圃場まるごとサマリー --- */
+function answerFieldSummary(field){
+    const f = DB.fields.find(x=>x.name===field);
+    const h = DB.harvests.filter(r=>r.fieldName===field);
+    const t = DB.tasks.filter(r=>r.fieldName===field);
+    const m = DB.materials.filter(r=>r.fieldName===field);
+    const g = DB.growth.filter(r=>r.fieldName===field);
+    const last = sortByDate(h)[0];
+    return {ok:true, tab:'harvests',
+        main:`${field}は${f&&f.crop?f.crop:'—'}、通算の収穫は ${sumStr(sumHarvest(h))}（${h.length}回）です。`,
+        detail:`<div class="row">📍 ${esc(field)} ｜ ${esc(f&&f.crop||'')} ${f&&f.variety?'（'+esc(f.variety)+'）':''} ｜ ${esc(f&&f.note||'')}</div>`
+            + `<div class="row">📋 作業 ${t.length}件 ／ 🧴 資材・農薬 ${m.length}件 ／ 📈 生育メモ ${g.length}件</div>`
+            + (last?`<div class="row">🧺 最終収穫 ${esc(last.date)} … ${esc(last.qty)}${esc(last.unit)}</div>`:'')};
+}
+
+/* --- 天気・気温 --- */
+function answerWeather(range, label, q){
+    let days = Object.keys(WX.d).sort();
+    if(range) days = days.filter(d=>d>=range[0] && d<=range[1]);
+    const scope = label||'記録のある全期間';
+    if(!days.length) return {ok:false, tab:'lastyear', main:`${scope}の気象データがありません。`,
+        detail:'「去年の今頃」タブの「🌤 気象を取得」で取り込めます。'};
+    const maxs = days.map(d=>WX.d[d].max).filter(v=>v!=null);
+    const mins = days.map(d=>WX.d[d].min).filter(v=>v!=null);
+    const rains= days.map(d=>WX.d[d].rain).filter(v=>v!=null);
+    const avg = a=> a.length? round(a.reduce((x,y)=>x+y,0)/a.length) : '—';
+    let main;
+    if(days.length===1){
+        const w = WX.d[days[0]];
+        main = `${days[0]}の${WX_LOC.name}は 最高${round(w.max)}℃・最低${round(w.min)}℃`+(w.rain?`、降水${round(w.rain)}mm`:'、降水なし')+'です。';
+    }else if(/最高/.test(q) && !/最低/.test(q)){
+        main = `${scope}の最高気温は 平均${avg(maxs)}℃、最も高い日で ${round(Math.max(...maxs))}℃ です。`;
+    }else if(/最低/.test(q) && !/最高/.test(q)){
+        main = `${scope}の最低気温は 平均${avg(mins)}℃、最も低い日で ${round(Math.min(...mins))}℃ です。`;
+    }else{
+        main = `${scope}（${days.length}日間）は 平均最高${avg(maxs)}℃・平均最低${avg(mins)}℃、降水計${round(rains.reduce((a,b)=>a+b,0))}mm です。`;
+    }
+    const show = days.slice(-10);
+    return {ok:true, tab:'lastyear', main,
+        detail: show.map(d=>{ const w=WX.d[d];
+            return `<div class="row">🌤 ${d} ｜ 最高<b>${round(w.max)}℃</b> 最低${round(w.min)}℃ ${w.rain?'雨'+round(w.rain)+'mm':''}</div>`;
+        }).join('')};
+}
+
+/* --- 去年の今頃 --- */
+function answerLastYear(field){
+    const base = val('ly_base') || today();
+    const lyBase = lastYearOf(base);
+    const range = windowAround(lyBase, 7);
+    const items = collectWindow(range, field);
+    const h = DB.harvests.filter(r=>r.date>=range[0]&&r.date<=range[1]&&(!field||r.fieldName===field));
+    const w = wxOf(lyBase);
+    const scope = field ? field+'の' : '';
+    if(!items.length) return {ok:false, tab:'lastyear', main:`昨年の同時期（${range[0]}〜${range[1]}）の${scope}記録はありません。`, detail:''};
+    let main = `昨年の同時期（${lyBase}前後1週間）の${scope}収穫は ${sumStr(sumHarvest(h))}、記録は全${items.length}件です。`;
+    if(w) main += ` この日の気温は最高${round(w.max)}℃・最低${round(w.min)}℃でした。`;
+    return {ok:true, tab:'lastyear', main,
+        detail: items.slice(0,10).map(it=>`<div class="row">${it.kindLabel} ${esc(it.rec.date)} ｜ ${esc(it.rec.fieldName)} ｜ ${esc(lyText(it))}</div>`).join('')};
 }
 
 /* --- 圃場・作物 --- */
@@ -710,7 +962,8 @@ function answerGrowth(range,label,field,wantTemp,wantHumidity){
         return {ok:true, tab:'growth', main, detail};
     }
     const r = list[0];
-    const main = `${field||scope}の生育状況：最新は ${r.date}「${r.stage||'記録あり'}」です。`;
+    const gist = r.stage || (r.note||'').slice(0,60) || '記録あり';
+    const main = `${field||scope}の生育状況：最新は ${r.date}「${gist}」です。`;
     const detail = list.slice(0,8).map(x=>`<div class="row">📈 ${esc(x.date)} ｜ ${esc(x.fieldName)} ｜ ${esc(x.stage)||''} ｜ 草丈${num(x.height,'cm')} 気温${num(x.temp,'℃')} 湿度${num(x.humidity,'%')} ${esc(x.note)||''}</div>`).join('');
     return {ok:true, tab:'growth', main, detail};
 }
@@ -735,16 +988,30 @@ function noData(name,scope,tab){
 }
 
 /* --- エンティティ照合 --- */
+/* 圃場名の表記ゆれ候補（「4号ハウス」→「4号ハウス」「4号」）。
+   1文字の断片は作らない ―「4月」を「4号ハウス」と誤認しないため。 */
+function fieldVariants(name){
+    const v = [name, name.replace(/ハウス$/,''), name.replace(/(圃場|ほ場)$/,'')];
+    return [...new Set(v)].filter(s=>s && (s.length>=2 || s===name)).sort((a,b)=>b.length-a.length);
+}
+/* 月表記を取り除いた質問文（「12月」の"12"を圃場番号と誤認しないため） */
+function stripMonth(q){ return q.replace(/([0-9０-９]{1,2}|[一二三四五六七八九十]{1,3})月/g,'　'); }
 function matchField(q){
-    // 完全一致 or 部分一致（長い名前優先）
+    const s = stripMonth(q);
     const cand = DB.fields.map(f=>f.name).sort((a,b)=>b.length-a.length);
-    for(const n of cand){ if(q.includes(normalize(n))) return n; }
-    // 「3番」「A圃場」などの緩い一致
-    for(const n of cand){
-        const core = n.replace(/(圃場|ほ場|ハウス|号|番)/g,'');
-        if(core && q.includes(normalize(core))) return n;
-    }
+    for(const n of cand){ for(const v of fieldVariants(n)){ if(s.includes(normalize(v))) return n; } }
     return null;
+}
+/* 比較用：質問に含まれる圃場を出現順に複数拾う */
+function matchFields(q){
+    const s = stripMonth(q), found = [];
+    DB.fields.map(f=>f.name).forEach(n=>{
+        for(const v of fieldVariants(n)){
+            const i = s.indexOf(normalize(v));
+            if(i>=0){ found.push({n, i}); break; }
+        }
+    });
+    return [...new Map(found.sort((a,b)=>a.i-b.i).map(x=>[x.n,x])).values()].map(x=>x.n);
 }
 function matchCrop(q){
     const crops=[...new Set(DB.fields.map(f=>f.crop).filter(Boolean))].sort((a,b)=>b.length-a.length);
@@ -758,8 +1025,198 @@ function addDays(n){ const d=new Date(); d.setDate(d.getDate()+n); return fmt(d)
 function fmt(d){ return d.toISOString().slice(0,10); }
 function weekRange(offset){ const d=new Date(); const day=(d.getDay()+6)%7; const mon=new Date(d); mon.setDate(d.getDate()-day+offset*7); const sun=new Date(mon); sun.setDate(mon.getDate()+6); return [fmt(mon),fmt(sun)]; }
 function monthRange(offset){ const d=new Date(); const first=new Date(d.getFullYear(),d.getMonth()+offset,1); const last=new Date(d.getFullYear(),d.getMonth()+offset+1,0); return [fmt(first),fmt(last)]; }
+function yearRange(offset){ const y=new Date().getFullYear()+offset; return [`${y}-01-01`,`${y}-12-31`]; }
 function filterByDate(list,range){ if(!range) return list.slice(); return list.filter(r=>r.date>=range[0] && r.date<=range[1]); }
 function sortByDate(list){ return list.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')); }
+
+/* ======================================================================
+   気象データ（穴内地区）― Open-Meteo 観測アーカイブ
+   ====================================================================== */
+const WX_KEY = 'cultivation_weather_v1';
+// 高知県安芸市穴内 付近。実際の圃場に合わせて下の値を変更できます。
+const WX_LOC = { lat: 33.514, lon: 133.870, name: '穴内（高知県安芸市）' };
+let WX = loadWx();
+
+function loadWx(){ try{ return JSON.parse(localStorage.getItem(WX_KEY))||{}; }catch(e){ return {}; } }
+function saveWx(){ try{ localStorage.setItem(WX_KEY, JSON.stringify(WX)); }catch(e){} }
+
+/* 記録のある期間＋昨年同時期をまとめて取得してキャッシュ */
+async function loadWeather(force){
+    const dates = allRecordDates();
+    let start, end;
+    if(dates.length){ start = dates[0]; end = dates[dates.length-1]; }
+    else { start = addDays(-400); end = today(); }
+    // 昨年同時期も確実に含める
+    const ly = lastYearOf(val('ly_base')||today());
+    if(ly < start) start = ly;
+    if(end > today()) end = today();
+    // 取得済みで force でなければスキップ
+    if(!force && WX._start===start && WX._end===end && WX.d){ renderLastYear(); return; }
+
+    const el = document.getElementById('wxDesc');
+    if(el) el.textContent = '気象データを取得しています…';
+    const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${WX_LOC.lat}&longitude=${WX_LOC.lon}`
+        + `&start_date=${start}&end_date=${end}`
+        + `&daily=temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_sum,sunshine_duration`
+        + `&timezone=Asia%2FTokyo`;
+    try{
+        const res = await fetch(url);
+        if(!res.ok) throw new Error('HTTP '+res.status);
+        const j = await res.json();
+        const dd = j.daily||{};
+        const map = {};
+        (dd.time||[]).forEach((t,i)=>{
+            map[t] = { max:dd.temperature_2m_max[i], min:dd.temperature_2m_min[i], mean:dd.temperature_2m_mean[i],
+                       rain:dd.precipitation_sum[i], sun:dd.sunshine_duration ? dd.sunshine_duration[i] : null };
+        });
+        WX = { d:map, _start:start, _end:end, _at:today() };
+        saveWx();
+        if(el) el.textContent = `${WX_LOC.name}（${WX_LOC.lat}, ${WX_LOC.lon}）の観測値 ${start}〜${end} を取得済み。`;
+        toast('気象データを取得しました');
+    }catch(e){
+        if(el) el.textContent = '気象データを取得できませんでした（'+e.message+'）。オンラインで「🌤 気象を取得」をお試しください。';
+        toast('気象の取得に失敗しました');
+    }
+    renderLastYear();
+}
+function wxOf(d){ return (WX.d||{})[d]||null; }
+function wxLine(d){
+    const w = wxOf(d); if(!w) return '';
+    const t = [];
+    if(w.max!=null) t.push(`最高${round(w.max)}℃`);
+    if(w.min!=null) t.push(`最低${round(w.min)}℃`);
+    if(w.rain!=null && w.rain>0) t.push(`雨${round(w.rain)}mm`);
+    return t.join(' / ');
+}
+function allRecordDates(){
+    const s = new Set();
+    ['harvests','tasks','growth','materials'].forEach(k=>DB[k].forEach(r=>{ if(r.date) s.add(r.date); }));
+    return [...s].sort();
+}
+
+/* ======================================================================
+   去年の今頃（同日 ±N日）
+   ====================================================================== */
+function lastYearOf(dstr){
+    const d = new Date(dstr+'T00:00:00');
+    d.setFullYear(d.getFullYear()-1);
+    return fmt(d);
+}
+function windowAround(dstr, span){
+    const a = new Date(dstr+'T00:00:00'), b = new Date(dstr+'T00:00:00');
+    a.setDate(a.getDate()-span); b.setDate(b.getDate()+span);
+    return [fmt(a), fmt(b)];
+}
+function collectWindow(range, field){
+    const out = [];
+    const label = {harvests:'🧺 収穫', tasks:'📋 作業', growth:'📈 生育', materials:'🧴 資材'};
+    ['harvests','tasks','growth','materials'].forEach(k=>{
+        DB[k].forEach(r=>{
+            if(!r.date || r.date<range[0] || r.date>range[1]) return;
+            if(field && r.fieldName!==field) return;
+            out.push({kind:k, kindLabel:label[k], rec:r});
+        });
+    });
+    return out.sort((a,b)=> a.rec.date.localeCompare(b.rec.date) || a.kind.localeCompare(b.kind));
+}
+function sumHarvest(list){
+    const by = {};
+    list.forEach(r=>{ const u=r.unit||'kg'; by[u]=(by[u]||0)+(parseFloat(r.qty)||0); });
+    return by;
+}
+function sumStr(by){ const e=Object.entries(by); return e.length? e.map(([u,v])=>`${round(v)}${u}`).join('、') : '—'; }
+
+function renderLastYear(){
+    const baseEl = document.getElementById('ly_base');
+    if(!baseEl) return;
+    if(!baseEl.value) baseEl.value = today();
+    const base = baseEl.value;
+    const span = parseInt(val('ly_span')||'7', 10);
+    const lyBase = lastYearOf(base);
+    const lyRange = windowAround(lyBase, span);
+    const thisRange = windowAround(base, span);
+
+    document.getElementById('lyRange').textContent =
+        `基準日 ${base} の1年前 ${lyBase} を中心に ±${span}日（${lyRange[0]} 〜 ${lyRange[1]}）の記録を表示しています。`;
+
+    /* --- サマリー：昨年 vs 今年 の同時期収穫 --- */
+    const lyH = DB.harvests.filter(r=>r.date>=lyRange[0] && r.date<=lyRange[1]);
+    const tyH = DB.harvests.filter(r=>r.date>=thisRange[0] && r.date<=thisRange[1]);
+    const byField = {};
+    lyH.forEach(r=>{ (byField[r.fieldName] = byField[r.fieldName]||[]).push(r); });
+    let rows = Object.entries(byField).sort((a,b)=>b[1].length-a[1].length)
+        .map(([f,list])=>`<tr><td>${esc(f)}</td><td><b>${sumStr(sumHarvest(list))}</b></td><td>${list.length}回</td></tr>`).join('');
+    if(!rows) rows = '<tr><td colspan="3" style="color:var(--muted)">この期間の収穫記録はありません</td></tr>';
+
+    const lyDays = new Set(lyH.map(r=>r.date)).size;
+    document.getElementById('lySummary').innerHTML = `
+        <div class="stats" style="margin-bottom:1rem">
+            <div class="stat"><div class="ico">🧺</div><div class="num">${lyH.length}</div><div class="lbl">昨年の収穫回数</div></div>
+            <div class="stat"><div class="ico">📅</div><div class="num">${lyDays}</div><div class="lbl">収穫のあった日</div></div>
+            <div class="stat"><div class="ico">🗂️</div><div class="num">${collectWindow(lyRange).length}</div><div class="lbl">昨年の全記録</div></div>
+            <div class="stat"><div class="ico">📊</div><div class="num">${tyH.length}</div><div class="lbl">今年同時期の収穫</div></div>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>圃場</th><th>昨年同時期の収穫量</th><th>回数</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr><th>合計</th><th>${sumStr(sumHarvest(lyH))}</th><th>${lyH.length}回</th></tr></tfoot></table></div>`;
+
+    /* --- 気象 --- */
+    const wxBox = document.getElementById('lyWeather');
+    const days = [];
+    for(let d=new Date(lyRange[0]+'T00:00:00'); fmt(d)<=lyRange[1]; d.setDate(d.getDate()+1)) days.push(fmt(d));
+    const have = days.filter(d=>wxOf(d));
+    if(!have.length){
+        wxBox.innerHTML = `<div class="empty"><div class="ico">🌤</div><p>この期間の気象データがありません</p>
+            <small>「🌤 気象を取得」を押すと ${WX_LOC.name} の観測値を取り込みます（要インターネット接続）</small></div>`;
+    }else{
+        const maxs = have.map(d=>wxOf(d).max).filter(v=>v!=null);
+        const mins = have.map(d=>wxOf(d).min).filter(v=>v!=null);
+        const rains = have.map(d=>wxOf(d).rain).filter(v=>v!=null);
+        const avg = a=> a.length? round(a.reduce((x,y)=>x+y,0)/a.length) : '—';
+        wxBox.innerHTML = `
+            <div class="stats" style="margin-bottom:1rem">
+                <div class="stat"><div class="ico">🌡️</div><div class="num">${avg(maxs)}</div><div class="lbl">平均最高(℃)</div></div>
+                <div class="stat"><div class="ico">❄️</div><div class="num">${avg(mins)}</div><div class="lbl">平均最低(℃)</div></div>
+                <div class="stat"><div class="ico">🔥</div><div class="num">${maxs.length?round(Math.max(...maxs)):'—'}</div><div class="lbl">期間最高(℃)</div></div>
+                <div class="stat"><div class="ico">🧊</div><div class="num">${mins.length?round(Math.min(...mins)):'—'}</div><div class="lbl">期間最低(℃)</div></div>
+                <div class="stat"><div class="ico">☔</div><div class="num">${rains.length?round(rains.reduce((a,b)=>a+b,0)):'—'}</div><div class="lbl">降水計(mm)</div></div>
+                <div class="stat"><div class="ico">📆</div><div class="num">${have.length}</div><div class="lbl">日数</div></div>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>日付</th><th>最高</th><th>最低</th><th>平均</th><th>降水</th><th>日照</th></tr></thead><tbody>
+            ${days.map(d=>{ const w=wxOf(d); const isC = d===lyBase;
+                if(!w) return `<tr><td>${d}${isC?' <span class="pill a">同日</span>':''}</td><td colspan="5" style="color:var(--muted)">—</td></tr>`;
+                return `<tr${isC?' style="background:rgba(245,158,11,.10)"':''}><td>${d}${isC?' <span class="pill a">同日</span>':''}</td>
+                    <td><b>${num(round(w.max),'℃')}</b></td><td>${num(round(w.min),'℃')}</td><td>${num(round(w.mean),'℃')}</td>
+                    <td>${w.rain?round(w.rain)+'mm':'—'}</td><td>${w.sun!=null?round(w.sun/3600)+'h':'—'}</td></tr>`;
+            }).join('')}
+            </tbody></table></div>`;
+    }
+
+    /* --- 記録一覧 --- */
+    const items = collectWindow(lyRange);
+    const box = document.getElementById('lyRecords');
+    if(!items.length){ box.innerHTML = `<div class="empty"><div class="ico">🗂</div><p>昨年同時期の記録はありません</p><small>基準日や期間を変えてお試しください</small></div>`; return; }
+    const byDate = {};
+    items.forEach(it=>{ (byDate[it.rec.date]=byDate[it.rec.date]||[]).push(it); });
+    box.innerHTML = Object.keys(byDate).sort().map(d=>{
+        const w = wxLine(d);
+        return `<div style="margin-bottom:1rem">
+            <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;padding:.4rem 0;border-bottom:1px solid var(--border);margin-bottom:.5rem">
+                <b style="font-size:.95rem">${d}${d===lyBase?' <span class="pill a">昨年の同日</span>':''}</b>
+                ${w?`<span style="color:var(--sky);font-size:.82rem">🌤 ${w}</span>`:''}
+            </div>
+            ${byDate[d].map(it=>`<div class="a-detail"><div class="row">${it.kindLabel} ｜ <b>${esc(it.rec.fieldName)}</b> ｜ ${esc(lyText(it))}</div></div>`).join('')}
+        </div>`;
+    }).join('');
+}
+function lyText(it){
+    const r = it.rec;
+    if(it.kind==='harvests') return `${r.qty}${r.unit} ${r.grade||''} ${r.note||''}`;
+    if(it.kind==='tasks')    return `${r.type} ${r.content||''} ${r.worker?'（'+r.worker+'）':''}`;
+    if(it.kind==='growth')   return `${r.stage||''} ${r.note||''}`;
+    if(it.kind==='materials') return `${r.cat} ${r.name} ${r.amount||''} ${r.note||''}`;
+    return '';
+}
 
 /* ======================================================================
    音声認識・読み上げ
@@ -1003,9 +1460,14 @@ function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg
    初期化
    ====================================================================== */
 (function init(){
-    ['t_date','g_date','h_date','m_date'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=today(); });
+    ['t_date','g_date','h_date','m_date','ly_base'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=today(); });
     initSpeech();
     renderAll();
+    // 気象データ：取得済みなら説明を更新、未取得なら案内のまま
+    if(WX.d && Object.keys(WX.d).length){
+        const el=document.getElementById('wxDesc');
+        if(el) el.textContent = `${WX_LOC.name}（${WX_LOC.lat}, ${WX_LOC.lon}）の観測値 ${WX._start}〜${WX._end} を保存済み。更新は「🌤 気象を取得」。`;
+    }
     // 保存済みのクラウド設定があれば自動接続
     const cc = loadCloudCfg();
     if(cc && cc.config && cc.wsId){ cloudConnect(cc.config, cc.wsId, cc.name||''); }
