@@ -861,6 +861,18 @@ async function runTranslate(text, from, to, side, record){
     return out;
 }
 
+// 確定した発話ひとつ分の処理：文字種による方向補正 → 表示 → 翻訳
+function handleUtterance(text, side, applyGuess){
+    clearTimeout(interimTimer);
+    const actual = applyGuess ? guessSide(text, side) : side;
+    const ad = dirFor(actual);
+    setPane('src', text, false);
+    setPane('tgt', '', true);                // 逐次プレビューの残りを消す
+    lastPair.srcLang = ad.from; lastPair.tgtLang = ad.to;
+    runTranslate(text, ad.from, ad.to, actual, true);
+    return actual;
+}
+
 /* ---------- 音声認識 ---------- */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -963,14 +975,7 @@ function buildRecognition(side){
             }
         }
         if(finalText.trim()){
-            clearTimeout(interimTimer);
-            const text = finalText.trim();
-            const actual = autoMode ? guessSide(text, side) : side;   // 文字種が明らかに逆なら方向を補正
-            const ad = dirFor(actual);
-            setPane('src', text, false);
-            setPane('tgt', '', true);        // 逐次プレビューの残りを消す
-            lastPair.srcLang = ad.from; lastPair.tgtLang = ad.to;
-            runTranslate(text, ad.from, ad.to, actual, true);
+            const actual = handleUtterance(finalText.trim(), side, autoMode);
             if(autoMode){
                 const next = actual === 'A' ? 'B' : 'A';
                 if(next !== side){
@@ -1062,37 +1067,42 @@ function toggleMic(side){
     else startRecognition(side, true);
 }
 function updateMicUI(){
-    const manual = !autoMode;
+    const conv = autoMode || dualMode;
+    const manual = !conv;
     $('micA').classList.toggle('active', manual && wantListening && activeSide === 'A');
     $('micB').classList.toggle('active', manual && wantListening && activeSide === 'B');
     $('subMicA').classList.toggle('primary', manual && wantListening && activeSide === 'A');
     $('subMicB').classList.toggle('primary', manual && wantListening && activeSide === 'B');
-    $('btnAuto').classList.toggle('active', autoMode);
-    $('btnAutoIcon').textContent = autoMode ? '停止' : '開始';
-    $('btnAutoLabel').textContent = autoMode ? 'タップで会話を終了' : 'タップして会話を開始';
-    $('btnAutoSub').textContent = autoMode ? '吹き出しをタップするともう一度読み上げます' : '話し終えると自動でもう一方の言語に切り替わります';
-    $('subAuto').classList.toggle('primary', autoMode);
+    $('btnAuto').classList.toggle('active', conv);
+    $('btnAutoIcon').textContent = conv ? '停止' : '開始';
+    $('btnAutoLabel').textContent = conv ? 'タップで会話を終了' : 'タップして会話を開始';
+    $('btnAutoSub').textContent = conv ? '吹き出しをタップするともう一度読み上げます' : '日本語とインドネシア語を自動で聞き分けます';
+    $('subAuto').classList.toggle('primary', conv);
 }
 
 async function toggleAuto(){
-    if(autoMode){
-        autoMode = false;
-        stopRecognition();
-    }else{
-        if(!SR){ toast('このブラウザは音声認識に対応していません（Chrome / Edge を推奨）', true); return; }
-        if(!(await ensureMicStream())){
-            toast('マイクの使用が許可されませんでした。ブラウザの設定を確認してください。', true);
-            return;
-        }
-        autoMode = true;
-        startRecognition('A', true);
-        toast('交互モード開始：' + langOf(settings.langA).name + ' から話してください');
+    if(autoMode || dualMode){
+        stopAll();
+        return;
     }
-    updateMicUI();
-    updateTurnUI();
+    if(!SR){ toast('このブラウザは音声認識に対応していません（Chrome / Edge を推奨）', true); return; }
+    if(!(await ensureMicStream())){
+        toast('マイクの使用が許可されませんでした。ブラウザの設定を確認してください。', true);
+        return;
+    }
+    setPane('src', '', false);
+    setPane('tgt', '', false);
+    startDual();   // 両言語の同時判別。使えない環境では交互モードへ自動で切替
+    toast('会話開始：どちらの言語でもそのまま話してください');
 }
 function updateTurnUI(){
-    $('turnBanner').classList.toggle('show', autoMode);
+    $('turnBanner').classList.toggle('show', autoMode || dualMode);
+    if(dualMode){
+        const a = langOf(settings.langA), b = langOf(settings.langB);
+        $('turnText').textContent = a.flag + ' ' + b.flag + ' どちらの言語でもそのまま話してください';
+        $('turnHint').textContent = a.name + ' / ' + b.name + ' を自動判別中 — Silakan langsung bicara';
+        return;
+    }
     if(!autoMode) return;
     const cur = langOf(dirFor(activeSide || 'A').from);
     const oth = langOf(dirFor((activeSide || 'A') === 'A' ? 'B' : 'A').from);
@@ -1100,9 +1110,167 @@ function updateTurnUI(){
     $('turnHint').textContent = 'タップで切替 / Tap to switch → ' + oth.flag + ' ' + oth.name;
 }
 
+/* ---------- フリー会話モード：日本語とインドネシア語の認識を同時に走らせ、
+   信頼度と文字体系で採点して勝った方を採用する。
+   同時併用できない環境では従来の交互モードへ自動フォールバック。 ---------- */
+let dualMode = false;
+let dualRecs = [];
+let dualStopping = false;
+let dualStartedAt = 0;
+let utterWindow = null;
+const dualInterims = {A:'', B:''};
+
+function makeDualRec(side){
+    const d = dirFor(side);
+    const rec = new SR();
+    rec.lang = langOf(d.from).speech;
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
+
+    rec.onresult = ev => {
+        if(ttsMuting) return;
+        let interim = '', finalText = '', conf = 0;
+        for(let i = ev.resultIndex; i < ev.results.length; i++){
+            const r = ev.results[i];
+            if(r.isFinal){ finalText += r[0].transcript; conf = Math.max(conf, r[0].confidence || 0); }
+            else interim += r[0].transcript;
+        }
+        if(interim.trim().length >= 2) dualInterim(side, interim.trim());
+        if(finalText.trim()) dualFinal(side, finalText.trim(), conf);
+    };
+    rec.onerror = ev => {
+        const err = ev.error;
+        if(err === 'no-speech' || err === 'aborted') return;
+        if(err === 'not-allowed' || err === 'service-not-allowed'){
+            recFatalError = true;
+            stopAll();
+            setStatus('マイク未許可', 'err');
+            toast('マイクの使用が許可されていません。ブラウザの設定を確認してください。', true);
+        }
+    };
+    rec.onend = () => {
+        if(!dualMode || dualStopping) return;
+        // 開始直後の終了＝この環境では2本同時に走らせられない → 交互モードへ
+        if(Date.now() - dualStartedAt < 2500){ dualFailed(); return; }
+        setTimeout(() => {
+            if(dualMode && !dualStopping){ try{ startRec(rec); }catch(e){} }
+        }, 250);
+    };
+    return {rec, side};
+}
+
+function startDual(){
+    dualStopping = false;
+    dualMode = true;
+    wantListening = true;
+    recFatalError = false;
+    ttsMuting = false;
+    acquireWakeLock();
+    activeSide = 'A';
+    dualInterims.A = ''; dualInterims.B = '';
+    dualStartedAt = Date.now();
+    dualRecs = [makeDualRec('A'), makeDualRec('B')];
+    try{
+        startRec(dualRecs[0].rec);
+        startRec(dualRecs[1].rec);
+    }catch(e){
+        dualFailed();
+        return;
+    }
+    setStatus('認識中', 'on');
+    renderLangUI();
+    updateMicUI();
+    updateTurnUI();
+}
+function stopDual(){
+    dualStopping = true;
+    dualMode = false;
+    if(utterWindow){ clearTimeout(utterWindow.timer); utterWindow = null; }
+    dualRecs.forEach(d => {
+        try{ d.rec.onend = null; d.rec.stop(); }catch(e){}
+        if(d.rec.__track){ try{ d.rec.__track.stop(); }catch(e){} }
+    });
+    dualRecs = [];
+    dualInterims.A = ''; dualInterims.B = '';
+}
+function dualFailed(){
+    stopDual();
+    if(!SR) return;
+    autoMode = true;                    // 交互モードへフォールバック
+    startRecognition('A', false);
+    updateMicUI();
+    updateTurnUI();
+    toast('この環境では両言語の同時判別が使えないため、交互モードで動作します');
+}
+function stopAll(){
+    autoMode = false;
+    stopDual();
+    stopRecognition();
+    updateMicUI();
+    updateTurnUI();
+}
+
+// 発話途中のプレビュー：長い方の認識結果を表示
+function dualInterim(side, text){
+    dualInterims[side] = text;
+    const bestSide = dualInterims.A.length >= dualInterims.B.length ? 'A' : 'B';
+    const bestText = dualInterims[bestSide];
+    if(!bestText) return;
+    activeSide = bestSide;
+    setPane('src', bestText, true);
+    if(settings.interim){
+        clearTimeout(interimTimer);
+        const d = dirFor(bestSide);
+        const snapshot = bestText;
+        interimTimer = setTimeout(async () => {
+            const my = ++seq;
+            try{
+                const out = await translate(snapshot, d.from, d.to);
+                if(my === seq) setPane('tgt', out, true);
+            }catch(e){ /* プレビュー失敗は無視 */ }
+        }, 700);
+    }
+}
+
+// 確定結果：もう一方の認識を短時間待ち、採点して勝者を採用
+function dualFinal(side, text, conf){
+    const cand = {side, text, conf};
+    if(!utterWindow){
+        utterWindow = {candidates:[cand], timer: setTimeout(resolveUtterance, 900)};
+    }else{
+        utterWindow.candidates.push(cand);
+        clearTimeout(utterWindow.timer);
+        resolveUtterance();
+    }
+}
+function scoreCandidate(c){
+    let score = (c.conf && c.conf > 0) ? c.conf : 0.5;
+    // 期待される文字体系と食い違う出力（例：日本語認識なのにローマ字ばかり）は大きく減点
+    const re = scriptRe(dirFor(c.side).from);
+    if(re !== LATIN_RE){
+        const total = c.text.replace(/\s/g, '').length || 1;
+        score *= Math.max(0.2, countRe(re, c.text) / total);
+    }
+    // 誤言語の認識は断片的になりがちなので、長さをわずかに加点
+    score += Math.min(c.text.length, 30) / 300;
+    return score;
+}
+function resolveUtterance(){
+    if(!utterWindow) return;
+    const cands = utterWindow.candidates;
+    utterWindow = null;
+    dualInterims.A = ''; dualInterims.B = '';
+    if(ttsMuting || !cands.length) return;
+    cands.sort((a, b) => scoreCandidate(b) - scoreCandidate(a));
+    const w = cands[0];
+    if(w && w.text) handleUtterance(w.text, w.side, true);
+}
+
 /* ---------- イベント登録 ---------- */
 async function manualMic(side){
     autoMode = false;
+    stopDual();
     updateTurnUI();
     const starting = !(wantListening && activeSide === side);
     if(starting && SR && !(await ensureMicStream())){
@@ -1118,24 +1286,28 @@ $('subMicB').addEventListener('click', () => manualMic('B'));
 $('btnAuto').addEventListener('click', toggleAuto);
 $('subAuto').addEventListener('click', toggleAuto);
 $('turnBanner').addEventListener('click', () => {
-    if(autoMode) startRecognition((activeSide || 'A') === 'A' ? 'B' : 'A');
+    if(autoMode && !dualMode) startRecognition((activeSide || 'A') === 'A' ? 'B' : 'A');
 });
 
+function restartConversation(){
+    if(dualMode){ stopDual(); startDual(); }
+    else if(wantListening) startRecognition(activeSide);
+}
 $('btnSwap').addEventListener('click', () => {
     const t = settings.langA; settings.langA = settings.langB; settings.langB = t;
     saveSettings(); renderLangUI();
-    if(wantListening) startRecognition(activeSide);
+    restartConversation();
     toast(langOf(settings.langA).name + ' ⇄ ' + langOf(settings.langB).name);
 });
 $('langA').addEventListener('change', e => {
     if(e.target.value === settings.langB){ toast('同じ言語は選べません', true); e.target.value = settings.langA; return; }
     settings.langA = e.target.value; saveSettings(); renderLangUI();
-    if(wantListening) startRecognition(activeSide);
+    restartConversation();
 });
 $('langB').addEventListener('change', e => {
     if(e.target.value === settings.langA){ toast('同じ言語は選べません', true); e.target.value = settings.langB; return; }
     settings.langB = e.target.value; saveSettings(); renderLangUI();
-    if(wantListening) startRecognition(activeSide);
+    restartConversation();
 });
 
 async function manualTranslate(){
@@ -1222,7 +1394,7 @@ $('btnSaveSettings').addEventListener('click', () => {
     applyFlip();
     $('settingsModal').classList.remove('show');
     toast('設定を保存しました');
-    if(wantListening) startRecognition(activeSide);
+    restartConversation();
 });
 
 /* ---------- 字幕モード ---------- */
