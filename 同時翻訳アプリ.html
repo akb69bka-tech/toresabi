@@ -189,6 +189,11 @@
     }
     .bubble:hover{border-color:var(--cyan-dim)}
     .bubble.left:hover{border-color:rgba(255,200,87,.5);border-left-color:var(--amber)}
+    .bubble.center{
+        align-self:center;text-align:center;border-top:3px solid var(--green);
+        background:linear-gradient(180deg,rgba(61,220,151,.08),rgba(61,220,151,.02)),var(--panel2);
+    }
+    .bubble.center .trans{color:#9df0c8}
     .bubble .orig{font-size:1rem;font-weight:700}
     .bubble .trans{font-size:.94rem;margin-top:.25rem;font-weight:600;color:#ffd88a}
     .bubble.right .trans{color:#7ee8ff}
@@ -681,7 +686,7 @@ function speak(text, langCode){
             if(mySpeak !== speakSeq) return;
             ttsMuting = false;
             setStatus(wantListening ? '認識中' : '待機中', wantListening ? 'on' : '');
-        }, 300);
+        }, 150);
     };
     try{
         const u = new SpeechSynthesisUtterance(text);
@@ -752,9 +757,10 @@ function updateLiveBubble(){
     const lb = $('liveBubble');
     const has = $('liveOrig').textContent || $('liveTrans').textContent;
     lb.hidden = !has;
-    const side = activeSide || 'A';
+    const side = liveView || activeSide || 'A';
     lb.classList.toggle('right', side === 'A');
     lb.classList.toggle('left', side === 'B');
+    lb.classList.toggle('center', side === 'E');
     if(has) scrollChat();
 }
 
@@ -777,21 +783,28 @@ function addHistory(src, tgt, from, to, side){
     scrollChat();
     return item;
 }
+function transHtml(h){
+    if(!h.tgt) return '<span class="dots">翻訳中…</span>';
+    if(h.side === 'E' && h.tgt2){
+        return langOf(h.to2 || settings.langA).flag + ' ' + esc(h.tgt2) + '<br>' +
+               langOf(h.to).flag + ' ' + esc(h.tgt);
+    }
+    return esc(h.tgt);
+}
 function bubbleHtml(h){
     const t = new Date(h.ts);
     const time = ('0'+t.getHours()).slice(-2) + ':' + ('0'+t.getMinutes()).slice(-2);
-    const sideCls = h.side === 'B' ? 'left' : 'right';
-    const tgtHtml = h.tgt ? esc(h.tgt) : '<span class="dots">翻訳中…</span>';
+    const sideCls = h.side === 'B' ? 'left' : (h.side === 'E' ? 'center' : 'right');
     return '<div class="bubble ' + sideCls + '" data-id="' + h.id + '" title="タップで読み上げ">' +
         '<div class="orig">' + esc(h.src) + '</div>' +
-        '<div class="trans">' + tgtHtml + '</div>' +
+        '<div class="trans">' + transHtml(h) + '</div>' +
         '<div class="meta">' + langOf(h.from).flag + '→' + langOf(h.to).flag + '  ' + time + '  ▶</div>' +
         '</div>';
 }
 function scrollChat(){ const w = $('chatWrap'); w.scrollTop = w.scrollHeight; }
 function refreshBubble(item){
     const el = document.querySelector('.bubble[data-id="' + item.id + '"] .trans');
-    if(el) el.innerHTML = item.tgt ? esc(item.tgt) : '<span class="dots">翻訳中…</span>';
+    if(el) el.innerHTML = transHtml(item);
     else renderHistory();
     scrollChat();
 }
@@ -971,7 +984,7 @@ function buildRecognition(side){
                         const out = await translate(snapshot, d.from, d.to);
                         if(my === seq) setPane('tgt', out, true);
                     }catch(e){ /* プレビューの失敗は黙って無視 */ }
-                }, 700);
+                }, 350);
             }
         }
         if(finalText.trim()){
@@ -1076,7 +1089,8 @@ function updateMicUI(){
     $('btnAuto').classList.toggle('active', conv);
     $('btnAutoIcon').textContent = conv ? '停止' : '開始';
     $('btnAutoLabel').textContent = conv ? 'タップで会話を終了' : 'タップして会話を開始';
-    $('btnAutoSub').textContent = conv ? '吹き出しをタップするともう一度読み上げます' : '日本語とインドネシア語を自動で聞き分けます';
+    $('btnAutoSub').textContent = conv ? '吹き出しをタップするともう一度読み上げます'
+        : langOf(settings.langA).name + '・' + langOf(settings.langB).name + '・英語を自動で聞き分けます';
     $('subAuto').classList.toggle('primary', conv);
 }
 
@@ -1099,8 +1113,9 @@ function updateTurnUI(){
     $('turnBanner').classList.toggle('show', autoMode || dualMode);
     if(dualMode){
         const a = langOf(settings.langA), b = langOf(settings.langB);
-        $('turnText').textContent = a.flag + ' ' + b.flag + ' どちらの言語でもそのまま話してください';
-        $('turnHint').textContent = a.name + ' / ' + b.name + ' を自動判別中 — Silakan langsung bicara';
+        const hasE = dualRecs.some(d => d.side === 'E');
+        $('turnText').textContent = a.flag + ' ' + b.flag + (hasE ? ' 🇺🇸' : '') + ' どの言語でもそのまま話してください';
+        $('turnHint').textContent = a.name + ' / ' + b.name + (hasE ? ' / English' : '') + ' を自動判別中 — Silakan langsung bicara';
         return;
     }
     if(!autoMode) return;
@@ -1118,12 +1133,13 @@ let dualRecs = [];
 let dualStopping = false;
 let dualStartedAt = 0;
 let utterWindow = null;
-const dualInterims = {A:'', B:''};
+let liveView = null;         // ライブ吹き出しの表示位置（'A'|'B'|'E'）
+let lastResolveAt = 0;       // 直前の発話確定時刻（残響の重複確定を防ぐ）
+const dualInterims = {A:'', B:'', E:''};
 
 function makeDualRec(side){
-    const d = dirFor(side);
     const rec = new SR();
-    rec.lang = langOf(d.from).speech;
+    rec.lang = side === 'E' ? 'en-US' : langOf(dirFor(side).from).speech;
     rec.continuous = true;
     rec.interimResults = true;
     rec.maxAlternatives = 1;
@@ -1168,12 +1184,15 @@ function startDual(){
     ttsMuting = false;
     acquireWakeLock();
     activeSide = 'A';
-    dualInterims.A = ''; dualInterims.B = '';
+    dualInterims.A = ''; dualInterims.B = ''; dualInterims.E = '';
+    liveView = null;
+    lastResolveAt = 0;
     dualStartedAt = Date.now();
-    dualRecs = [makeDualRec('A'), makeDualRec('B')];
+    const sides = ['A', 'B'];
+    if(settings.langA !== 'en' && settings.langB !== 'en') sides.push('E');   // 英語も同時判別
+    dualRecs = sides.map(makeDualRec);
     try{
-        startRec(dualRecs[0].rec);
-        startRec(dualRecs[1].rec);
+        dualRecs.forEach(d => startRec(d.rec));
     }catch(e){
         dualFailed();
         return;
@@ -1192,7 +1211,8 @@ function stopDual(){
         if(d.rec.__track){ try{ d.rec.__track.stop(); }catch(e){} }
     });
     dualRecs = [];
-    dualInterims.A = ''; dualInterims.B = '';
+    dualInterims.A = ''; dualInterims.B = ''; dualInterims.E = '';
+    liveView = null;
 }
 function dualFailed(){
     stopDual();
@@ -1211,43 +1231,56 @@ function stopAll(){
     updateTurnUI();
 }
 
-// 発話途中のプレビュー：長い方の認識結果を表示
+// 発話途中のプレビュー：いちばん長い認識結果を表示
 function dualInterim(side, text){
     dualInterims[side] = text;
-    const bestSide = dualInterims.A.length >= dualInterims.B.length ? 'A' : 'B';
+    let bestSide = 'A';
+    for(const k of ['B', 'E']) if(dualInterims[k].length > dualInterims[bestSide].length) bestSide = k;
     const bestText = dualInterims[bestSide];
     if(!bestText) return;
-    activeSide = bestSide;
+    liveView = bestSide;
+    if(bestSide !== 'E') activeSide = bestSide;
     setPane('src', bestText, true);
     if(settings.interim){
         clearTimeout(interimTimer);
-        const d = dirFor(bestSide);
+        const from = bestSide === 'E' ? 'en' : dirFor(bestSide).from;
+        const to = bestSide === 'E' ? settings.langA : dirFor(bestSide).to;
         const snapshot = bestText;
         interimTimer = setTimeout(async () => {
             const my = ++seq;
             try{
-                const out = await translate(snapshot, d.from, d.to);
+                const out = await translate(snapshot, from, to);
                 if(my === seq) setPane('tgt', out, true);
             }catch(e){ /* プレビュー失敗は無視 */ }
-        }, 700);
+        }, 350);
     }
 }
 
-// 確定結果：もう一方の認識を短時間待ち、採点して勝者を採用
+// 確定結果の集約と勝者の決定。
+// 反応速度を最優先し、文字体系がその言語に固有（かな漢字など）で確定した場合は
+// 他の認識を待たずに即決する。ラテン文字同士（英語/インドネシア語）だけ短時間待つ。
 function dualFinal(side, text, conf){
+    if(Date.now() - lastResolveAt < 800) return;   // 直前に確定した発話の残響（他認識の遅れた確定）を無視
     const cand = {side, text, conf};
     if(!utterWindow){
-        utterWindow = {candidates:[cand], timer: setTimeout(resolveUtterance, 900)};
+        if(quickWin(cand)){ finishUtterance(cand); return; }
+        utterWindow = {candidates:[cand], timer: setTimeout(resolveUtterance, 500)};
     }else{
         utterWindow.candidates.push(cand);
-        clearTimeout(utterWindow.timer);
-        resolveUtterance();
+        if(utterWindow.candidates.length >= dualRecs.length) resolveUtterance();
     }
+}
+function quickWin(c){
+    if(c.side === 'E') return false;
+    const re = scriptRe(dirFor(c.side).from);
+    if(re === LATIN_RE) return false;
+    const total = c.text.replace(/\s/g, '').length || 1;
+    return countRe(re, c.text) / total > 0.5 && (!c.conf || c.conf >= 0.4);
 }
 function scoreCandidate(c){
     let score = (c.conf && c.conf > 0) ? c.conf : 0.5;
     // 期待される文字体系と食い違う出力（例：日本語認識なのにローマ字ばかり）は大きく減点
-    const re = scriptRe(dirFor(c.side).from);
+    const re = c.side === 'E' ? LATIN_RE : scriptRe(dirFor(c.side).from);
     if(re !== LATIN_RE){
         const total = c.text.replace(/\s/g, '').length || 1;
         score *= Math.max(0.2, countRe(re, c.text) / total);
@@ -1258,13 +1291,50 @@ function scoreCandidate(c){
 }
 function resolveUtterance(){
     if(!utterWindow) return;
+    clearTimeout(utterWindow.timer);
     const cands = utterWindow.candidates;
     utterWindow = null;
-    dualInterims.A = ''; dualInterims.B = '';
-    if(ttsMuting || !cands.length) return;
+    if(!cands.length) return;
     cands.sort((a, b) => scoreCandidate(b) - scoreCandidate(a));
-    const w = cands[0];
-    if(w && w.text) handleUtterance(w.text, w.side, true);
+    finishUtterance(cands[0]);
+}
+function finishUtterance(w){
+    if(utterWindow){ clearTimeout(utterWindow.timer); utterWindow = null; }
+    lastResolveAt = Date.now();
+    dualInterims.A = ''; dualInterims.B = ''; dualInterims.E = '';
+    liveView = null;
+    if(ttsMuting || !w || !w.text) return;
+    if(w.side === 'E') handleEnglish(w.text);
+    else handleUtterance(w.text, w.side, true);
+}
+
+// 英語の発話：日本語とインドネシア語の両方へ同時に翻訳して1つの吹き出しに表示
+async function handleEnglish(text){
+    clearTimeout(interimTimer);
+    setPane('src', text, false);
+    setPane('tgt', '', true);
+    const my = ++seq;
+    setStatus('翻訳中…', 'busy');
+    const toA = settings.langA, toB = settings.langB;
+    const item = addHistory(text, '', 'en', toB, 'E');
+    item.to2 = toA;
+    let outA, outB;
+    try{
+        [outA, outB] = await Promise.all([translate(text, 'en', toA), translate(text, 'en', toB)]);
+    }catch(e){
+        item.tgt = '（翻訳失敗）'; saveHistory(); refreshBubble(item);
+        if(my === seq) setStatus('翻訳エラー', 'err');
+        toast('翻訳に失敗しました：' + (e && e.message ? e.message : e), true);
+        return;
+    }
+    item.tgt = outB; item.tgt2 = outA;
+    saveHistory(); refreshBubble(item);
+    if(my === seq){
+        setPane('tgt', outA + ' / ' + outB, false);
+        lastPair.srcLang = 'en'; lastPair.tgtLang = toB;
+        setStatus(wantListening ? '認識中' : '待機中', wantListening ? 'on' : '');
+        if(settings.autoSpeak) speak(outB, toB);
+    }
 }
 
 /* ---------- イベント登録 ---------- */
