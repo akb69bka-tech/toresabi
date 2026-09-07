@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>栽培管理システム</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- フォントは非ブロッキングで読み込む（回線が遅い／遮断された環境でも画面が止まらない） -->
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
 /* ============================================================
    Design tokens
@@ -334,13 +335,20 @@ const FIELD_ORDER = ['1号ハウス','2号ハウス','3号ハウス','4号ハウ
 const SERIES = ['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300','#4a3aa7','#e34948'];
 
 function emptyDB(){ return {fields:[],tasks:[],growth:[],harvests:[],materials:[]}; }
-function load(){ try{ const raw=localStorage.getItem(STORE_KEY); if(raw) return Object.assign(emptyDB(), JSON.parse(raw)); }catch(e){} return emptyDB(); }
-function save(){ if(MODE==='local') localStorage.setItem(STORE_KEY, JSON.stringify(DB)); }
+/* 保存領域が使えない環境（プレビュー・一部ビューア・プライベートモード）でも落ちないよう全アクセスを保護 */
+const LS = {
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} },
+};
+const STORAGE_OK = (()=>{ try{ localStorage.setItem('__t','1'); localStorage.removeItem('__t'); return true; }catch(e){ return false; } })();
+function load(){ try{ const raw=LS.get(STORE_KEY); if(raw) return Object.assign(emptyDB(), JSON.parse(raw)); }catch(e){} return emptyDB(); }
+function save(){ if(MODE==='local') LS.set(STORE_KEY, JSON.stringify(DB)); }
 function uid(){ return 'id'+Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4); }
 let DB = load();
 let MODE='local', WS='', FB=null;
-let PREFS = (()=>{ try{ return Object.assign({tts:true}, JSON.parse(localStorage.getItem(PREF_KEY)||'{}')); }catch(e){ return {tts:true}; } })();
-function savePrefs(){ localStorage.setItem(PREF_KEY, JSON.stringify(PREFS)); }
+let PREFS = (()=>{ try{ return Object.assign({tts:true}, JSON.parse(LS.get(PREF_KEY)||'{}')); }catch(e){ return {tts:true}; } })();
+function savePrefs(){ LS.set(PREF_KEY, JSON.stringify(PREFS)); }
 
 const Store = {
   async add(type, rec){
@@ -442,6 +450,7 @@ function viewDashboard(){
   const rankRows = rank.map((r,i)=>`<tr><td class="n">${i+1}</td><td class="nw"><span class="dot" style="background:${fieldColor(r.f)}"></span>${esc(r.f)}</td><td class="n">${fmtNum(r.c)}</td><td class="n">${fmtNum(r.kg)}</td><td class="n">${r.n}</td></tr>`).join('');
 
   return `
+  ${noticeBanner()}
   <div class="page-head"><div><h1>ダッシュボード</h1><div class="sub">記録期間 ${dates[0]||'—'} 〜 ${dates[dates.length-1]||'—'} ／ 全 ${total.toLocaleString()} 件</div></div>
     <div style="display:flex;gap:8px"><button class="btn" onclick="openDrawer('harvests')">${ICON.plus} 収穫を記録</button><button class="btn" onclick="openDrawer('tasks')">${ICON.plus} 作業を記録</button></div></div>
   <div class="kpi-grid">
@@ -772,9 +781,9 @@ function renderLastYear(mode){
 /* ======================================================================
    気象（Open-Meteo 観測アーカイブ）
    ====================================================================== */
-let WX_LOC = (()=>{ try{ return Object.assign({lat:33.514, lon:133.870, name:'穴内（高知県安芸市）'}, JSON.parse(localStorage.getItem(WXLOC_KEY)||'{}')); }catch(e){ return {lat:33.514,lon:133.870,name:'穴内（高知県安芸市）'}; } })();
-let WX = (()=>{ try{ return JSON.parse(localStorage.getItem(WX_KEY))||{}; }catch(e){ return {}; } })();
-function saveWx(){ try{ localStorage.setItem(WX_KEY, JSON.stringify(WX)); }catch(e){} }
+let WX_LOC = (()=>{ try{ return Object.assign({lat:33.514, lon:133.870, name:'穴内（高知県安芸市）'}, JSON.parse(LS.get(WXLOC_KEY)||'{}')); }catch(e){ return {lat:33.514,lon:133.870,name:'穴内（高知県安芸市）'}; } })();
+let WX = (()=>{ try{ return JSON.parse(LS.get(WX_KEY))||{}; }catch(e){ return {}; } })();
+function saveWx(){ LS.set(WX_KEY, JSON.stringify(WX)); }
 function allRecordDates(){ const s=new Set(); ['harvests','tasks','growth','materials'].forEach(k=>DB[k].forEach(r=>{ if(r.date) s.add(r.date); })); return [...s].sort(); }
 async function loadWeather(force, silent){
   const dates=allRecordDates();
@@ -833,7 +842,9 @@ service cloud.firestore {
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" onclick="saveWxLoc()">地点を保存</button><button class="btn" onclick="loadWeather(true)">${ICON.cloud} 気象を再取得</button></div>
     <div class="muted" style="font-size:12px">Google マップで圃場を長押しすると緯度・経度が表示されます。データ提供：Open-Meteo（非商用利用向けの無料API）。${WX.d?`現在 ${WX._start}〜${WX._end} を保存済み。`:''}</div>
   </div></div>
-  <div class="card"><div class="card-h"><h2>データ管理</h2></div><div class="card-b" style="display:flex;gap:8px;flex-wrap:wrap">
+  <div class="card"><div class="card-h"><h2>データ管理</h2><span class="muted" style="font-size:12px">保存先：${MODE==='cloud'?'クラウド（'+esc(WS)+'）':(STORAGE_OK?'この端末のブラウザ':'保存不可（閲覧のみ）')}　記録 ${TYPES.reduce((s,t)=>s+DB[t].length,0).toLocaleString()}件</span></div>
+    ${STORAGE_OK?'':'<div class="card-b" style="padding-bottom:0"><div class="callout"><b>この表示方法では保存できません。</b>HTMLファイルをダウンロードして Chrome などで直接開いてください。</div></div>'}
+    <div class="card-b" style="display:flex;gap:8px;flex-wrap:wrap">
     <button class="btn" onclick="document.getElementById('importFile').click()">${ICON.upload} JSONを取り込む</button>
     <button class="btn" onclick="exportData()">${ICON.download} JSONを書き出す</button>
     <button class="btn" onclick="loadSeed()">内蔵データを読み込む（R7.8〜R8.7・全8圃場）</button>
@@ -847,16 +858,16 @@ function mountSettings(){ renderVoiceDiag(); }
 function saveWxLoc(){
   WX_LOC={name:val('wx_name')||'圃場', lat:parseFloat(val('wx_lat')), lon:parseFloat(val('wx_lon'))};
   if(isNaN(WX_LOC.lat)||isNaN(WX_LOC.lon)){ toast('緯度・経度を数値で入力してください'); return; }
-  localStorage.setItem(WXLOC_KEY, JSON.stringify(WX_LOC)); WX={}; saveWx(); toast('地点を保存しました。気象を再取得してください'); render();
+  LS.set(WXLOC_KEY, JSON.stringify(WX_LOC)); WX={}; saveWx(); toast('地点を保存しました。気象を再取得してください'); render();
 }
 
 /* ======================================================================
    クラウド同期（Firebase）― 旧版と同じ経路
    ====================================================================== */
 const FB_VER='10.12.5';
-function loadCloudCfg(){ try{ return JSON.parse(localStorage.getItem(CLOUD_KEY)); }catch(e){ return null; } }
-function saveCloudCfg(o){ localStorage.setItem(CLOUD_KEY, JSON.stringify(o)); }
-function clearCloudCfg(){ localStorage.removeItem(CLOUD_KEY); }
+function loadCloudCfg(){ try{ return JSON.parse(LS.get(CLOUD_KEY)); }catch(e){ return null; } }
+function saveCloudCfg(o){ LS.set(CLOUD_KEY, JSON.stringify(o)); }
+function clearCloudCfg(){ LS.del(CLOUD_KEY); }
 function parseFirebaseConfig(text){ const s=text.indexOf('{'), e=text.lastIndexOf('}'); if(s<0||e<=s) throw new Error('firebaseConfig の形式が正しくありません'); const cfg=(new Function('return ('+text.slice(s,e+1)+')'))(); if(!cfg||!cfg.projectId) throw new Error('projectId が見つかりません'); return cfg; }
 async function doConnect(){ let cfg; try{ cfg=parseFirebaseConfig(val('cf_config')); }catch(e){ toast(e.message); return; } const ws=val('cf_ws'); if(!ws){ toast('ワークスペースIDを入力してください'); return; } await cloudConnect(cfg, ws, val('cf_name')); }
 function doDisconnect(){ cloudDisconnect(); toast('ローカル保存に戻りました'); }
@@ -894,9 +905,27 @@ function importData(e){
     }catch(err){ toast('ファイルを読み込めませんでした'); } };
   r.readAsText(file); e.target.value='';
 }
+let SEED_CACHE;
 function seedData(){
-  try{ const el=document.getElementById('seedData'); const t=el&&el.textContent.trim(); if(!t||t.startsWith('__')) return null;
-    const d=JSON.parse(t), out=emptyDB(); TYPES.forEach(k=>out[k]=d[k]||[]); return out; }catch(e){ return null; }
+  if(SEED_CACHE!==undefined) return SEED_CACHE ? JSON.parse(JSON.stringify(SEED_CACHE)) : null;
+  try{ const el=document.getElementById('seedData'); const t=el&&el.textContent.trim(); if(!t||t.startsWith('__')){ SEED_CACHE=null; return null; }
+    const d=JSON.parse(t), out=emptyDB(); TYPES.forEach(k=>out[k]=d[k]||[]); SEED_CACHE=out; return JSON.parse(JSON.stringify(out)); }catch(e){ SEED_CACHE=null; return null; }
+}
+/* 記録が1件もない端末では内蔵データを自動で入れる。圃場マスタだけ登録済みなら残して結合する */
+function ensureSeed(){
+  const s=seedData(); if(!s) return false;
+  if(['harvests','tasks','growth','materials'].some(t=>DB[t].length)) return false;
+  const names=new Set(DB.fields.map(f=>f.name));
+  s.fields.forEach(f=>{ if(!names.has(f.name)) DB.fields.push(f); });
+  ['harvests','tasks','growth','materials'].forEach(t=>DB[t]=s[t]);
+  save(); return true;
+}
+function seedMissing(){ const s=SEED_CACHE===undefined?seedData():SEED_CACHE; if(!s) return false; const names=new Set(DB.fields.map(f=>f.name)); return !s.fields.some(f=>names.has(f.name)); }
+function noticeBanner(){
+  let h='';
+  if(seedMissing()) h+=`<div class="callout" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><div style="flex:1"><b>内蔵データ（令和7年8月〜令和8年7月・全8圃場・2,155件）がまだ読み込まれていません。</b><br>この端末には別のデータ（デモやクラウドの空データ）が保存されています。読み込むと現在のデータは置き換わります。</div><button class="btn primary" onclick="loadSeed()">内蔵データを読み込む</button></div>`;
+  if(!STORAGE_OK) h+=`<div class="callout info"><b>この表示方法では保存できません。</b>閲覧はできますが、追加・変更はページを閉じると消えます。HTMLファイルをダウンロードして Chrome などで直接開くと保存されます。</div>`;
+  return h;
 }
 async function loadSeed(){
   const s=seedData(); if(!s){ toast('内蔵データがありません'); return; }
@@ -1161,18 +1190,19 @@ let toastTimer=null; function toast(m){ const t=document.getElementById('toast')
    初期化
    ====================================================================== */
 (function init(){
-  document.getElementById('todayLabel').textContent=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
-  document.querySelectorAll('.nav-item').forEach(n=>n.addEventListener('click',()=>go(n.dataset.view)));
-  document.getElementById('cmd').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); askFromInput(); } });
-  document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeDrawer(); } if((e.ctrlKey||e.metaKey)&&e.key==='k'){ e.preventDefault(); document.getElementById('cmd').focus(); } });
-  initSpeech();
-  // 空の端末なら内蔵データ（全8圃場）を自動で読み込む
-  if(!TYPES.some(t=>DB[t].length)){ const s=seedData(); if(s){ DB=s; save(); } }
-  renderCounts();
-  const cc=loadCloudCfg(); if(cc&&cc.config&&cc.wsId){ cloudConnect(cc.config,cc.wsId,cc.name||''); }
-  go('dashboard');
-  autoWeather();
-  const s=voiceSupport(); if(s.framed) setVoiceStatus('プレビュー内ではマイクは使えません。テキスト入力は利用できます。');
+  const step=(name,fn)=>{ try{ fn(); }catch(e){ console.error('[init] '+name, e); } };
+  step('date', ()=>{ document.getElementById('todayLabel').textContent=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'}); });
+  step('nav',  ()=>{ document.querySelectorAll('.nav-item').forEach(n=>n.addEventListener('click',()=>go(n.dataset.view, n.dataset.param))); });
+  step('keys', ()=>{ document.getElementById('cmd').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); askFromInput(); } });
+                     document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeDrawer(); } if((e.ctrlKey||e.metaKey)&&e.key==='k'){ e.preventDefault(); document.getElementById('cmd').focus(); } }); });
+  step('speech', initSpeech);
+  step('seed', ensureSeed);           // 記録が無い端末では内蔵データ（全8圃場）を自動で読み込む
+  // 画面描画は必ず行う
+  try{ renderCounts(); go('dashboard'); }
+  catch(e){ console.error(e); document.getElementById('main').innerHTML=`<div class="card"><div class="empty"><b>画面の描画でエラーが発生しました</b>${esc(e.message)}</div></div>`; }
+  step('cloud', ()=>{ const cc=loadCloudCfg(); if(cc&&cc.config&&cc.wsId){ cloudConnect(cc.config,cc.wsId,cc.name||''); } });
+  step('weather', autoWeather);
+  step('voice-note', ()=>{ const s=voiceSupport(); if(s.framed) setVoiceStatus('プレビュー内ではマイクは使えません。テキスト入力は利用できます。'); });
 })();
 </script>
 </body>
