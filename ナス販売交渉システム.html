@@ -222,12 +222,23 @@ ul.tp li b{color:var(--nasu)}
         <div class="st m"><div class="k">年間出荷見込み</div><div class="v" id="c_annual">—</div><div class="s">kg（面積×反収）</div></div>
         <div class="st m"><div class="k">年間経費 合計</div><div class="v" id="c_sum">—</div><div class="s">円</div></div>
       </div>
-      <h3 style="margin-top:14px">出荷・荷造りにかかる費用（1単位あたり）</h3>
+      <h3 style="margin-top:14px">荷造り資材・運賃（1単位あたり・円）</h3>
       <div class="row">
-        <div><label for="c_pm">パック資材 1Pあたり（円）</label><input id="c_pm" data-k="cost.packMat" type="number" step="1" min="0" inputmode="decimal"></div>
-        <div><label for="c_bm">段ボール 1箱あたり（円）</label><input id="c_bm" data-k="cost.boxMat" type="number" step="5" min="0" inputmode="decimal"></div>
-        <div><label for="c_fr">運賃 1箱あたり（円）</label><input id="c_fr" data-k="cost.freightBox" type="number" step="10" min="0" inputmode="decimal"></div>
+        <div><label for="c_film">フィルム・袋 1Pあたり</label><input id="c_film" data-k="cost.filmP" type="number" step="0.5" min="0" inputmode="decimal"></div>
+        <div><label for="c_tray">トレー・ラベル 1Pあたり</label><input id="c_tray" data-k="cost.trayP" type="number" step="0.5" min="0" inputmode="decimal"></div>
+        <div><label for="c_bm">ダンボール 1箱あたり</label><input id="c_bm" data-k="cost.boxMat" type="number" step="5" min="0" inputmode="decimal"></div>
+        <div><label for="c_fr">運賃 1箱あたり（直接納品）</label><input id="c_fr" data-k="cost.freightBox" type="number" step="10" min="0" inputmode="decimal"></div>
       </div>
+      <div class="hint" id="h_ship">—</div>
+      <h3 style="margin-top:14px">人件費</h3>
+      <div class="row">
+        <div><label for="c_hw">雇用 時給（円）</label><input id="c_hw" data-k="cost.hireWage" type="number" step="10" min="0" inputmode="numeric"></div>
+        <div><label for="c_hh">雇用 年間時間（h）</label><input id="c_hh" data-k="cost.hireHours" type="number" step="10" min="0" inputmode="numeric"></div>
+        <div><label for="c_fw">家族労働 時給換算（円）</label><input id="c_fw" data-k="cost.famWage" type="number" step="10" min="0" inputmode="numeric"></div>
+        <div><label for="c_fh">家族労働 年間時間（h）</label><input id="c_fh" data-k="cost.famHours" type="number" step="10" min="0" inputmode="numeric"></div>
+        <div><label for="c_pk">選果・箱詰め 1箱あたり作業時間（分）</label><input id="c_pk" data-k="cost.packMin" type="number" step="0.5" min="0" inputmode="decimal"></div>
+      </div>
+      <div class="hint" id="h_labor">—</div>
     </div>
     <div class="card">
       <h3>年間経費の内訳（円／年）</h3>
@@ -269,14 +280,20 @@ ul.tp li b{color:var(--nasu)}
       <div class="mini" id="mini_mkt"></div>
       <div style="height:16px"></div>
       <label for="m_src">出典メモ（市場名・年度）</label><input id="m_src" data-k="mkt.src" type="text" placeholder="例：○○中央卸売市場 令和6年 月報">
+      <h3 style="margin-top:16px">市場出荷にかかる費用</h3>
+      <div class="row">
+        <div><label for="m_fee">市場手数料（対 卸売価格・%）</label><input id="m_fee" data-k="mkt.fee" type="number" step="0.1" min="0" max="30" inputmode="decimal"><div class="hint">出荷先の市場の規定率。青果は8.5%が多い。</div></div>
+        <div><label for="m_jafee">JA・出荷組合の手数料（%）</label><input id="m_jafee" data-k="mkt.jaFee" type="number" step="0.1" min="0" max="30" inputmode="decimal"><div class="hint">JA経由で出す場合のみ。</div></div>
+        <div><label for="m_fr">市場向け運賃 1箱あたり（円）</label><input id="m_fr" data-k="mkt.mktFreight" type="number" step="10" min="0" inputmode="decimal"><div class="hint">直接納品の運賃との差だけを比較に使う。</div></div>
+      </div>
     </div>
     <div class="card">
       <h3>市場経由なら手元にいくら残るか</h3>
-      <p class="note">農林水産省「食品流通段階別価格形成調査」令和4年度のなすの取り分（小売100）から、卸売価格＝生産者50.2＋集出荷16.0＋卸手数料6.9＝73.1 とみなして換算。</p>
+      <p class="note" id="m_note">—</p>
       <div class="stats">
-        <div class="st m"><div class="k">供給計画で重み付けした市場平均</div><div class="v" id="m_avg">—</div><div class="s">円/kg</div></div>
-        <div class="st"><div class="k">JA経由の手取り（×68.7%）</div><div class="v" id="m_ja">—</div><div class="s">円/kg　50.2÷73.1</div></div>
-        <div class="st g"><div class="k">自分で市場出荷（×90.6%）</div><div class="v" id="m_self">—</div><div class="s">円/kg　66.2÷73.1（選果・運賃は自己負担）</div></div>
+        <div class="st m"><div class="k">供給計画で重み付けした市場平均</div><div class="v" id="m_avg">—</div><div class="s">円/kg（卸売価格）</div></div>
+        <div class="st"><div class="k">JA経由の手取り</div><div class="v" id="m_ja">—</div><div class="s" id="m_ja_s">—</div></div>
+        <div class="st g"><div class="k">自分で市場出荷（運賃差 調整後）</div><div class="v" id="m_self">—</div><div class="s" id="m_self_s">—</div></div>
         <div class="st"><div class="k">今回の提案価格（目標）</div><div class="v" id="m_tgt">—</div><div class="s" id="m_tgt_s">—</div></div>
       </div>
       <div class="verdict" id="m_verdict"></div>
@@ -443,15 +460,20 @@ const DEF=()=>({
   farm:{name:'せんとうふぁーむ',rep:'',tel:'',addr:'',variety:'千両二号',cult:'施設（ハウス）',feature:'朝どり当日出荷。選果・箱詰め・配送を自園で行い、市場を経由しないため鮮度と価格の両方でメリットを出せます。'},
   buyer:{name:'',person:'',date:today()},
   pk:{retail:398,pcs:5,gpc:100,ppb:25,boxes:8,rs:30,rb:10,tax:8},
-  cost:{area:20,yld:8000,items:[['種苗費',180000],['肥料費',250000],['農薬・衛生費',220000],['資材費（マルチ・誘引ひも等）',200000],['光熱動力費',450000],['修繕費・減価償却費',600000],['雇用労務費',1200000],['自家労働（時給換算）',1500000],['その他（共済・手数料）',120000]],packMat:12,boxMat:120,freightBox:250,minM:10,tgtM:20,anchor:5},
-  mkt:{prices:[520,480,420,380,330,300,280,290,330,380,420,480],src:''},
+  cost:{area:20,yld:8000,items:[['種苗費',180000],['肥料費',250000],['農薬・衛生費',220000],['資材費（マルチ・誘引ひも等）',200000],['光熱動力費',450000],['修繕費・減価償却費',600000],['その他（共済・手数料）',120000]],
+    hireWage:1100,hireHours:1100,famWage:1200,famHours:1500,packMin:6,
+    filmP:8,trayP:4,boxMat:120,freightBox:250,minM:10,tgtM:20,anchor:5},
+  mkt:{prices:[520,480,420,380,330,300,280,290,330,380,420,480],src:'',fee:8.5,jaFee:3,mktFreight:300},
   sup:{kg:[0,0,0,400,1200,1800,2000,1800,1600,1200,600,0]},
   nego:{offerPack:200,plans:[['梅',0,'スポット発注・最低ロット4箱・都度見積'],['竹',3,'週3回の定期納品・半年契約・数量目安の事前共有'],['松',6,'年間契約・月別数量保証・B品の一部引取・販促POP協力']]},
   terms:{grade:'A品 M・L中心（1P 5本入・約500g）',deliv:'週3回（月・水・金）午前着',pay:'月末締め翌月末払い',period:'契約日から1年（以後1年ごと自動更新）',other:'規格外（B品）は別単価で相談。天候不順による減産時は3日前までに連絡し、数量を協議する。'}
 });
 const PRESET={natsu:[0,0,0,400,1200,1800,2000,1800,1600,1200,600,0],fuyu:[1500,1400,1500,1400,1200,800,0,0,0,600,1200,1500],year:[900,900,1000,1100,1200,1200,1200,1200,1200,1100,1000,900],zero:[0,0,0,0,0,0,0,0,0,0,0,0]};
 let S=DEF();
-try{const j=localStorage.getItem('nasu-nego-v1');if(j){const o=JSON.parse(j);S=merge(DEF(),o);}}catch(e){}
+try{const j=localStorage.getItem('nasu-nego-v1');if(j){const o=JSON.parse(j);
+  // 旧版（人件費が費目リストに入っていた）からの移行：二重計上を防ぐ
+  if(o.cost&&o.cost.hireWage==null&&Array.isArray(o.cost.items))o.cost.items=o.cost.items.filter(it=>!/労務|労働|人件/.test(String(it[0])));
+  S=merge(DEF(),o);}}catch(e){}
 function merge(a,b){for(const k in b){if(b[k]&&typeof b[k]==='object'&&!Array.isArray(b[k])&&a[k]&&typeof a[k]==='object')merge(a[k],b[k]);else a[k]=b[k];}return a;}
 function save(){try{localStorage.setItem('nasu-nego-v1',JSON.stringify(S));}catch(e){}}
 function get(p){return p.split('.').reduce((o,k)=>o==null?undefined:o[k],S);}
@@ -473,9 +495,14 @@ function calc(){
   const storeBuy=rex*(1-rs), farmPack=storeBuy*(1-rb), farmKg=farmPack/kgPack;
   const packs=p.ppb*p.boxes, boxKg=p.ppb*kgPack, totKg=boxKg*p.boxes;
   const annualKg=Math.max(1,c.area/10*c.yld);
-  const sum=c.items.reduce((a,it)=>a+(+it[1]||0),0);
+  const laborAnnual=(+c.hireWage||0)*(+c.hireHours||0)+(+c.famWage||0)*(+c.famHours||0);
+  const sum=c.items.reduce((a,it)=>a+(+it[1]||0),0)+laborAnnual;
   const prodKg=sum/annualKg;
-  const shipKg=c.packMat/kgPack+(c.boxMat+c.freightBox)/(p.ppb*kgPack);
+  const packLaborBox=(+c.packMin||0)/60*(+c.hireWage||0);
+  const matKg=((+c.filmP||0)+(+c.trayP||0))/kgPack+(+c.boxMat||0)/(p.ppb*kgPack);
+  const frtKg=(+c.freightBox||0)/(p.ppb*kgPack);
+  const labKg=packLaborBox/(p.ppb*kgPack);
+  const shipKg=matKg+frtKg+labKg;
   const costKg=prodKg+shipKg;
   const floorKg=costKg*(1+c.minM/100), tgtKg=costKg*(1+c.tgtM/100), ancKg=tgtKg*(1+c.anchor/100);
   const toShelf=kg=>kg*kgPack/(1-rb)/(1-rs)*T;
@@ -483,9 +510,13 @@ function calc(){
   const mw=S.sup.kg.reduce((a,v,i)=>a+(+v||0)*(+S.mkt.prices[i]||0),0);
   const mAvgPlain=S.mkt.prices.reduce((a,v)=>a+(+v||0),0)/12;
   const mAvg=supKg>0?mw/supKg:mAvgPlain;
-  const JA=50.2/73.1, SELF=66.2/73.1;
+  const fee=(+S.mkt.fee||0)/100, jaFee=(+S.mkt.jaFee||0)/100;
+  const frtDiff=((+S.mkt.mktFreight||0)-(+c.freightBox||0))/boxKg; // 市場向け運賃の追加負担 円/kg
+  const SELF=1-fee, JA=1-fee-jaFee;
+  const mSelf=mAvg*SELF-frtDiff, mJa=mAvg*JA-frtDiff;
+  const selfKg=pr=>pr*SELF-frtDiff; // 月別換算用
   const offerKg=(+S.nego.offerPack||0)/kgPack;
-  return {kgPack,rex,rs,rb,storeBuy,farmPack,farmKg,packs,boxKg,totKg,annualKg,sum,prodKg,shipKg,costKg,floorKg,tgtKg,ancKg,toShelf,supKg,mAvg,mAvgPlain,JA,SELF,mJa:mAvg*JA,mSelf:mAvg*SELF,offerKg,T};
+  return {kgPack,rex,rs,rb,storeBuy,farmPack,farmKg,packs,boxKg,totKg,annualKg,sum,laborAnnual,prodKg,shipKg,matKg,frtKg,labKg,packLaborBox,costKg,floorKg,tgtKg,ancKg,toShelf,supKg,mAvg,mAvgPlain,fee,jaFee,frtDiff,SELF,JA,mJa,mSelf,selfKg,offerKg,T};
 }
 
 // ===== 描画 =====
@@ -504,9 +535,11 @@ function renderCostTable(){
     tb.appendChild(tr);
   });
   const t1=document.createElement('tr');t1.className='tot';
-  t1.innerHTML=`<td>生産原価 小計</td><td>${yen(r.sum)}</td><td>${f1(r.prodKg)}</td><td></td>`;tb.appendChild(t1);
-  const t2=document.createElement('tr');
-  t2.innerHTML=`<td>荷造り・運賃（上の単価から）</td><td>—</td><td>${f1(r.shipKg)}</td><td></td>`;tb.appendChild(t2);
+  const t0=document.createElement('tr');t0.innerHTML=`<td>人件費（時給×時間、左の設定から）</td><td>${yen(r.laborAnnual)}</td><td>${f1(r.laborAnnual/r.annualKg)}</td><td></td>`;tb.appendChild(t0);
+  tb.appendChild(t1);
+  t1.innerHTML=`<td>生産原価 小計（人件費込み）</td><td>${yen(r.sum)}</td><td>${f1(r.prodKg)}</td><td></td>`;
+  [['荷造り資材（フィルム・トレー・ダンボール）','—',r.matKg],['運賃（直接納品）','—',r.frtKg],['選果・箱詰めの作業人件費','—',r.labKg]].forEach(([n,a,k])=>{
+    const t2=document.createElement('tr');t2.innerHTML=`<td>${n}</td><td>${typeof a==='number'?yen(a):a}</td><td>${f1(k)}</td><td></td>`;tb.appendChild(t2);});
   const t3=document.createElement('tr');t3.className='tot hi';
   t3.innerHTML=`<td>1kgあたり原価 合計</td><td></td><td>${f1(r.costKg)}</td><td></td>`;tb.appendChild(t3);
 }
@@ -574,16 +607,25 @@ function render(){
   // ② 原価
   $('o_min').textContent=c.minM+'%';$('o_tgt').textContent=c.tgtM+'%';$('o_anc').textContent=c.anchor+'%';
   $('c_annual').textContent=f0(r.annualKg);$('c_sum').textContent=f0(r.sum);
-  document.querySelectorAll('#tb_cost td:nth-child(3)').forEach((td,i)=>{if(i<S.cost.items.length)td.textContent=f1((+S.cost.items[i][1]||0)/r.annualKg);});
+  { const trs=[...$('tb_cost').children],n=S.cost.items.length;
+    trs.forEach((tr,i)=>{const td=tr.children;if(i<n){td[2].textContent=f1((+S.cost.items[i][1]||0)/r.annualKg);}});
+    const fixed=[[yen(r.laborAnnual),f1(r.laborAnnual/r.annualKg)],[yen(r.sum),f1(r.prodKg)],['—',f1(r.matKg)],['—',f1(r.frtKg)],['—',f1(r.labKg)],['',f1(r.costKg)]];
+    fixed.forEach((v,j)=>{const tr=trs[n+j];if(tr){tr.children[1].textContent=v[0];tr.children[2].textContent=v[1];}}); }
+  $('h_ship').textContent=`1kgあたり：資材 ${f1(r.matKg)}円 ＋ 運賃 ${f1(r.frtKg)}円　（1箱 ${p.ppb}P・${f1(r.boxKg)}kg で換算）`;
+  $('h_labor').textContent=`年間人件費 ${yen(r.laborAnnual)}（${f1(r.laborAnnual/r.annualKg)}円/kg）＋ 箱詰め作業 1箱 ${f0(r.packLaborBox)}円（${f1(r.labKg)}円/kg）`;
   const tl=$('tb_lines');tl.innerHTML='';
   [['原価（利益0）',r.costKg,'m'],['下限ライン（最低利益率 '+c.minM+'%）',r.floorKg,'warn'],['目標価格（利益率 '+c.tgtM+'%）',r.tgtKg,'ok'],['初回提示（目標＋'+c.anchor+'%）',r.ancKg,'n']].forEach(([n,kg,cl])=>{
     const tr=document.createElement('tr');if(cl==='ok')tr.className='hi';
     tr.innerHTML=`<td>${n}</td><td>${f1(kg)}</td><td>${f1(kg*r.kgPack)}</td><td>${f0(kg*r.boxKg)}</td><td>${yen(r.toShelf(kg))}　<span class="note">→ 棚価候補 ${yen(shelf(r.toShelf(kg)))}</span></td>`;tl.appendChild(tr);});
-  $('h_lines').textContent=`必要な棚価は、値入率${p.rs}%・バイヤー率${p.rb}%・税${p.tax}%を戻して計算。1kgあたり原価の内訳：生産 ${f1(r.prodKg)}円 ＋ 荷造り・運賃 ${f1(r.shipKg)}円。`;
+  $('h_lines').textContent=`必要な棚価は、値入率${p.rs}%・バイヤー率${p.rb}%・税${p.tax}%を戻して計算。1kgあたり原価の内訳：生産（人件費込み）${f1(r.prodKg)}円 ＋ 荷造り資材 ${f1(r.matKg)}円 ＋ 運賃 ${f1(r.frtKg)}円 ＋ 箱詰め作業 ${f1(r.labKg)}円。`;
 
   // ③ 市場
   mini('mini_mkt',S.mkt.prices,S.sup.kg);
   $('m_avg').textContent=f1(r.mAvg);$('m_ja').textContent=f1(r.mJa);$('m_self').textContent=f1(r.mSelf);
+  const fd=(r.frtDiff>=0?'−':'＋')+f1(Math.abs(r.frtDiff))+'円/kg（運賃差）';
+  $('m_note').textContent=`卸売価格 × (1 − 市場手数料 ${S.mkt.fee}%${S.mkt.jaFee>0?' − JA手数料 '+S.mkt.jaFee+'%（JA経由のみ）':''}) から、市場向け運賃と直接納品運賃の差（1箱 ${yen(S.mkt.mktFreight)} − ${yen(S.cost.freightBox)}）を kg 換算して引いた金額。選果・箱詰め・資材は直接取引と同じ費用がかかるので差し引かない。`;
+  $('m_ja_s').textContent=`円/kg　×${pct(r.JA*100)} ${fd}`;
+  $('m_self_s').textContent=`円/kg　×${pct(r.SELF*100)} ${fd}`;
   $('m_tgt').textContent=f1(r.tgtKg);$('m_tgt_s').textContent='円/kg　市場自己出荷との差 '+(r.tgtKg-r.mSelf>=0?'+':'')+f1(r.tgtKg-r.mSelf)+'円/kg';
   const dShare=100-6.9-9.9;
   $('m_direct').textContent='農家＋スーパーで '+pct(dShare)+' を分ける（卸6.9%・仲卸9.9%が不要）';
@@ -597,13 +639,13 @@ function render(){
   const ratio=r.supKg/r.annualKg;
   $('h_supcmp').innerHTML=`供給計画 合計 ${f0(r.supKg)}kg ／ ②の年間出荷見込み ${f0(r.annualKg)}kg（${pct(ratio*100)}）`+(Math.abs(ratio-1)>0.25?'　<span class="pill warn">差が大きい：原価計算の収量と合っていません</span>':'　<span class="pill ok">整合しています</span>');
   const rev=r.tgtKg*r.supKg,prof=(r.tgtKg-r.costKg)*r.supKg;
-  const mktRev=S.sup.kg.reduce((a,v,i)=>a+(+v||0)*(+S.mkt.prices[i]||0)*r.SELF,0);
+  const mktRev=S.sup.kg.reduce((a,v,i)=>a+(+v||0)*r.selfKg(+S.mkt.prices[i]||0),0);
   $('y_kg').textContent=f0(r.supKg);$('y_kg_s').textContent=f0(r.supKg/r.kgPack)+'P・'+f0(r.supKg/r.boxKg)+'箱';
   $('y_rev').textContent=man(rev);$('y_rev_s').textContent=f1(r.tgtKg)+'円/kg × '+f0(r.supKg)+'kg';
   $('y_prof').textContent=man(prof);$('y_prof_s').textContent='原価 '+man(r.costKg*r.supKg)+' を差し引き';
-  $('y_mkt').textContent=man(mktRev);$('y_mkt_s').textContent='差 '+(rev-mktRev>=0?'+':'')+man(rev-mktRev)+'（月別市場価格×90.6%）';
+  $('y_mkt').textContent=man(mktRev);$('y_mkt_s').textContent='差 '+(rev-mktRev>=0?'+':'')+man(rev-mktRev)+`（月別市場価格 × ${pct(r.SELF*100)} − 運賃差）`;
   const ty=$('tb_year');ty.innerHTML='';
-  S.sup.kg.forEach((v,i)=>{v=+v||0;if(!v)return;const mr=v*(+S.mkt.prices[i]||0)*r.SELF,tr=document.createElement('tr');tr.innerHTML=`<td>${MON[i]}</td><td>${f0(v)}</td><td>${f0(v/r.kgPack)}</td><td>${f0(v/r.boxKg)}</td><td>${yen(v*r.tgtKg)}</td><td>${yen(mr)}</td><td>${(v*r.tgtKg-mr>=0?'+':'')+yen(v*r.tgtKg-mr)}</td>`;ty.appendChild(tr);});
+  S.sup.kg.forEach((v,i)=>{v=+v||0;if(!v)return;const mr=v*r.selfKg(+S.mkt.prices[i]||0),tr=document.createElement('tr');tr.innerHTML=`<td>${MON[i]}</td><td>${f0(v)}</td><td>${f0(v/r.kgPack)}</td><td>${f0(v/r.boxKg)}</td><td>${yen(v*r.tgtKg)}</td><td>${yen(mr)}</td><td>${(v*r.tgtKg-mr>=0?'+':'')+yen(v*r.tgtKg-mr)}</td>`;ty.appendChild(tr);});
   const tt=document.createElement('tr');tt.className='tot';tt.innerHTML=`<td>年間</td><td>${f0(r.supKg)}</td><td>${f0(r.supKg/r.kgPack)}</td><td>${f0(r.supKg/r.boxKg)}</td><td>${yen(rev)}</td><td>${yen(mktRev)}</td><td>${(rev-mktRev>=0?'+':'')+yen(rev-mktRev)}</td>`;ty.appendChild(tt);
 
   // ⑤ 交渉
@@ -638,8 +680,8 @@ function render(){
   const talk=[
     `店頭 ${yen(p.retail)} の棚で、御社の値入率 ${p.rs}% を確保しても、農家渡し ${f1(r.tgtKg*r.kgPack)}円/P（税抜）で成り立つ計算です。`,
     `私どもは選果・箱詰め・配送まで自分で行うので、市場経由で発生する卸手数料6.9%・仲卸9.9%、合わせて小売価格の16.8%が不要です。その分を御社と分け合う提案です。`,
-    `当園の1kgあたり原価は ${f1(r.costKg)}円（生産 ${f1(r.prodKg)}円＋荷造り運賃 ${f1(r.shipKg)}円）。提案価格 ${f1(r.tgtKg)}円/kg は利益率 ${c.tgtM}% で、天候リスクを吸収して安定供給を続けられる水準です。`,
-    `市場に自分で出荷した場合の手取りは概算 ${f1(r.mSelf)}円/kg。直接取引は御社にとって、仲卸経由より安く、当園にとって市場より安定、という関係になります。`,
+    `当園の1kgあたり原価は ${f1(r.costKg)}円（生産・人件費 ${f1(r.prodKg)}円＋資材 ${f1(r.matKg)}円＋運賃 ${f1(r.frtKg)}円＋箱詰め作業 ${f1(r.labKg)}円）。提案価格 ${f1(r.tgtKg)}円/kg は利益率 ${c.tgtM}% で、天候リスクを吸収して安定供給を続けられる水準です。`,
+    `市場に自分で出荷した場合の手取りは、市場手数料 ${S.mkt.fee}% と運賃差を引いて概算 ${f1(r.mSelf)}円/kg。直接取引は御社にとって、仲卸経由より安く、当園にとって市場より安定、という関係になります。`,
     `年間 ${f0(r.supKg)}kg（${f0(r.supKg/r.boxKg)}箱）を月別計画どおり供給します。最盛期の${MON[S.sup.kg.indexOf(Math.max(...S.sup.kg.map(Number)))]}は ${f0(Math.max(...S.sup.kg.map(Number)))}kg です。`,
     `条件次第で3つの案（${S.nego.plans.map(x=>x[0]+' '+f1(r.tgtKg*(1-(+x[1]||0)/100))+'円/kg').join('・')}）を用意しています。`
   ];
@@ -670,10 +712,13 @@ function renderDoc(r,y){
 
 <h2>2. 価格の根拠</h2>
 <h3>2-1. 原価の積み上げ</h3>
-<p>作付 ${c.area}a・10a収量 ${f0(c.yld)}kg（年間 ${f0(r.annualKg)}kg）を前提に、年間経費 ${yen(r.sum)} を kg あたりに換算し、荷造り・運賃を加えています。</p>
+<p>作付 ${c.area}a・10a収量 ${f0(c.yld)}kg（年間 ${f0(r.annualKg)}kg）を前提に、年間経費 ${yen(r.sum)}（人件費込み）を kg あたりに換算し、荷造り資材・運賃・箱詰め作業を加えています。</p>
 <div class="tw"><table><thead><tr><th>区分</th><th>年間金額</th><th>円/kg</th></tr></thead><tbody>
 ${c.items.map(it=>`<tr><td>${esc(it[0])}</td><td>${yen(+it[1]||0)}</td><td>${f1((+it[1]||0)/r.annualKg)}</td></tr>`).join('')}
-<tr><td>荷造り資材・運賃（1P ${yen(c.packMat)}、1箱 ${yen(c.boxMat+c.freightBox)}）</td><td>—</td><td>${f1(r.shipKg)}</td></tr>
+<tr><td>人件費（雇用 ${yen(c.hireWage)}×${f0(c.hireHours)}h、家族 ${yen(c.famWage)}×${f0(c.famHours)}h）</td><td>${yen(r.laborAnnual)}</td><td>${f1(r.laborAnnual/r.annualKg)}</td></tr>
+<tr><td>荷造り資材（フィルム・トレー 1P ${yen((+c.filmP||0)+(+c.trayP||0))}、ダンボール 1箱 ${yen(c.boxMat)}）</td><td>—</td><td>${f1(r.matKg)}</td></tr>
+<tr><td>運賃（直接納品 1箱 ${yen(c.freightBox)}）</td><td>—</td><td>${f1(r.frtKg)}</td></tr>
+<tr><td>選果・箱詰め作業（1箱 ${c.packMin}分 × 時給 ${yen(c.hireWage)}）</td><td>—</td><td>${f1(r.labKg)}</td></tr>
 <tr class="tot"><td>1kgあたり原価</td><td></td><td>${f1(r.costKg)}</td></tr>
 <tr><td>最低利益率 ${c.minM}%（不作年・天候リスクの備え）を加えた下限</td><td></td><td>${f1(r.floorKg)}</td></tr>
 <tr class="hi"><td>目標利益率 ${c.tgtM}% を加えた提案価格</td><td></td><td>${f1(r.tgtKg)}</td></tr>
@@ -686,7 +731,7 @@ ${c.items.map(it=>`<tr><td>${esc(it[0])}</td><td>${yen(+it[1]||0)}</td><td>${f1(
 <tr class="hi"><td>本提案（直接取引）</td><td>${pct((1-r.rs)*(1-r.rb)*100)}</td><td>${p.rb>0?pct(r.rb*(1-r.rs)*100)+'（中間業者）':'0'}</td><td>${pct(r.rs*100)}（貴社値入れ）</td></tr>
 </tbody></table></div>
 <h3>2-3. 市場価格との比較</h3>
-<p>出荷月で重み付けした市場卸売価格の平均は ${f1(r.mAvg)}円/kg${S.mkt.src?'（'+esc(S.mkt.src)+'）':'（当園調べ）'}。当園が自分で市場出荷した場合の手取りは概算 ${f1(r.mSelf)}円/kg（卸売価格×90.6%）です。提案価格 ${f1(r.tgtKg)}円/kg は${r.tgtKg>=r.mSelf?'これを '+f1(r.tgtKg-r.mSelf)+'円/kg 上回りますが、貴社にとっては仲卸経由の仕入れより有利で、かつ相場変動に左右されない固定価格です。':'これより '+f1(r.mSelf-r.tgtKg)+'円/kg 低く、当園としては安定した取引先を確保することを優先した価格です。'}</p>
+<p>出荷月で重み付けした市場卸売価格の平均は ${f1(r.mAvg)}円/kg${S.mkt.src?'（'+esc(S.mkt.src)+'）':'（当園調べ）'}。当園が自分で市場出荷した場合の手取りは、市場手数料 ${S.mkt.fee}% と市場向け運賃の差を引いて概算 ${f1(r.mSelf)}円/kg です。提案価格 ${f1(r.tgtKg)}円/kg は${r.tgtKg>=r.mSelf?'これを '+f1(r.tgtKg-r.mSelf)+'円/kg 上回りますが、貴社にとっては仲卸経由の仕入れより有利で、かつ相場変動に左右されない固定価格です。':'これより '+f1(r.mSelf-r.tgtKg)+'円/kg 低く、当園としては安定した取引先を確保することを優先した価格です。'}</p>
 <h3>2-4. 店頭価格からの逆算</h3>
 <p>想定売価 ${yen(shelf(shelfTgt))}（税込・税抜 ${f1(shelf(shelfTgt)/r.T)}円）に対し、貴社の値入率 ${p.rs}%${p.rb>0?'、中間業者 '+p.rb+'%':''} を差し引いた農家渡し価格が本提案の水準です。逆に現在の棚価 ${yen(p.retail)} から逆算すると農家渡しは ${f1(r.farmPack)}円/P（${f1(r.farmKg)}円/kg）となり、提案価格との差は ${f1(r.tgtKg*r.kgPack-r.farmPack)}円/P です。</p>
 
