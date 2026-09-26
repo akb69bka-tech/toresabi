@@ -142,10 +142,11 @@ ul.tp li b{color:var(--nasu)}
   <div class="brand">
     <div><div class="eb"><span id="eb_farm">せんとうふぁーむ</span> ／ 商談支援</div><h1>ナス販売交渉システム</h1></div>
     <div class="kpis">
-      <span>原価<b id="k_cost">—</b>円/kg</span>
-      <span>下限<b id="k_floor">—</b>円/kg</span>
-      <span>目標<b id="k_tgt">—</b>円/kg</span>
-      <span>棚価逆算<b id="k_rev">—</b>円/kg</span>
+      <span>原価<b id="k_cost">—</b>円/P</span>
+      <span>下限<b id="k_floor">—</b>円/P</span>
+      <span>目標<b id="k_tgt">—</b>円/P</span>
+      <span>棚価逆算<b id="k_rev">—</b>円/P</span>
+      <span id="k_unit">—</span>
     </div>
   </div>
   <nav role="tablist" id="nav">
@@ -203,6 +204,10 @@ ul.tp li b{color:var(--nasu)}
       <tbody id="tb_share"></tbody>
     </table></div>
     <div class="hint" id="h_revcmp">—</div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>単位の整合チェック（kg単価が売価より高く聞こえないように）</h3>
+    <div id="h_chain"></div>
   </div>
 </section>
 
@@ -580,7 +585,10 @@ function render(){
   const r=calc(),p=S.pk,c=S.cost;
   // KPI
   $('eb_farm').textContent=S.farm.name||'農園';
-  $('k_cost').textContent=f1(r.costKg);$('k_floor').textContent=f1(r.floorKg);$('k_tgt').textContent=f1(r.tgtKg);$('k_rev').textContent=f1(r.farmKg);
+  const PP=kg=>f1(kg*r.kgPack)+'円/P', PK=kg=>f1(kg*r.kgPack)+'円/P（'+f1(kg)+'円/kg）';
+  const shelfKgIn=p.retail/r.kgPack, shelfKgEx=r.rex/r.kgPack;
+  $('k_cost').textContent=f1(r.costKg*r.kgPack);$('k_floor').textContent=f1(r.floorKg*r.kgPack);$('k_tgt').textContent=f1(r.tgtKg*r.kgPack);$('k_rev').textContent=f1(r.farmPack);
+  $('k_unit').textContent=`1P=${f0(r.kgPack*1000)}g　棚価 ${yen(p.retail)}/P ＝ ${f0(shelfKgIn)}円/kg（税込）`;
   // ① 逆算
   $('o_rs').textContent=p.rs+'%';$('o_rb').textContent=p.rb+'%';
   $('h_rex').textContent='税抜 '+f1(r.rex)+'円';
@@ -594,7 +602,7 @@ function render(){
   $('v_kg').textContent=f1(r.farmKg)+'円';$('s_kg').textContent='税込 '+f1(r.farmKg*r.T)+'円/kg';
   $('v_pack').textContent=f1(r.farmPack)+'円';$('s_pack').textContent='税込 '+f1(r.farmPack*r.T)+'円　スーパー仕入 '+f1(r.storeBuy)+'円';
   $('v_boxp').textContent=f0(r.farmPack*p.ppb)+'／'+f0(r.farmPack*p.ppb*r.T)+'円';$('s_boxp').textContent=p.ppb+'P・'+f1(r.boxKg)+'kg入り';
-  $('story').innerHTML=`棚の価格が <b>${yen(p.retail)}</b>（税抜${f1(r.rex)}円）で、${p.boxes}箱＝${f0(r.packs)}P 納めると店頭売上は <b>${yen(top)}</b>。店が値入率${p.rs}%で <b>${yen(aStore*r.packs)}</b>、バイヤーが利益率${p.rb}%で <b>${yen(aBuyer*r.packs)}</b> 取ると、農家の手取りは <b>${yen(farmTot)}</b>。1Pあたり <b>${f1(r.farmPack)}円</b>、キロ <b>${f1(r.farmKg)}円</b>、1箱 <b>${yen(r.farmPack*p.ppb)}</b>（税抜）。`;
+  $('story').innerHTML=`棚の価格が <b>${yen(p.retail)}</b>（税抜${f1(r.rex)}円）で、${p.boxes}箱＝${f0(r.packs)}P 納めると店頭売上は <b>${yen(top)}</b>。店が値入率${p.rs}%で <b>${yen(aStore*r.packs)}</b>、バイヤーが利益率${p.rb}%で <b>${yen(aBuyer*r.packs)}</b> 取ると、農家の手取りは <b>${yen(farmTot)}</b>。1Pあたり <b>${f1(r.farmPack)}円</b>、1箱 <b>${yen(r.farmPack*p.ppb)}</b>（税抜）。kgで言うなら <b>${f1(r.farmKg)}円/kg</b>、ただし棚価も ${f0(shelfKgIn)}円/kg と並べて。`;
   const rows=[{n:'農家（'+S.farm.name+'）',cls:'s1',amt:r.farmPack,price:r.farmPack,rate:null},{n:'バイヤー',cls:'s3',amt:aBuyer,price:r.storeBuy,rate:p.rb},{n:'スーパー',cls:'s2',amt:aStore,price:r.rex,rate:p.rs}];
   const bar=$('bar'),tb=$('tb_share');bar.innerHTML='';tb.innerHTML='';const cm={s1:'c1',s2:'c2',s3:'c3'};
   rows.forEach(x=>{const w=r.rex>0?x.amt/r.rex*100:0;const d=document.createElement('div');d.className=x.cls;d.style.width=w+'%';d.textContent=w>=10?x.n.split('（')[0]+' '+yen(x.amt*r.packs):'';d.title=x.n+' '+pct(w);bar.appendChild(d);
@@ -602,7 +610,20 @@ function render(){
     tr.innerHTML=`<td><i class="sw" style="background:var(--${cm[x.cls]})"></i>${esc(x.n)}</td><td>${pct(w)}</td><td>${f1(x.amt)}</td><td>${f0(x.amt*p.ppb)}</td><td>${f0(x.amt*r.packs)}</td><td>${f1(x.price)}</td><td>${x.rate==null?'—':pct(x.rate)}</td>`;tb.appendChild(tr);});
   const trT=document.createElement('tr');trT.className='tot';trT.innerHTML=`<td>合計＝店頭売上（税抜）</td><td>100%</td><td>${f1(r.rex)}</td><td>${f0(r.rex*p.ppb)}</td><td>${f0(top)}</td><td>税込 ${f0(p.retail)}</td><td>—</td>`;tb.appendChild(trT);
   const vr=verdictOf(r.farmKg,r);
-  $('h_revcmp').innerHTML=`この棚価から逆算した農家kg単価 ${f1(r.farmKg)}円 は、原価 ${f1(r.costKg)}円・下限 ${f1(r.floorKg)}円・目標 ${f1(r.tgtKg)}円 に対して <span class="pill ${vr.cls}">${vr.t}</span>`;
+  $('h_revcmp').innerHTML=`この棚価から逆算した農家渡し ${PP(r.farmKg)} は、原価 ${PP(r.costKg)}・下限 ${PP(r.floorKg)}・目標 ${PP(r.tgtKg)} に対して <span class="pill ${vr.cls}">${vr.t}</span>`;
+  { const tgtP=r.tgtKg*r.kgPack, okChain=r.farmPack<r.storeBuy&&r.storeBuy<=r.rex&&r.rex<p.retail, fits=tgtP<=r.farmPack;
+    const need=r.toShelf(r.tgtKg);
+    $('h_chain').innerHTML=`
+    <div class="tw"><table>
+      <thead><tr><th></th><th>農家渡し</th><th>バイヤー→スーパー</th><th>売価（税抜）</th><th>売価（税込）</th></tr></thead>
+      <tbody>
+        <tr class="hi"><td>1Pあたり</td><td>${f1(r.farmPack)}円</td><td>${f1(r.storeBuy)}円</td><td>${f1(r.rex)}円</td><td>${yen(p.retail)}</td></tr>
+        <tr><td>1kg換算（1P=${f0(r.kgPack*1000)}g）</td><td>${f1(r.farmKg)}円</td><td>${f1(r.storeBuy/r.kgPack)}円</td><td>${f1(shelfKgEx)}円</td><td>${f1(shelfKgIn)}円</td></tr>
+        <tr><td>1箱（${p.ppb}P）</td><td>${yen(r.farmPack*p.ppb)}</td><td>${yen(r.storeBuy*p.ppb)}</td><td>${yen(r.rex*p.ppb)}</td><td>${yen(p.retail*p.ppb)}</td></tr>
+      </tbody></table></div>
+    <p class="note" style="margin:6px 0">${okChain?'<span class="pill ok">左から右へ必ず高くなっています</span>':'<span class="pill bad">価格の順序が崩れています（値入率・利益率を確認）</span>'}
+    　同じ行の中でだけ比べる。<b>「${f1(r.farmKg)}円/kg」を「${yen(p.retail)}の棚」と並べて言わない</b>。言うなら「1P ${f1(r.farmPack)}円」、kgで言うなら「棚は${f0(shelfKgIn)}円/kg、農家渡しは${f1(r.farmKg)}円/kg」。</p>
+    <p class="note" style="margin:6px 0">目標 ${PP(r.tgtKg)} は、この棚価から逆算した ${PP(r.farmKg)} ${fits?'<span class="pill ok">以内。この棚価で成立</span>':`<span class="pill warn">を超えています</span>　目標を通すなら棚価 ${yen(need)}（候補 ${yen(shelf(need))}）が必要。または値入率${p.rs}%・バイヤー率${p.rb}%を下げてもらう。`}</p>`; }
 
   // ② 原価
   $('o_min').textContent=c.minM+'%';$('o_tgt').textContent=c.tgtM+'%';$('o_anc').textContent=c.anchor+'%';
@@ -656,7 +677,7 @@ function render(){
   const px=v=>Math.min(100,Math.max(0,(v-lo)/(hi-lo)*100));
   const sc=$('scale');sc.style.setProperty('--p1',px(r.floorKg)+'%');sc.style.setProperty('--p2',px(r.tgtKg)+'%');
   const marks=[['原価',r.costKg],['下限',r.floorKg],['目標',r.tgtKg],['初回提示',r.ancKg],['市場自己出荷',r.mSelf]].sort((a,b)=>a[1]-b[1]);
-  sc.innerHTML='<div class="track"></div>'+marks.map(([n,v],i)=>`<div class="mk${i%2?' r2':''}" style="left:${px(v)}%">${n}<br>${f0(v)}</div>`).join('')+`<div class="pt" style="left:${px(ok)}%"></div><div class="pl" style="left:${px(ok)}%">提示 ${f1(ok)}円/kg</div>`;
+  sc.innerHTML='<div class="track"></div>'+marks.map(([n,v],i)=>`<div class="mk${i%2?' r2':''}" style="left:${px(v)}%">${n}<br>${f0(v*r.kgPack)}円/P</div>`).join('')+`<div class="pt" style="left:${px(ok)}%"></div><div class="pl" style="left:${px(ok)}%">提示 ${f1(ok*r.kgPack)}円/P</div>`;
   const vd=verdictOf(ok,r),nv=$('n_verdict');nv.className='verdict '+vd.cls;nv.innerHTML=`<p class="t">${vd.t}</p>${vd.d}`;
   const margin=r.costKg>0?(ok-r.costKg)/r.costKg*100:0;
   const oprof=(ok-r.costKg)*r.supKg,diff=oprof-prof;
@@ -667,23 +688,24 @@ function render(){
   if(ok<r.tgtKg&&ok>r.costKg){
     const needKg=(r.tgtKg-r.costKg)*r.supKg/(ok-r.costKg);
     cond.push(`<b>数量の上積み</b>：年間 ${f0(needKg)}kg（今の計画の ${pct(needKg/r.supKg*100)}）を引き取ってもらえれば、目標価格と同じ年間利益になる。`);
-    cond.push(`<b>契約期間</b>：${f1(r.tgtKg-ok)}円/kg の値下げは年間 ${man(-diff)} の譲歩。1年以上の数量保証を条件にする。`);
-    cond.push(`<b>B品の引取</b>：規格外を ${f1(ok*0.6)}円/kg 程度（提示の6割）で一定量引き取ってもらえれば、廃棄分が売上に変わる。`);
+    cond.push(`<b>契約期間</b>：${f1((r.tgtKg-ok)*r.kgPack)}円/P の値下げは年間 ${man(-diff)} の譲歩。1年以上の数量保証を条件にする。`);
+    cond.push(`<b>B品の引取</b>：規格外を ${f1(ok*0.6*r.kgPack)}円/P 程度（提示の6割）で一定量引き取ってもらえれば、廃棄分が売上に変わる。`);
     cond.push(`<b>支払サイト短縮</b>・<b>配送回数の削減</b>（週${S.terms.deliv.match(/\d/)?S.terms.deliv.match(/\d/)[0]:3}回→まとめ納品）で運賃 1箱${yen(c.freightBox)} を圧縮。`);
   }else if(ok<=r.costKg){
-    cond.push(`<b>原価割れ</b>のため条件では埋まらない。市場自己出荷 ${f1(r.mSelf)}円/kg を代替案として提示し、下限 ${f1(r.floorKg)}円/kg まで戻す。`);
+    cond.push(`<b>原価割れ</b>のため条件では埋まらない。市場自己出荷 ${PP(r.mSelf)} を代替案として提示し、下限 ${PP(r.floorKg)} まで戻す。`);
   }else{
     cond.push(`目標を満たしている。ここでは価格を守り、<b>数量・納品頻度・期間</b>を確定して合意する。`);
   }
   $('n_cond').innerHTML=cond.map(x=>`<li>${x}</li>`).join('');
   renderPlansTable();
   const talk=[
-    `店頭 ${yen(p.retail)} の棚で、御社の値入率 ${p.rs}% を確保しても、農家渡し ${f1(r.tgtKg*r.kgPack)}円/P（税抜）で成り立つ計算です。`,
-    `私どもは選果・箱詰め・配送まで自分で行うので、市場経由で発生する卸手数料6.9%・仲卸9.9%、合わせて小売価格の16.8%が不要です。その分を御社と分け合う提案です。`,
-    `当園の1kgあたり原価は ${f1(r.costKg)}円（生産・人件費 ${f1(r.prodKg)}円＋資材 ${f1(r.matKg)}円＋運賃 ${f1(r.frtKg)}円＋箱詰め作業 ${f1(r.labKg)}円）。提案価格 ${f1(r.tgtKg)}円/kg は利益率 ${c.tgtM}% で、天候リスクを吸収して安定供給を続けられる水準です。`,
-    `市場に自分で出荷した場合の手取りは、市場手数料 ${S.mkt.fee}% と運賃差を引いて概算 ${f1(r.mSelf)}円/kg。直接取引は御社にとって、仲卸経由より安く、当園にとって市場より安定、という関係になります。`,
-    `年間 ${f0(r.supKg)}kg（${f0(r.supKg/r.boxKg)}箱）を月別計画どおり供給します。最盛期の${MON[S.sup.kg.indexOf(Math.max(...S.sup.kg.map(Number)))]}は ${f0(Math.max(...S.sup.kg.map(Number)))}kg です。`,
-    `条件次第で3つの案（${S.nego.plans.map(x=>x[0]+' '+f1(r.tgtKg*(1-(+x[1]||0)/100))+'円/kg').join('・')}）を用意しています。`
+    `1P ${f0(r.kgPack*1000)}g で、農家渡し ${f1(r.tgtKg*r.kgPack)}円/P（税抜）のご提案です。御社が値入率 ${p.rs}% を取ると売価は ${yen(shelf(r.toShelf(r.tgtKg)))} 前後になります。`,
+    `私どもは選果・箱詰め・配送まで自分で行うので、市場経由で発生する卸手数料・仲卸マージン（小売価格の16.8%）が不要です。その分を御社と分け合う提案です。`,
+    `当園の原価は 1P ${f1(r.costKg*r.kgPack)}円（1kg ${f1(r.costKg)}円：生産・人件費 ${f1(r.prodKg)}円＋資材 ${f1(r.matKg)}円＋運賃 ${f1(r.frtKg)}円＋箱詰め ${f1(r.labKg)}円）。提案価格は利益率 ${c.tgtM}% で、天候リスクを吸収して安定供給を続けられる水準です。`,
+    `市場に自分で出荷した場合の手取りは、市場手数料 ${S.mkt.fee}% と運賃差を引いて 1P ${f1(r.mSelf*r.kgPack)}円（${f1(r.mSelf)}円/kg）程度。直接取引は御社にとって仲卸経由より安く、当園にとって市場より安定、という関係になります。`,
+    `年間 ${f0(r.supKg)}kg（${f0(r.supKg/r.kgPack)}P・${f0(r.supKg/r.boxKg)}箱）を月別計画どおり供給します。最盛期の${MON[S.sup.kg.indexOf(Math.max(...S.sup.kg.map(Number)))]}は ${f0(Math.max(...S.sup.kg.map(Number)))}kg です。`,
+    `条件次第で3つの案（${S.nego.plans.map(x=>x[0]+' '+f1(r.tgtKg*(1-(+x[1]||0)/100)*r.kgPack)+'円/P').join('・')}）を用意しています。`,
+    `※ kg単価を口にするときは、棚価も kg に直して並べる：棚 ${yen(p.retail)}/P ＝ ${f0(shelfKgIn)}円/kg、農家渡し ${f1(r.tgtKg)}円/kg。`
   ];
   $('n_talk').innerHTML=talk.map(x=>`<li>${x}</li>`).join('');
   $('n_talk').dataset.txt=talk.map(x=>'・'+x).join('\n');
@@ -733,7 +755,8 @@ ${c.items.map(it=>`<tr><td>${esc(it[0])}</td><td>${yen(+it[1]||0)}</td><td>${f1(
 <h3>2-3. 市場価格との比較</h3>
 <p>出荷月で重み付けした市場卸売価格の平均は ${f1(r.mAvg)}円/kg${S.mkt.src?'（'+esc(S.mkt.src)+'）':'（当園調べ）'}。当園が自分で市場出荷した場合の手取りは、市場手数料 ${S.mkt.fee}% と市場向け運賃の差を引いて概算 ${f1(r.mSelf)}円/kg です。提案価格 ${f1(r.tgtKg)}円/kg は${r.tgtKg>=r.mSelf?'これを '+f1(r.tgtKg-r.mSelf)+'円/kg 上回りますが、貴社にとっては仲卸経由の仕入れより有利で、かつ相場変動に左右されない固定価格です。':'これより '+f1(r.mSelf-r.tgtKg)+'円/kg 低く、当園としては安定した取引先を確保することを優先した価格です。'}</p>
 <h3>2-4. 店頭価格からの逆算</h3>
-<p>想定売価 ${yen(shelf(shelfTgt))}（税込・税抜 ${f1(shelf(shelfTgt)/r.T)}円）に対し、貴社の値入率 ${p.rs}%${p.rb>0?'、中間業者 '+p.rb+'%':''} を差し引いた農家渡し価格が本提案の水準です。逆に現在の棚価 ${yen(p.retail)} から逆算すると農家渡しは ${f1(r.farmPack)}円/P（${f1(r.farmKg)}円/kg）となり、提案価格との差は ${f1(r.tgtKg*r.kgPack-r.farmPack)}円/P です。</p>
+<p>想定売価 ${yen(shelf(shelfTgt))}（税込・税抜 ${f1(shelf(shelfTgt)/r.T)}円）に対し、貴社の値入率 ${p.rs}%${p.rb>0?'、中間業者 '+p.rb+'%':''} を差し引いた農家渡し価格が本提案の水準です。逆に現在の棚価 ${yen(p.retail)} から逆算すると農家渡しは ${f1(r.farmPack)}円/P となり、提案価格との差は ${f1(r.tgtKg*r.kgPack-r.farmPack)}円/P です。</p>
+<p>本書の kg 単価はすべて 1P＝${f0(r.kgPack*1000)}g で換算した参考値です。同じ基準で棚価 ${yen(p.retail)}/P は ${f0(p.retail/r.kgPack)}円/kg（税込）、農家渡し ${f1(r.tgtKg*r.kgPack)}円/P は ${f1(r.tgtKg)}円/kg に相当します。</p>
 
 <h2>3. 供給計画</h2>
 <div class="tw"><table><thead><tr><th>月</th>${months.map(m=>`<th>${m[0]}</th>`).join('')}<th>年間</th></tr></thead><tbody>
