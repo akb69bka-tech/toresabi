@@ -79,9 +79,18 @@ def parse_csv_bars(text: str) -> List[Bar]:
                 if any(k in h for k in keys):
                     return i
             return default
+        def pick_close():
+            # "adj close" を誤って終値として拾わないよう、調整後は別扱いにする
+            for i, h in enumerate(first):
+                if ("close" in h or "終値" in h or h.endswith("終")) and "adj" not in h and "調整" not in h:
+                    return i
+            return 4
         col = {"d": pick(["date", "日付", "年月日"], 0), "o": pick(["open", "始値", "始"], 1),
                "h": pick(["high", "高値", "高"], 2), "l": pick(["low", "安値", "安"], 3),
-               "c": pick(["close", "終値", "終"], 4), "v": pick(["volume", "出来高", "売買高"], 5)}
+               "c": pick_close(), "v": pick(["volume", "出来高", "売買高"], 5)}
+        adj = pick(["adj close", "adj_close", "adjclose", "調整後終値", "調整"], -1)
+        if adj >= 0:
+            col["adj"] = adj       # 株式分割・配当で補正された終値。あれば四本値を同じ比率で補正する
         start = 1
     by_date: Dict[str, Bar] = {}
     for row in cells[start:]:
@@ -101,6 +110,12 @@ def parse_csv_bars(text: str) -> List[Bar]:
         h = h if (h == h and h > 0) else max(o, c)
         l = l if (l == l and l > 0) else min(o, c)
         v = v if v == v else 0.0
+        if "adj" in col and len(row) > col["adj"]:
+            a = _num(row[col["adj"]])
+            if a == a and a > 0 and c > 0:
+                k = a / c                      # 分割前の価格を現在の株数基準に揃える
+                o, h, l, c = o * k, h * k, l * k, a
+                v = v / k if k > 0 else v      # 出来高は逆方向に補正（売買代金が不変になる）
         by_date[d] = Bar(d, o, h, l, c, v)
     return [by_date[k] for k in sorted(by_date)]
 

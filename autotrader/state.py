@@ -23,6 +23,8 @@ class Account:
     consecLosses: int = 0
     halted: bool = False
     haltReason: str = ""
+    haltDate: Optional[str] = None
+    peakEquity: float = 0.0
     dayTrades: int = 0
     dayDate: Optional[str] = None
     costs: float = 0.0
@@ -95,6 +97,8 @@ def seed_sim(sim: Sim, acc: Account):
     sim.consecLosses = acc.consecLosses
     sim.halted = acc.halted
     sim.haltReason = acc.haltReason
+    sim.haltDate = acc.haltDate
+    sim.peak = max(float(acc.peakEquity or 0), float(acc.initialCash))
     sim.dayTrades = acc.dayTrades
     sim.dayDate = acc.dayDate
     sim.costs = acc.costs
@@ -111,6 +115,8 @@ def extract_account(sim: Sim, acc: Account):
     acc.consecLosses = sim.consecLosses
     acc.halted = sim.halted
     acc.haltReason = sim.haltReason
+    acc.haltDate = sim.haltDate
+    acc.peakEquity = sim.peak
     acc.dayTrades = sim.dayTrades
     acc.dayDate = sim.dayDate
     acc.costs = sim.costs

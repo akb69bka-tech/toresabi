@@ -7,3 +7,4 @@ STOP
 __pycache__/
 *.pyc
 .pytest_cache/
+samples/real_us/

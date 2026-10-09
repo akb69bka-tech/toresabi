@@ -30,7 +30,7 @@ RISK_500K: Dict[str, Any] = {
     "maxPositions": 5, "feePct": 0.55, "slipPct": 0.1,
     "useAtrStop": True, "atrPeriod": 14, "atrMult": 3.5, "stopPct": 10, "takePct": 0, "trailPct": 0,
     "maxHoldDays": 0, "minHoldDays": 5, "cooldownDays": 10,
-    "maxDailyTrades": 2, "haltDrawdownPct": 15, "maxConsecLosses": 6, "reserveCashPct": 10,
+    "maxDailyTrades": 2, "haltDrawdownPct": 15, "haltResumeDays": 30, "maxConsecLosses": 6, "reserveCashPct": 10,
 }
 
 # ブラウザ版の既定（短期売買型）。互換性検証用
@@ -52,7 +52,7 @@ RISK_DEFAULT: Dict[str, Any] = {
     "maxPositions": 5, "feePct": 0.1, "slipPct": 0.05,
     "useAtrStop": False, "atrPeriod": 14, "atrMult": 2, "stopPct": 7, "takePct": 15, "trailPct": 0,
     "maxHoldDays": 0, "minHoldDays": 0, "cooldownDays": 0,
-    "maxDailyTrades": 0, "haltDrawdownPct": 0, "maxConsecLosses": 0, "reserveCashPct": 0,
+    "maxDailyTrades": 0, "haltDrawdownPct": 0, "haltResumeDays": 30, "maxConsecLosses": 0, "reserveCashPct": 0,
 }
 
 DEFAULT_CONFIG: Dict[str, Any] = {

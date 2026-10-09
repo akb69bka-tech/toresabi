@@ -43,6 +43,8 @@ def test_universe_from_csv_and_fallback(tmp_path):
     u = load_universe(str(p), default_unit=1)
     assert [(s.code, s.unit) for s in u] == [("7203", 100), ("9432", 1)]
     assert len(load_universe(str(tmp_path / "none.csv"))) > 50     # サンプルにフォールバック
+    q = tmp_path / "us.csv"; q.write_text("code,name\nORCL,Oracle\nNVDA,NVIDIA\n", encoding="utf-8")
+    assert [s.code for s in load_universe(str(q))] == ["ORCL", "NVDA"]   # 英字ティッカーも読める
     assert len(load_universe(str(tmp_path / "none.csv"), max_symbols=5)) == 5
 
 
@@ -178,3 +180,19 @@ def test_paper_broker_records_only():
     oid = b.send(Order("7203", "buy", 3, est_price=10))
     assert oid.startswith("PAPER-") and b.fills([oid]) == [] and b.cash() == 100.0
     assert b.positions()["7203"]["qty"] == 3
+
+
+def test_parse_csv_adjusts_for_splits_with_adj_close():
+    # 2日目に 1:2 の分割があった想定。調整後終値で補正すると連続した価格になる
+    text = ("Date,Open,High,Low,Close,Adj Close,Volume\n"
+            "2024-01-04,100,104,98,102,51,1000\n"
+            "2024-01-05,52,53,50,51,51,2000\n")
+    bars = parse_csv_bars(text)
+    assert bars[0].c == 51 and abs(bars[0].o - 50) < 1e-9 and abs(bars[0].h - 52) < 1e-9
+    assert abs(bars[0].v - 2000) < 1e-9          # 出来高は株数基準に揃う
+    assert bars[1].c == 51 and bars[1].o == 52     # 分割後はそのまま
+
+def test_parse_csv_close_not_confused_with_adj_close():
+    text = "Date,Adj Close,Close,Open,High,Low,Volume\n2024-01-04,50,100,99,101,98,1\n"
+    b = parse_csv_bars(text)[0]
+    assert b.c == 50 and abs(b.o - 49.5) < 1e-9     # 終値=調整後、始値も同じ比率で補正

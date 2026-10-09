@@ -36,12 +36,13 @@ def load_universe(path: str, max_symbols: int = 0, default_unit: int = 100) -> L
         for enc in ("utf-8-sig", "cp932"):
             try:
                 with open(path, encoding=enc, newline="") as f:
-                    for row in csv.reader(f):
+                    for n, row in enumerate(csv.reader(f)):
                         if not row or not row[0].strip():
                             continue
                         code = row[0].strip()
-                        if not code[:1].isdigit():
-                            continue          # ヘッダ行
+                        # ヘッダ行は先頭行の見出し語で判定する（英字ティッカーも銘柄として扱う）
+                        if n == 0 and code.lower() in ("code", "コード", "銘柄コード", "symbol", "ticker"):
+                            continue
                         name = row[1].strip() if len(row) > 1 else code
                         unit = int(row[2]) if len(row) > 2 and row[2].strip().isdigit() else default_unit
                         syms.append(Symbol(code=code, name=name, unit=unit))

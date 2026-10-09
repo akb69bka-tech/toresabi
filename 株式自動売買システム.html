@@ -354,7 +354,8 @@
             以下はそれに加えて、損失の拡大や売買の過熱を自動的に止めるための制限です。
         </p>
         <div class="grid g4" style="margin-top:.8rem">
-            <div class="field"><label>資産の下限で停止(%)<br><span style="opacity:.7">0で無効</span></label><input type="number" id="rkHaltDD" step="1" onchange="readRisk()"></div>
+            <div class="field"><label>最高値からの下落で停止(%)<br><span style="opacity:.7">0で無効</span></label><input type="number" id="rkHaltDD" step="1" onchange="readRisk()"></div>
+            <div class="field"><label>停止後の冷却期間(日)<br><span style="opacity:.7">経過後に自動再開</span></label><input type="number" id="rkHaltResume" step="1" onchange="readRisk()"></div>
             <div class="field"><label>連敗で停止(回)<br><span style="opacity:.7">0で無効</span></label><input type="number" id="rkConsec" step="1" onchange="readRisk()"></div>
             <div class="field"><label>1日の最大買い回数<br><span style="opacity:.7">0で無制限</span></label><input type="number" id="rkDaily" step="1" onchange="readRisk()"></div>
             <div class="field"><label>常に残す現金(%)<br><span style="opacity:.7">初期資金に対する割合</span></label><input type="number" id="rkReserve" step="1" onchange="readRisk()"></div>
@@ -639,7 +640,7 @@ const PRESETS = {
               maxPositions:5, feePct:0.55, slipPct:0.1,
               useAtrStop:true, atrPeriod:14, atrMult:3.5, stopPct:10, takePct:0, trailPct:0,
               maxHoldDays:0, minHoldDays:5, cooldownDays:10,
-              maxDailyTrades:2, haltDrawdownPct:15, maxConsecLosses:6, reserveCashPct:10},
+              maxDailyTrades:2, haltDrawdownPct:15, haltResumeDays:30, maxConsecLosses:6, reserveCashPct:10},
         strategy:{
             mode:'score', buyTh:3, sellTh:3, exitPolicy:'trend',
             rules:{
@@ -659,21 +660,21 @@ const PRESETS = {
         risk:{initialCash:10000, unit:1, allowMinUnit:true, sizing:'ratio', allocPct:45,
               maxPositions:2, feePct:0.55, slipPct:0.2, stopPct:6, takePct:12, trailPct:0,
               useAtrStop:false, maxHoldDays:20, minHoldDays:3, cooldownDays:5,
-              maxDailyTrades:1, haltDrawdownPct:20, maxConsecLosses:5, reserveCashPct:5}
+              maxDailyTrades:1, haltDrawdownPct:20, haltResumeDays:30, maxConsecLosses:5, reserveCashPct:5}
     },
     yen100k: {
         label:'10万円', note:'単元未満株・最大3銘柄・1日2回まで',
         risk:{initialCash:100000, unit:1, allowMinUnit:true, sizing:'ratio', allocPct:30,
               maxPositions:3, feePct:0.55, slipPct:0.15, stopPct:7, takePct:15, trailPct:0,
               useAtrStop:false, maxHoldDays:30, minHoldDays:3, cooldownDays:7,
-              maxDailyTrades:2, haltDrawdownPct:20, maxConsecLosses:6, reserveCashPct:5}
+              maxDailyTrades:2, haltDrawdownPct:20, haltResumeDays:30, maxConsecLosses:6, reserveCashPct:5}
     },
     yen1m: {
         label:'100万円', note:'単元株(100株)・最大5銘柄',
         risk:{initialCash:1000000, unit:100, allowMinUnit:false, sizing:'ratio', allocPct:20,
               maxPositions:5, feePct:0.1, slipPct:0.05, stopPct:7, takePct:15, trailPct:0,
               useAtrStop:false, maxHoldDays:0, minHoldDays:0, cooldownDays:0,
-              maxDailyTrades:0, haltDrawdownPct:25, maxConsecLosses:0, reserveCashPct:0}
+              maxDailyTrades:0, haltDrawdownPct:25, haltResumeDays:30, maxConsecLosses:0, reserveCashPct:0}
     }
 };
 
@@ -699,7 +700,7 @@ function defaultState(){
             atrPeriod:14, atrMult:2, useAtrStop:false, unit:100, allowMinUnit:false,
             stopPct:7, takePct:15, trailPct:0, maxHoldDays:0,
             maxPositions:5, feePct:0.1, slipPct:0.05,
-            maxDailyTrades:0, haltDrawdownPct:0, maxConsecLosses:0, reserveCashPct:0,
+            maxDailyTrades:0, haltDrawdownPct:0, haltResumeDays:30, maxConsecLosses:0, reserveCashPct:0,
             minHoldDays:0, cooldownDays:0
         },
         exec: {mode:'dry', interval:30, url:'', token:''},
@@ -1033,7 +1034,8 @@ function createSim(symbols, strat, risk, from, to){
         cash: risk.initialCash,
         positions:{},    // code -> {qty, avg, stop, take, peak, entryDate}
         trades:[], equity:[], marks:{}, pending:[],
-        halted:false, haltReason:'', consecLosses:0,
+        halted:false, haltReason:'', consecLosses:0, haltDate:null,
+        peak: risk.initialCash,
         dayTrades:0, dayDate:null, costs:0, lastExit:{},
         events:[], finished:false
     };
@@ -1091,21 +1093,33 @@ function simClose(sim, c, price, date, reason){
 }
 /* 安全装置。停止条件に触れたら新規の買いを止める。
    既に持っている建玉は損切り・利確・売りシグナルで通常どおり手仕舞う */
-function simSafety(sim, equityNow){
-    if(sim.halted) return;
+function simSafety(sim, equityNow, date){
+    // 資産の最高値からの下落率と連敗で新規買いを止め、一定期間（暦日）後に条件が解消していれば自動で再開する。
+    // 初期資金を基準にすると、資産が増えた後に効かなくなり、一度止まると永久に止まったままになるため
     const risk = sim.risk;
-    if(risk.haltDrawdownPct > 0){
-        const floor = risk.initialCash * (1 - risk.haltDrawdownPct/100);
-        if(equityNow <= floor){
-            sim.halted = true;
-            sim.haltReason = `資産が下限 ${yen(floor)}（初期資金の-${risk.haltDrawdownPct}%）に到達したため新規買いを停止しました`;
+    sim.peak = Math.max(sim.peak || risk.initialCash, equityNow);
+    const pct = risk.haltDrawdownPct || 0;
+    const floor = pct > 0 ? sim.peak * (1 - pct/100) : null;
+    if(sim.halted){
+        // 冷却期間（暦日）が過ぎたら再開し、基準となる最高値を現在の資産に置き直す。
+        // 暴落後は最高値を長期間回復できないため、回復を条件にすると永久停止と同じになる
+        const resume = risk.haltResumeDays == null ? 30 : risk.haltResumeDays;
+        if(sim.haltDate && daysBetween(sim.haltDate, date) >= resume){
+            sim.halted = false; sim.haltReason = ''; sim.haltDate = null; sim.consecLosses = 0;
+            sim.peak = equityNow;
+            simEvent(sim, `✅ 冷却期間（${resume}日）が過ぎたため新規買いを再開しました（基準資産 ${yen(equityNow)}）`);
         }
+        return;
+    }
+    if(floor != null && equityNow <= floor){
+        sim.halted = true;
+        sim.haltReason = `資産が最高値 ${yen(sim.peak)} から ${pct}% 下落（${yen(floor)} 以下）したため新規買いを停止しました`;
     }
     if(!sim.halted && risk.maxConsecLosses > 0 && sim.consecLosses >= risk.maxConsecLosses){
         sim.halted = true;
         sim.haltReason = `${risk.maxConsecLosses}連敗に到達したため新規買いを停止しました`;
     }
-    if(sim.halted) simEvent(sim, '⛔ ' + sim.haltReason);
+    if(sim.halted){ sim.haltDate = date; simEvent(sim, '⛔ ' + sim.haltReason); }
 }
 /* 1営業日ぶん進める。最終日まで到達したら true を返す */
 function simStep(sim){
@@ -1184,7 +1198,7 @@ function simStep(sim){
     // 4) 時価評価と安全装置の判定
     const eq = sim.cash + mtm(ctx, sim.positions, date);
     sim.equity.push({d:date, e:eq});
-    simSafety(sim, eq);
+    simSafety(sim, eq, date);
 
     sim.t++;
     if(sim.t >= dates.length){ simFinish(sim); return true; }
@@ -1731,10 +1745,11 @@ function renderRisk(){
     set('rkHaltDD', r.haltDrawdownPct); set('rkConsec', r.maxConsecLosses);
     set('rkDaily', r.maxDailyTrades); set('rkReserve', r.reserveCashPct);
     set('rkMinHold', r.minHoldDays); set('rkCooldown', r.cooldownDays);
+    set('rkHaltResume', r.haltResumeDays == null ? 30 : r.haltResumeDays);
     const parts = [];
     parts.push(r.haltDrawdownPct > 0
-        ? `資産が ${yen(r.initialCash * (1 - r.haltDrawdownPct/100))} まで減ったら新規買いを止めます`
-        : '資産の下限による停止は無効です');
+        ? `資産が最高値から${r.haltDrawdownPct}%下落したら新規買いを止め、${r.haltResumeDays == null ? 30 : r.haltResumeDays}日の冷却期間の後に再開します`
+        : '下落率による停止は無効です');
     if(r.maxConsecLosses > 0) parts.push(`${r.maxConsecLosses}連敗で新規買いを止めます`);
     if(r.maxDailyTrades > 0) parts.push(`1日の新規買いは${r.maxDailyTrades}回までです`);
     if(r.reserveCashPct > 0) parts.push(`${yen(r.initialCash * r.reserveCashPct/100)} は常に現金で残します`);
@@ -1770,6 +1785,7 @@ function readRisk(){
     r.maxDailyTrades = Math.max(0, g('rkDaily') || 0);
     r.reserveCashPct = Math.max(0, Math.min(90, g('rkReserve') || 0));
     r.minHoldDays = Math.max(0, g('rkMinHold') || 0);
+    r.haltResumeDays = Math.max(0, g('rkHaltResume') || 0);
     r.cooldownDays = Math.max(0, g('rkCooldown') || 0);
     // 未取引のうちは初期資金の変更をペーパー口座にも反映する
     if(!state.paper.trades.length && !Object.keys(state.paper.positions).length && prevCash !== r.initialCash){
@@ -2827,11 +2843,12 @@ function runDailyJudge(){
 
     // 安全装置の判定（資産の下限・連敗）
     const equityCheck = p.cash + positionsValue();
+    p.peak = Math.max(p.peak || risk.initialCash, equityCheck);
     if(!p.halted && risk.haltDrawdownPct > 0){
-        const floor = risk.initialCash * (1 - risk.haltDrawdownPct/100);
+        const floor = p.peak * (1 - risk.haltDrawdownPct/100);
         if(equityCheck <= floor){
             p.halted = true;
-            p.haltReason = '資産が下限 ' + yen(floor) + '（初期資金の-' + risk.haltDrawdownPct + '%）に到達しました';
+            p.haltReason = '資産が最高値 ' + yen(p.peak) + ' から ' + risk.haltDrawdownPct + '% 下落しました';
         }
     }
     if(!p.halted && risk.maxConsecLosses > 0 && (p.consecLosses||0) >= risk.maxConsecLosses){

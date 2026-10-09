@@ -75,6 +75,8 @@ class Sim:
         self.dayDate: Optional[str] = None
         self.costs = 0.0
         self.lastExit: Dict[str, str] = {}
+        self.peak = float(risk["initialCash"])      # 資産の最高値（安全装置の基準）
+        self.haltDate: Optional[str] = None
         self.events: List[Dict[str, str]] = []
         self.finished = False
 
@@ -199,20 +201,36 @@ def sim_close(sim: Sim, c: Ctx, price: float, d: str, reason: str):
     sim_event(sim, f"売り {code} {pos['qty']:,}株 @{p:,.1f}（{reason} {sign}{yen(pnl)}）")
 
 
-def sim_safety(sim: Sim, equity_now: float):
-    if sim.halted:
-        return
+def sim_safety(sim: Sim, equity_now: float, d: str):
+    """安全装置。資産の最高値からの下落率と連敗で新規買いを止め、
+    一定期間(haltResumeDays 暦日)たって条件が解消していれば自動で再開する。
+    初期資金を基準にすると、長期運用で資産が増えた後に効かなくなり、
+    逆に一度止まると永久に止まったままになるため、最高値基準にしている"""
     risk = sim.risk
-    if risk.get("haltDrawdownPct", 0) > 0:
-        floor_ = risk["initialCash"] * (1 - risk["haltDrawdownPct"] / 100)
-        if equity_now <= floor_:
-            sim.halted = True
-            sim.haltReason = (f"資産が下限 {yen(floor_)}（初期資金の-{risk['haltDrawdownPct']}%）"
-                              "に到達したため新規買いを停止しました")
+    sim.peak = max(sim.peak, equity_now)
+    pct = risk.get("haltDrawdownPct", 0) or 0
+    floor_ = sim.peak * (1 - pct / 100) if pct > 0 else None
+    if sim.halted:
+        # 冷却期間（暦日）が過ぎたら再開し、基準となる最高値を現在の資産に置き直す。
+        # 暴落後は最高値を長期間回復できないため、回復を条件にすると永久停止と同じになる
+        resume = int(risk.get("haltResumeDays", 30) or 0)
+        if sim.haltDate and days_between(sim.haltDate, d) >= resume:
+            sim.halted = False
+            sim.haltReason = ""
+            sim.haltDate = None
+            sim.consecLosses = 0
+            sim.peak = equity_now
+            sim_event(sim, f"✅ 冷却期間（{resume}日）が過ぎたため新規買いを再開しました（基準資産 {yen(equity_now)}）")
+        return
+    if floor_ is not None and equity_now <= floor_:
+        sim.halted = True
+        sim.haltReason = (f"資産が最高値 {yen(sim.peak)} から {pct}% 下落（{yen(floor_)} 以下）したため"
+                          "新規買いを停止しました")
     if not sim.halted and risk.get("maxConsecLosses", 0) > 0 and sim.consecLosses >= risk["maxConsecLosses"]:
         sim.halted = True
         sim.haltReason = f"{risk['maxConsecLosses']}連敗に到達したため新規買いを停止しました"
     if sim.halted:
+        sim.haltDate = d
         sim_event(sim, "⛔ " + sim.haltReason)
 
 
@@ -321,7 +339,7 @@ def sim_step(sim: Sim, execute_pending: bool = True, finish_at_end: bool = True)
     # 4) 時価評価と安全装置
     eq = sim.cash + mtm(ctx, sim.positions, d)
     sim.equity.append({"d": d, "e": eq})
-    sim_safety(sim, eq)
+    sim_safety(sim, eq, d)
 
     sim.t += 1
     if sim.t >= len(dates):

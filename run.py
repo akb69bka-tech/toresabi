@@ -6,6 +6,7 @@
   python run.py compare [--days 500]    4戦略＋買い持ちを同じ相場で比較
   python run.py status                  現在の状態
   python run.py fetch                   株価を取得してキャッシュする
+  python run.py export [--out DIR]      いま使っているデータ（デモ相場も可）を CSV に書き出す
   python run.py screen                  全銘柄スクリーニング
   python run.py demo [--days 250]       過去データで運用を再生（成績の要約）
   python run.py backtest [--days 500]   バックテスト（買い持ち比較・堅実さ評価）
@@ -123,6 +124,20 @@ def cmd_compare(args, cfg):
     print("\n" + res["verdict"])
 
 
+def cmd_export(args, cfg):
+    r = Runner(cfg)
+    syms = r.load_history()
+    out = args.out or "data_export"
+    os.makedirs(out, exist_ok=True)
+    for s in syms:
+        with open(os.path.join(out, f"{s.code}.csv"), "w", encoding="utf-8") as f:
+            f.write("日付,始値,高値,安値,終値,出来高\n")
+            for b in s.bars:
+                f.write(f"{b.d},{b.o:.4f},{b.h:.4f},{b.l:.4f},{b.c:.4f},{int(b.v)}\n")
+    print(f"{len(syms)}銘柄を {out}/ に書き出しました（{cfg['data']['source']} → CSV）。"
+          "ブラウザ版の「CSV取込」にそのまま読み込めます")
+
+
 def cmd_status(args, cfg):
     r = Runner(cfg)
     s = r.status()
@@ -209,7 +224,8 @@ def cmd_loop(args, cfg):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("cmd", choices=["init", "status", "fetch", "screen", "demo", "backtest", "learn", "compare",
-                                    "strategies", "cycle", "orders", "loop", "dashboard", "stop", "resume"])
+                                    "strategies", "export", "cycle", "orders", "loop", "dashboard", "stop", "resume"])
+    ap.add_argument("--out", default=None, help="export の出力先")
     ap.add_argument("--config", default="config.yaml")
     ap.add_argument("--days", type=int, default=None)
     ap.add_argument("--demo", action="store_true", help="init 時に擬似相場の設定で作る")
@@ -221,6 +237,7 @@ def main():
     cfg = load_config(args.config)
     if args.cmd == "status":   return cmd_status(args, cfg)
     if args.cmd == "fetch":    Runner(cfg).load_history(); return
+    if args.cmd == "export":   return cmd_export(args, cfg)
     if args.cmd == "screen":   return cmd_screen(args, cfg)
     if args.cmd == "demo":     args.days = args.days or 250; return cmd_demo(args, cfg)
     if args.cmd == "compare":  return cmd_compare(args, cfg)
