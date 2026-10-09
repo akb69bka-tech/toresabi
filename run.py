@@ -22,6 +22,11 @@ import argparse, os, sys, time
 from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+for _st in (sys.stdout, sys.stderr):
+    try:
+        _st.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 from autotrader.config import load_config, LIVE_CONFIRM_PHRASE
 from autotrader.runner import Runner, evening_job, morning_job
 from autotrader import dashboard
@@ -229,6 +234,7 @@ def main():
     ap.add_argument("--config", default="config.yaml")
     ap.add_argument("--days", type=int, default=None)
     ap.add_argument("--demo", action="store_true", help="init 時に擬似相場の設定で作る")
+    ap.add_argument("--open", action="store_true", help="dashboard 起動時にブラウザを開く")
     args = ap.parse_args()
     if args.cmd == "init":
         return cmd_init(args)
@@ -247,7 +253,7 @@ def main():
     if args.cmd == "orders":   print(morning_job(cfg)); return
     if args.cmd == "loop":     return cmd_loop(args, cfg)
     if args.cmd == "dashboard":
-        return dashboard.serve(cfg, Runner)
+        return dashboard.serve(cfg, Runner, args.config, (evening_job, morning_job), open_browser=args.open)
     if args.cmd == "stop":
         open(cfg["guard"].get("stop_file", "STOP"), "w").close(); print("緊急停止ファイルを作成しました。発注は行われません"); return
     if args.cmd == "resume":

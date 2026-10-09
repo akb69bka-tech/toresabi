@@ -61,3 +61,23 @@ def test_stop_resume_cycle_compare(tmp_path):
     assert app.state()["signals"]["date"] == r["date"]
     r = app.api("/api/compare", {"days": 200}); assert r["ok"]
     c = app.state()["compare"]; assert len(c["rows"]) == 5 and c["verdict"]
+
+
+def test_autopilot_and_stage_api(tmp_path):
+    from datetime import datetime
+    from autotrader.runner import evening_job, morning_job
+    cfg = make_cfg(tmp_path)
+    (tmp_path / "config.yaml").write_text("mode: demo\n", encoding="utf-8")
+    app = DashboardApp(cfg, Runner, str(tmp_path / "config.yaml"), (evening_job, morning_job))
+    st = app.state(); assert st["autopilot"] is False and st["stage"]["mode"] == "demo"
+    assert app.api("/api/autopilot", {"on": True})["on"] is True
+    assert app.state()["autopilot"] is True
+    ran = app.autopilot_tick(datetime(2026, 8, 3, 18, 30))
+    assert "evening" in ran and app.autopilot_tick(datetime(2026, 8, 3, 18, 40)) == []   # 同じ日は二度やらない
+    assert app.state()["account"]["lastCycleDate"]
+    app.api("/api/autopilot", {"on": False}); assert app.state()["autopilot"] is False
+    # 段階: デモ未実施なら進めない → デモ実施後は進める
+    assert not app.api("/api/advance", {})["ok"]
+    app.api("/api/demo/start", {"days": 60}); app.api("/api/demo/run", {}); app.api("/api/compare", {"days": 100})
+    res = app.api("/api/advance", {})
+    assert res["ok"] and res["mode"] == "paper" and "mode: paper" in (tmp_path / "config.yaml").read_text(encoding="utf-8")

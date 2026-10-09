@@ -6,11 +6,14 @@
 - 比較: 4戦略＋買い持ちを同じ相場で横並び
 """
 from __future__ import annotations
-import json, os, threading
+import json, os, threading, time
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Optional
 
-from .state import load_json, save_json, read_log
+from . import stages
+from .config import load_config
+from .state import load_json, save_json, read_log, append_log
 from .simulator import create_sim, sim_step, sim_result, mtm
 from .strategies import describe_all, get_strategy
 
@@ -18,15 +21,69 @@ from .strategies import describe_all, get_strategy
 class DashboardApp:
     """サーバが保持する実行状態（デモ再生の途中経過など）"""
 
-    def __init__(self, cfg: dict, runner_factory):
+    def __init__(self, cfg: dict, runner_factory, config_path: str = "config.yaml", jobs=None):
         self.cfg = cfg
+        self.config_path = config_path
         self.state_dir = cfg.get("state_dir", "state")
         self.runner_factory = runner_factory
+        self.jobs = jobs            # (evening_job, morning_job)
         self.lock = threading.Lock()
         self.symbols = None
         self.demo_sim = None
         self.demo_meta = {}
         self.busy = ""
+        self.autopilot = bool((load_json(self.state_dir, "autopilot.json") or {}).get("on"))
+        self._done = set()
+        self._thread = None
+        if self.autopilot:
+            self._start_thread()
+
+    # ---- 自動運転（毎日決まった時刻に判定と発注を行う） ----
+    def _start_thread(self):
+        if self._thread and self._thread.is_alive():
+            return
+        self._thread = threading.Thread(target=self._autopilot_loop, daemon=True)
+        self._thread.start()
+
+    def _autopilot_loop(self):
+        while self.autopilot:
+            try:
+                self.autopilot_tick(datetime.now())
+            except Exception as e:
+                append_log(self.state_dir, f"自動運転でエラー: {e}", "error")
+            time.sleep(20)
+
+    def autopilot_tick(self, now: datetime, force: bool = False):
+        """時刻を見て、未実行なら夕方の判定・朝の発注を行う"""
+        if not self.jobs:
+            return None
+        sched = self.cfg["schedule"]
+        hm = now.strftime("%H:%M")
+        key_s, key_o = (now.date(), "s"), (now.date(), "o")
+        ran = []
+        if (force or hm >= sched["signal_time"]) and key_s not in self._done:
+            self._done.add(key_s)
+            with self.lock:
+                self.busy = "自動運転: 判定中"
+                try:
+                    self.jobs[0](self.cfg); ran.append("evening"); self.symbols = None
+                finally:
+                    self.busy = ""
+        if (force or (sched["order_time"] <= hm < sched["signal_time"])) and key_o not in self._done:
+            self._done.add(key_o)
+            with self.lock:
+                self.busy = "自動運転: 発注処理中"
+                try:
+                    self.jobs[1](self.cfg); ran.append("morning")
+                finally:
+                    self.busy = ""
+        return ran
+
+    def reload_config(self):
+        self.cfg = load_config(self.config_path)
+        self.state_dir = self.cfg.get("state_dir", "state")
+        self.symbols = None
+        self.demo_sim = None
 
     # ---- 共通 ----
     def runner(self):
@@ -55,6 +112,20 @@ class DashboardApp:
                     return {"ok": res.get("ok", False), "date": res.get("date")}
                 finally:
                     self.busy = ""
+            if path == "/api/autopilot":
+                self.autopilot = bool(body.get("on"))
+                save_json(self.state_dir, "autopilot.json", {"on": self.autopilot})
+                append_log(self.state_dir, "自動運転を" + ("開始" if self.autopilot else "停止") + "しました")
+                if self.autopilot:
+                    self._start_thread()
+                return {"ok": True, "on": self.autopilot}
+            if path == "/api/advance":
+                acc = load_json(self.state_dir, "account.json") or {}
+                res = stages.advance(self.cfg, self.config_path, acc, self.state_dir)
+                if res.get("ok"):
+                    self.reload_config()
+                    append_log(self.state_dir, f"運用段階を {res['mode']} に切り替えました")
+                return res
             if path == "/api/stop":
                 open(self.cfg["guard"].get("stop_file", "STOP"), "w").close()
                 return {"ok": True}
@@ -136,6 +207,8 @@ class DashboardApp:
         acc = load_json(self.state_dir, "account.json") or {}
         return {
             "mode": self.cfg.get("mode"), "busy": self.busy,
+            "autopilot": self.autopilot, "schedule": self.cfg.get("schedule"),
+            "stage": stages.describe(self.cfg, acc, self.state_dir),
             "account": acc,
             "signals": load_json(self.state_dir, "signals.json"),
             "screener": load_json(self.state_dir, "screener.json"),
@@ -171,10 +244,12 @@ canvas{width:100%;height:220px;display:block;background:rgba(0,0,0,.2);border-ra
 </style></head><body><div class="c">
 <h1>📈 株式自動売買 自走エンジン <span id="mode" class="mode"></span><span id="busy" class="hint"></span><span id="upd" class="hint" style="margin-left:auto"></span></h1>
 <div id="halt"></div>
+<div class="card" id="stageCard"><h2>🧭 いまの段階と次にやること</h2><div id="stage"></div></div>
 <div class="tabs"><span class="tab on" data-t="ops">運用状況</span><span class="tab" data-t="demo">🎬 デモ再生</span><span class="tab" data-t="cmp">⚖️ 戦略比較</span><span class="tab" data-t="log">ログ</span></div>
 
 <section id="t-ops">
 <div class="card"><h2>操作</h2><div class="row">
+<button class="btn gr" id="apBtn" onclick="api('/api/autopilot',{on:!S.autopilot})">🤖 自動運転</button>
 <button class="btn p" onclick="api('/api/cycle')">⚡ 今すぐ判定</button>
 <button class="btn d" onclick="api('/api/stop')">⛔ 緊急停止</button>
 <button class="btn" onclick="api('/api/resume')">▶ 停止解除</button>
@@ -234,7 +309,13 @@ function chart(cv,series,initial){const dpr=devicePixelRatio||1,W=cv.clientWidth
  if(initial){const yy=T+ch*(1-(initial-mn)/(mx-mn));x.setLineDash([4,4]);x.strokeStyle='rgba(142,163,191,.5)';x.beginPath();x.moveTo(L,yy);x.lineTo(W-R,yy);x.stroke();x.setLineDash([]);}
  const n=Math.max(...series.map(s=>s.pts.length));series.forEach(s=>{if(s.pts.length<2)return;x.beginPath();s.pts.forEach((p,i)=>{const px=L+cw*i/(n-1),py=T+ch*(1-(p.e-mn)/(mx-mn));i?x.lineTo(px,py):x.moveTo(px,py);});x.strokeStyle=s.color;x.lineWidth=s.w||1.6;x.stroke();});
  const f=series.find(s=>s.pts.length);x.fillStyle='#8ea3bf';x.textAlign='left';x.fillText(f.pts[0].d,L,H-7);x.textAlign='right';x.fillText(f.pts[f.pts.length-1].d,W-R,H-7);}
-function render(){if(!S)return;const m=S.mode||'paper';const el=document.getElementById('mode');el.textContent={demo:'デモ',paper:'ペーパー','live-dryrun':'ライブ試運転',live:'ライブ（実発注）'}[m]||m;el.className='mode '+(m==='live'?'live':m==='live-dryrun'?'dry':m);
+function renderStage(){const g=S.stage;if(!g)return;const ap=S.autopilot;
+ const sch=S.schedule||{};const apTxt=ap?`<span class="pos">● 自動運転 ON</span>（毎日 ${sch.signal_time} に判定、${sch.order_time} に発注処理。この画面を閉じると止まります）`:`<span class="warn">○ 自動運転 OFF</span>（「自動運転」ボタンで毎日自動で動きます）`;
+ document.getElementById('stage').innerHTML=`<div style="font-size:.95rem;font-weight:700;margin-bottom:.4rem">${g.label}</div><div class="hint" style="margin-bottom:.6rem">${apTxt}</div>`+
+  g.steps.map(s=>`<div style="display:flex;gap:.5rem;align-items:center;padding:.3rem 0;font-size:.84rem"><span>${s.done?'✅':'⬜'}</span><span style="flex:1">${s.text}</span>${s.action?`<button class="btn ${s.enabled?'p':''}" ${s.enabled?'':'disabled'} onclick="advance()">${s.label}</button>`:''}</div>`).join('');
+ const b=document.getElementById('apBtn');b.textContent=ap?'🤖 自動運転を止める':'🤖 自動運転を始める';b.className=ap?'btn d':'btn gr';}
+async function advance(){if(!confirm('次の段階に進みます。よろしいですか？'))return;const j=await api('/api/advance');if(!j.ok)alert(j.error||'進めませんでした');}
+function render(){if(!S)return;renderStage();const m=S.mode||'paper';const el=document.getElementById('mode');el.textContent={demo:'デモ',paper:'ペーパー','live-dryrun':'ライブ試運転',live:'ライブ（実発注）'}[m]||m;el.className='mode '+(m==='live'?'live':m==='live-dryrun'?'dry':m);
  document.getElementById('busy').textContent=S.busy?'⏳ '+S.busy:'';document.getElementById('upd').textContent='更新 '+new Date().toLocaleTimeString('ja-JP');
  const a=S.account||{},sg=S.signals||{};document.getElementById('halt').innerHTML=a.halted?`<div class="halt">⛔ 安全装置が作動中：${a.haltReason}</div>`:(S.stopFile?`<div class="halt">⛔ 緊急停止中（${S.stopFile}）。発注は行いません。「停止解除」で再開します。</div>`:'');
  const sel=document.getElementById('stSel');if(sel.options.length!==S.strategies.length){sel.innerHTML=S.strategies.map(s=>`<option value="${s.type}">${s.label}</option>`).join('');}sel.value=S.strategy;const d=S.strategies.find(s=>s.type===S.strategy);document.getElementById('stDesc').textContent=d?d.description:'';
@@ -299,10 +380,13 @@ def make_handler(app: DashboardApp):
     return H
 
 
-def serve(cfg: dict, runner_factory):
+def serve(cfg: dict, runner_factory, config_path: str = "config.yaml", jobs=None, open_browser: bool = False):
     host = cfg["dashboard"].get("host", "127.0.0.1")
     port = int(cfg["dashboard"].get("port", 8765))
-    app = DashboardApp(cfg, runner_factory)
+    app = DashboardApp(cfg, runner_factory, config_path, jobs)
+    if open_browser:
+        import webbrowser
+        threading.Timer(1.0, lambda: webbrowser.open(f"http://{host}:{port}/")).start()
     srv = HTTPServer((host, port), make_handler(app))
     print(f"ダッシュボード: http://{host}:{port}/  （Ctrl+C で終了）")
     try:
