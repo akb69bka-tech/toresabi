@@ -15,6 +15,9 @@ from typing import Any, Dict, List, Optional
 
 from .simulator import Symbol, backtest
 
+from .strategies.base import get_strategy
+
+# 互換用（ScoreStrategy の既定グリッド）
 GRID = [
     {"short": sh, "long": lo, "breakout": br}
     for sh in (10, 15, 20, 25, 30)
@@ -24,18 +27,17 @@ GRID = [
 ]
 
 
-def apply_params(strat: dict, params: dict) -> dict:
-    st = copy.deepcopy(strat)
-    st["rules"]["smaCross"]["short"] = params["short"]
-    st["rules"]["smaCross"]["long"] = params["long"]
-    st["rules"]["breakout"]["period"] = params["breakout"]
-    return st
+def apply_params(strat, params: dict):
+    """戦略(設定dict または Strategy)にパラメータを適用した新しい設定dictを返す"""
+    return get_strategy(strat).apply_params(params).to_config()
 
 
-def current_params(strat: dict) -> dict:
-    return {"short": strat["rules"]["smaCross"]["short"],
-            "long": strat["rules"]["smaCross"]["long"],
-            "breakout": strat["rules"]["breakout"]["period"]}
+def current_params(strat) -> dict:
+    return get_strategy(strat).current_params()
+
+
+def param_grid(strat) -> List[dict]:
+    return list(get_strategy(strat).param_grid)
 
 
 def _segments(symbols: List[Symbol], folds: int):
@@ -61,7 +63,9 @@ def walk_forward(symbols: List[Symbol], strat: dict, risk: dict, folds: int = 3,
     segs = _segments(symbols, folds)
     if not segs:
         return None
-    grid = grid or GRID
+    grid = grid or param_grid(strat)
+    if not grid:
+        return None
     rows = []
     for k, sg in enumerate(segs):
         best = None
@@ -96,6 +100,9 @@ def walk_forward(symbols: List[Symbol], strat: dict, risk: dict, folds: int = 3,
 
 def propose(symbols: List[Symbol], strat: dict, risk: dict, cfg: dict) -> Dict[str, Any]:
     """再学習を行い、採用すべきかを判定する"""
+    if not param_grid(strat):
+        return {"adopt": False, "reason": "この戦略には再学習の対象パラメータがありません", "wf": None,
+                "current": current_params(strat), "candidate": None}
     wf = walk_forward(symbols, strat, risk, int(cfg.get("folds", 3)))
     if not wf or not wf["rows"]:
         return {"adopt": False, "reason": "検証に必要なデータが不足しています", "wf": None,

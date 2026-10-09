@@ -9,7 +9,8 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Dict, List, Optional
 
-from .strategy import build_indicators, eval_signal
+from .strategies.base import get_strategy
+from .indicators import atr
 
 
 @dataclass
@@ -45,14 +46,18 @@ class Ctx:
         self.sym = sym
         self.bars = bars
         self.idx = {b.d: i for i, b in enumerate(bars)}
-        self.ind = build_indicators(bars, strat, risk)
+        self.ind = get_strategy(strat).build(bars, risk)
+        # ATR は損切り幅と建玉サイズの計算に使うため、戦略に関係なく常に用意する
+        if "atr" not in self.ind:
+            self.ind["atr"] = atr(bars, max(2, int(risk.get("atrPeriod", 14))))
 
 
 class Sim:
     def __init__(self, ctx: List[Ctx], dates: List[str], strat, risk, start_t: int):
         self.ctx = ctx
         self.dates = dates
-        self.strat = strat
+        self.strategy = get_strategy(strat)
+        self.strat = self.strategy.to_config()
         self.risk = risk
         self.t = start_t
         self.startT = start_t
@@ -76,11 +81,12 @@ class Sim:
 
 def create_sim(symbols: List[Symbol], strat, risk, frm: Optional[str] = None,
                to: Optional[str] = None) -> Optional[Sim]:
+    strategy = get_strategy(strat)
     ctx: List[Ctx] = []
     for s in symbols:
         bars = [b for b in s.bars if b.d <= to] if to else list(s.bars)
         if len(bars) > 30:
-            ctx.append(Ctx(s, bars, strat, risk))
+            ctx.append(Ctx(s, bars, strategy, risk))
     if not ctx:
         return None
     date_set = set()
@@ -96,7 +102,7 @@ def create_sim(symbols: List[Symbol], strat, risk, frm: Optional[str] = None,
         start_t = k
     if start_t >= len(dates):
         return None
-    return Sim(ctx, dates, strat, risk, start_t)
+    return Sim(ctx, dates, strategy, risk, start_t)
 
 
 def sim_event(sim: Sim, msg: str):
@@ -275,22 +281,42 @@ def sim_step(sim: Sim, execute_pending: bool = True, finish_at_end: bool = True)
             sim_close(sim, c, bar.c, d, "期限到来")
 
     # 3) 当日終値でシグナルを評価し、翌日の注文を作成
-    for ci, c in enumerate(ctx):
-        i = c.idx.get(d)
-        if i is None or i < 30:
-            continue
-        sig = eval_signal(c.bars, c.ind, i, sim.strat)
-        code = c.sym.code
-        pos = sim.positions.get(code)
-        if sig["action"] == "buy" and not pos:
-            last = sim.lastExit.get(code)
-            if risk.get("cooldownDays", 0) > 0 and last and days_between(last, d) < risk["cooldownDays"]:
+    port = sim.strategy.portfolio(sim, d)
+    if port is not None:
+        # 銘柄横断で決める戦略。クールダウンと最低保有日数はここでも守る
+        for o in port:
+            c = ctx[o["ci"]]
+            code = c.sym.code
+            pos = sim.positions.get(code)
+            if o["side"] == "buy":
+                if pos:
+                    continue
+                last = sim.lastExit.get(code)
+                if risk.get("cooldownDays", 0) > 0 and last and days_between(last, d) < risk["cooldownDays"]:
+                    continue
+            else:
+                if not pos:
+                    continue
+                if risk.get("minHoldDays", 0) > 0 and days_between(pos["entryDate"], d) < risk["minHoldDays"]:
+                    continue
+            sim.pending.append(o)
+    else:
+        for ci, c in enumerate(ctx):
+            i = c.idx.get(d)
+            if i is None or i < 30:
                 continue
-            sim.pending.append({"ci": ci, "side": "buy"})
-        elif sig["action"] == "sell" and pos:
-            if risk.get("minHoldDays", 0) > 0 and days_between(pos["entryDate"], d) < risk["minHoldDays"]:
-                continue
-            sim.pending.append({"ci": ci, "side": "sell", "reason": "売りシグナル"})
+            sig = sim.strategy.eval(c.bars, c.ind, i)
+            code = c.sym.code
+            pos = sim.positions.get(code)
+            if sig["action"] == "buy" and not pos:
+                last = sim.lastExit.get(code)
+                if risk.get("cooldownDays", 0) > 0 and last and days_between(last, d) < risk["cooldownDays"]:
+                    continue
+                sim.pending.append({"ci": ci, "side": "buy"})
+            elif sig["action"] == "sell" and pos:
+                if risk.get("minHoldDays", 0) > 0 and days_between(pos["entryDate"], d) < risk["minHoldDays"]:
+                    continue
+                sim.pending.append({"ci": ci, "side": "sell", "reason": "売りシグナル"})
 
     # 4) 時価評価と安全装置
     eq = sim.cash + mtm(ctx, sim.positions, d)
@@ -433,7 +459,8 @@ def sim_result(sim: Sim) -> Dict[str, Any]:
         "dates": sim.dates, "halted": sim.halted, "haltReason": sim.haltReason,
         "costs": sim.costs,
         "metrics": calc_metrics(sim.equity, sim.trades, sim.risk["initialCash"]),
-        "buyHold": calc_metrics(buy_hold_curve(sim.ctx, sim.tradeDates, sim.risk), [], sim.risk["initialCash"]),
+        "buyHold": calc_metrics(bh_curve := buy_hold_curve(sim.ctx, sim.tradeDates, sim.risk), [], sim.risk["initialCash"]),
+        "buyHoldCurve": bh_curve,
         "steady": steadiness(sim.equity, sim.trades, sim.risk["initialCash"]),
     }
 

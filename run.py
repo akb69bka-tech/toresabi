@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """株式自動売買 自走エンジン コマンド
 
-  python run.py init                    設定ファイルと銘柄リストの雛形を作る
+  python run.py init [--demo]           設定ファイルと銘柄リストの雛形を作る（--demo で擬似相場の設定）
+  python run.py strategies              使える戦略の一覧
+  python run.py compare [--days 500]    4戦略＋買い持ちを同じ相場で比較
   python run.py status                  現在の状態
   python run.py fetch                   株価を取得してキャッシュする
   python run.py screen                  全銘柄スクリーニング
@@ -84,9 +86,14 @@ schedule:
 
 def cmd_init(args):
     if not os.path.exists("config.yaml"):
+        tpl = CONFIG_TEMPLATE
+        if args.demo:
+            tpl = tpl.replace("mode: paper ", "mode: demo  ").replace("  source: stooq ", "  source: demo  ") + \
+                  "\n# デモ相場（擬似データ）。seed を変えると別の相場になります\ndata_demo_note: true\n"
+            tpl = tpl.replace("data:\n  source: demo  ", "data:\n  source: demo\n  demo: {days: 700, seed: 42, trend: 0.25}\n  #")
         with open("config.yaml", "w", encoding="utf-8") as f:
-            f.write(CONFIG_TEMPLATE)
-        print("config.yaml を作成しました")
+            f.write(tpl)
+        print("config.yaml を作成しました" + ("（デモ相場モード）" if args.demo else ""))
     if not os.path.exists("universe.csv"):
         from autotrader.data.universe import SAMPLE_UNIVERSE
         with open("universe.csv", "w", encoding="utf-8") as f:
@@ -96,6 +103,24 @@ def cmd_init(args):
         print("universe.csv（主要銘柄のサンプル）を作成しました。JPX の上場銘柄一覧で置き換えられます")
     os.makedirs("state", exist_ok=True)
     print("準備完了。次は: python run.py demo")
+
+
+def cmd_strategies(args):
+    from autotrader.strategies import describe_all
+    for d in describe_all():
+        print(f"{d['type']:<10} {d['label']}\n           {d['description']}\n           既定: {d['defaults']}")
+
+
+def cmd_compare(args, cfg):
+    r = Runner(cfg)
+    res = r.compare(days=args.days or 500)
+    print(f"\n【戦略比較】{res['from']} 〜 {res['to']}  {res['symbols']}銘柄")
+    print(f"{'戦略':<30}{'損益':>9}{'最大DD':>9}{'売買':>6}{'コスト':>10}{'勝ち月':>7}{'連敗':>5}")
+    for row in res["rows"]:
+        wm = (str(round(row["winMonthRate"])) + "%") if row["winMonthRate"] is not None else "—"
+        print(f"{row['label']:<30}{row['totalRet']:>+8.1f}%{row['maxDD']:>8.1f}%{row['trades']:>6}"
+              f"{row['costs']:>9,.0f}円{wm:>7}{row['maxLoseStreak']:>5}" + ("  ⛔停止" if row["halted"] else ""))
+    print("\n" + res["verdict"])
 
 
 def cmd_status(args, cfg):
@@ -183,26 +208,29 @@ def cmd_loop(args, cfg):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", choices=["init", "status", "fetch", "screen", "demo", "backtest", "learn",
-                                    "cycle", "orders", "loop", "dashboard", "stop", "resume"])
+    ap.add_argument("cmd", choices=["init", "status", "fetch", "screen", "demo", "backtest", "learn", "compare",
+                                    "strategies", "cycle", "orders", "loop", "dashboard", "stop", "resume"])
     ap.add_argument("--config", default="config.yaml")
-    ap.add_argument("--days", type=int, default=250)
+    ap.add_argument("--days", type=int, default=None)
+    ap.add_argument("--demo", action="store_true", help="init 時に擬似相場の設定で作る")
     args = ap.parse_args()
     if args.cmd == "init":
         return cmd_init(args)
+    if args.cmd == "strategies":
+        return cmd_strategies(args)
     cfg = load_config(args.config)
     if args.cmd == "status":   return cmd_status(args, cfg)
     if args.cmd == "fetch":    Runner(cfg).load_history(); return
     if args.cmd == "screen":   return cmd_screen(args, cfg)
-    if args.cmd == "demo":     return cmd_demo(args, cfg)
+    if args.cmd == "demo":     args.days = args.days or 250; return cmd_demo(args, cfg)
+    if args.cmd == "compare":  return cmd_compare(args, cfg)
     if args.cmd == "backtest": return cmd_backtest(args, cfg)
     if args.cmd == "learn":    return cmd_learn(args, cfg)
     if args.cmd == "cycle":    evening_job(cfg); return
     if args.cmd == "orders":   print(morning_job(cfg)); return
     if args.cmd == "loop":     return cmd_loop(args, cfg)
     if args.cmd == "dashboard":
-        from autotrader.guard import Guard
-        return dashboard.serve(cfg, Guard(cfg, cfg.get("state_dir", "state")))
+        return dashboard.serve(cfg, Runner)
     if args.cmd == "stop":
         open(cfg["guard"].get("stop_file", "STOP"), "w").close(); print("緊急停止ファイルを作成しました。発注は行われません"); return
     if args.cmd == "resume":

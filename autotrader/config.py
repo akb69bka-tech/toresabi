@@ -67,6 +67,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "csv_dir": "data_csv",
         "jquants_refresh_token": "",
         "request_interval_sec": 0.6,
+        "demo": {"days": 700, "seed": 42, "trend": 0.25},
     },
     "universe": {
         # 監視対象の銘柄リスト(CSV: code,name[,unit])。無ければ同梱のサンプルを使う
@@ -121,6 +122,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     },
     "state_dir": "state",
     "dashboard": {"host": "127.0.0.1", "port": 8765},
+    "notify": {"webhook_url": "", "events": ["signal", "order", "halt", "error", "learn"]},
+    "compare": {"strategies": ["score", "momentum", "pullback", "donchian"]},
 }
 
 LIVE_CONFIRM_PHRASE = "私は自己責任で実発注を許可します"

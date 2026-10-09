@@ -15,7 +15,8 @@ import time
 from datetime import datetime, date
 from typing import Dict, List, Optional
 
-from . import learner, screener
+from . import learner, screener, compare as compare_mod
+from .notify import Notifier
 from .broker import make_broker, BrokerError, Order
 from .config import LIVE_CONFIRM_PHRASE
 from .data import make_source, load_universe
@@ -39,21 +40,30 @@ class Runner:
         self.risk = cfg["risk"]
         self.strat = self._load_strategy()
         self.acc = load_account(self.state_dir, self.risk["initialCash"], self.mode)
-        self.source = make_source(cfg)
         self.universe = load_universe(cfg["universe"].get("file", ""), cfg["universe"].get("max_symbols", 0),
                                       default_unit=int(self.risk.get("unit", 100)))
+        self.source = make_source(cfg, universe=self.universe)
         self.guard = Guard(cfg, self.state_dir)
         self.broker = make_broker(cfg, self.acc)
+        self.notifier = Notifier(cfg)
         self._history: Dict[str, Symbol] = {}
 
     # ---------- 設定 ----------
     def _load_strategy(self) -> dict:
         # 再学習で採用した設定があればそちらを優先する
-        learned = load_json(self.state_dir, "strategy_learned.json")
+        selected = load_json(self.state_dir, "strategy_selected.json")   # 画面で選んだ戦略
+        if selected:
+            return selected
+        learned = load_json(self.state_dir, "strategy_learned.json")      # 再学習で採用した設定
         return learned if learned else self.cfg["strategy"]
 
     def log(self, msg: str, level: str = "info", **extra):
         append_log(self.state_dir, msg, level, **extra)
+        if level == "error":
+            self.notifier.send("error", f"⚠️ {msg}")
+
+    def notify(self, event: str, text: str):
+        self.notifier.send(event, text)
 
     # ---------- データ ----------
     def load_history(self, symbols: Optional[List[Symbol]] = None, days: Optional[int] = None) -> List[Symbol]:
@@ -161,6 +171,14 @@ class Runner:
         sells = len(orders) - buys
         self.log(f"{today} 判定完了（{self.mode}）資産 {equity:,.0f}円 / 翌朝の注文 買い{buys} 売り{sells}"
                  + (f" / ⛔ {self.acc.haltReason}" if self.acc.halted else ""))
+        lines = [f"📈 {today} 判定（{self.mode}）資産 {equity:,.0f}円 現金 {self.acc.cash:,.0f}円"]
+        for o in orders:
+            lines.append(f"・{'買い' if o['side']=='buy' else '売り'} {o['code']} {o['name']} {o['qty']}株 @{o['estPrice']:,.1f}（{o['reason']}）")
+        if not orders:
+            lines.append("・注文なし")
+        self.notify("signal", "\n".join(lines))
+        if self.acc.halted:
+            self.notify("halt", f"⛔ 安全装置が作動: {self.acc.haltReason}")
         return {"ok": True, "date": today, "orders": orders, "equity": equity, "signals": signals}
 
     def _mtm_now(self, sim, today: str) -> float:
@@ -232,6 +250,7 @@ class Runner:
                     continue
                 p["orderId"] = oid
                 self.log(f"発注 {p['side']} {p['code']} {p['qty']}株（参考 {o.est_price:,.1f}円）→ 注文ID {oid}")
+                self.notify("order", f"🧾 発注 {'買い' if p['side']=='buy' else '売り'} {p['code']} {p['qty']}株 注文ID {oid}")
             else:
                 p["orderId"] = "DRYRUN"
                 self.log(f"[試運転] 発注しない {p['side']} {p['code']} {p['qty']}株（参考 {o.est_price:,.1f}円）")
@@ -319,6 +338,7 @@ class Runner:
             self.strat = learner.apply_params(self.strat, res["candidate"])
             save_json(self.state_dir, "strategy_learned.json", self.strat)
             self.log(f"再学習: 採用 {res['current']} → {res['candidate']}。{res['reason']}")
+            self.notify("learn", f"🧪 再学習で設定を更新: {res['current']} → {res['candidate']}")
         else:
             self.log(f"再学習: 現状維持。{res['reason']}")
         return res
@@ -346,6 +366,22 @@ class Runner:
         save_json(self.state_dir, "demo.json", {"summary": summary, "trades": res["trades"][-100:],
                                                 "equity": res["equity"]})
         return {"ok": True, **summary}
+
+    # ---------- 戦略比較 ----------
+    def compare(self, days: int = 500, symbols: Optional[List[Symbol]] = None, types=None) -> dict:
+        symbols = symbols if symbols is not None else self.load_history()
+        today = self.latest_date(symbols)
+        self.refresh_watchlist(symbols, today, force=True)
+        tr = self.tradable(symbols) or symbols
+        dates = sorted({b.d for s in tr for b in s.bars})
+        frm = dates[max(0, len(dates) - days)]
+        rows = compare_mod.compare(tr, self.cfg, types, frm, None)
+        out = {"from": frm, "to": dates[-1], "symbols": len(tr),
+               "rows": [{k: v for k, v in r.items() if k != "equity"} for r in rows],
+               "curves": {r["type"]: r.get("equity") for r in rows if r.get("equity")},
+               "verdict": compare_mod.verdict(rows)}
+        save_json(self.state_dir, "compare.json", out)
+        return out
 
     # ---------- 状態 ----------
     def status(self) -> dict:
