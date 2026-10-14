@@ -65,7 +65,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "cache_dir": "data_cache",
         "history_days": 600,
         "csv_dir": "data_csv",
-        "jquants_refresh_token": "",
+        "jquants_api_key": "",          # J-Quants V2 の API キー（ダッシュボードで発行）
+        "jquants_refresh_token": "",    # V1 用（2026-06-01 に提供終了。互換のため残す）
         "request_interval_sec": 0.6,
         "demo": {"days": 700, "seed": 42, "trend": 0.25},
     },

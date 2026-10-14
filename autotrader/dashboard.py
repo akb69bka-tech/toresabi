@@ -149,6 +149,20 @@ class DashboardApp:
                     return {"ok": True, "from": res["from"], "to": res["to"]}
                 finally:
                     self.busy = ""
+            if path in ("/api/growth", "/api/growth/validate"):
+                from . import growth
+                self.busy = "成長株を採点中" if path == "/api/growth" else "過去の当たり具合を検証中"
+                try:
+                    inputs = growth.load_inputs(self.cfg, self.runner())
+                    if path == "/api/growth":
+                        res = growth.discover(self.cfg, inputs=inputs)
+                        append_log(self.state_dir, f"成長株発掘 {res['scanned']}銘柄 → 🌱{res['counts']['sprout']} "
+                                                   f"🚀{res['counts']['takeoff']} 🔥{res['counts']['hot']}")
+                        return {"ok": True, "date": res["date"]}
+                    res = growth.run_validate(self.cfg, inputs=inputs)
+                    return {"ok": res.get("ok", False), "error": res.get("error")}
+                finally:
+                    self.busy = ""
             if path.startswith("/api/demo/"):
                 return self.demo_api(path, body)
         return {"ok": False, "error": "unknown"}
@@ -213,6 +227,8 @@ class DashboardApp:
             "signals": load_json(self.state_dir, "signals.json"),
             "screener": load_json(self.state_dir, "screener.json"),
             "compare": load_json(self.state_dir, "compare.json"),
+            "growth": load_json(self.state_dir, "growth.json"),
+            "growthValidate": load_json(self.state_dir, "growth_validate.json"),
             "strategies": describe_all(),
             "strategy": (load_json(self.state_dir, "strategy_selected.json") or load_json(self.state_dir, "strategy_learned.json")
                          or self.cfg["strategy"]).get("type", "score"),
@@ -245,7 +261,7 @@ canvas{width:100%;height:220px;display:block;background:rgba(0,0,0,.2);border-ra
 <h1>📈 株式自動売買 自走エンジン <span id="mode" class="mode"></span><span id="busy" class="hint"></span><span id="upd" class="hint" style="margin-left:auto"></span></h1>
 <div id="halt"></div>
 <div class="card" id="stageCard"><h2>🧭 いまの段階と次にやること</h2><div id="stage"></div></div>
-<div class="tabs"><span class="tab on" data-t="ops">運用状況</span><span class="tab" data-t="demo">🎬 デモ再生</span><span class="tab" data-t="cmp">⚖️ 戦略比較</span><span class="tab" data-t="log">ログ</span></div>
+<div class="tabs"><span class="tab on" data-t="ops">運用状況</span><span class="tab" data-t="demo">🎬 デモ再生</span><span class="tab" data-t="cmp">⚖️ 戦略比較</span><span class="tab" data-t="grow">🌱 成長株発掘</span><span class="tab" data-t="log">ログ</span></div>
 
 <section id="t-ops">
 <div class="card"><h2>操作</h2><div class="row">
@@ -287,6 +303,21 @@ canvas{width:100%;height:220px;display:block;background:rgba(0,0,0,.2);border-ra
 <div class="card"><h2>資産推移の比較</h2><canvas id="cmChart"></canvas><div class="hint" id="cmLegend"></div></div>
 </section>
 
+<section id="t-grow" style="display:none">
+<div class="card"><h2>🌱 成長株発掘（これから伸びるかもしれない会社の候補）</h2>
+<p class="hint">全銘柄を <b>業績の伸び・株価の勢い・伸びしろ（時価総額）・割安さ</b> の4つで採点し、段階に分けます。
+<b>🌱 芽</b>＝業績が伸び始めたのに株価はまだ動いていない（安いうちに拾えるが外れも多い）／
+<b>🚀 離陸</b>＝業績も株価も上向き（当たりやすいが既に上がっている）／<b>🔥 過熱</b>＝株価が先に走りすぎ／<b>👀 監視</b>＝兆しが一部だけ。<br>
+株価を当てる仕組みではありません。<b>調べる候補を絞る道具</b>です。買う前に決算短信と事業内容を必ず自分で確かめてください。</p>
+<div class="row"><button class="btn p" onclick="api('/api/growth')">🔍 発掘を実行</button>
+<button class="btn" onclick="api('/api/growth/validate')">🧪 過去の当たり具合を検証</button>
+<label class="hint">段階 <select id="grStage" onchange="render()"><option value="">すべて</option><option value="sprout">🌱 芽</option><option value="takeoff">🚀 離陸</option><option value="hot">🔥 過熱</option><option value="watch">👀 監視</option><option value="pricelead">📈 株価先行</option></select></label>
+<label class="hint">テーマ・業種 <input id="grTheme" placeholder="例: 半導体" style="width:120px" oninput="render()"></label></div>
+<div id="grHead" class="hint"></div></div>
+<div class="card" style="overflow-x:auto"><table id="grTable" style="min-width:860px"></table></div>
+<div class="card"><h2>🧪 検証（過去の各時点で採点 → その後どうなったか）</h2><div id="grVal" class="hint">未実行</div></div>
+</section>
+
 <section id="t-log" style="display:none"><div class="card"><h2>ログ</h2><div class="log" id="log"></div></div></section>
 </div><script>
 const y=n=>n==null?'—':Math.round(n).toLocaleString('ja-JP')+'円';
@@ -294,7 +325,7 @@ const pc=n=>n==null?'—':(n>=0?'+':'')+n.toFixed(1)+'%';
 const st=(k,v,c)=>`<div class="s"><div class="k">${k}</div><div class="v ${c||''}">${v}</div></div>`;
 const COL={buyhold:'#8ea3bf',score:'#38bdf8',momentum:'#22c55e',pullback:'#f59e0b',donchian:'#a78bfa'};
 let S=null, playing=null, tab='ops';
-document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{tab=t.dataset.t;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===t));['ops','demo','cmp','log'].forEach(k=>document.getElementById('t-'+k).style.display=k===tab?'':'none');render();});
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{tab=t.dataset.t;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===t));['ops','demo','cmp','grow','log'].forEach(k=>document.getElementById('t-'+k).style.display=k===tab?'':'none');render();});
 async function api(p,b){const r=await fetch(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});const j=await r.json();await load();return j;}
 async function load(){S=await (await fetch('/state.json')).json();render();}
 async function demoStep(n){await api('/api/demo/step',{n});}
@@ -336,6 +367,17 @@ function render(){if(!S)return;renderStage();const m=S.mode||'paper';const el=do
   const dk=Object.keys(D.positions);document.getElementById('dmPos').innerHTML=dk.length?'<tr><th>銘柄</th><th class="n">数量</th><th class="n">取得</th><th class="n">現在</th><th class="n">評価損益</th><th class="n">損切</th><th>取得日</th></tr>'+dk.map(c=>{const q=D.positions[c],g=(q.price-q.avg)*q.qty;return `<tr><td>${c}</td><td class="n">${q.qty}</td><td class="n">${q.avg.toFixed(1)}</td><td class="n">${q.price}</td><td class="n ${g>=0?'pos':'neg'}">${y(g)}</td><td class="n">${q.stop?q.stop.toFixed(1):'—'}</td><td>${q.entryDate}</td></tr>`}).join(''):'<tr><td class="hint">保有なし</td></tr>';
   document.getElementById('dmLog').innerHTML=D.events.slice().reverse().map(e=>`<div><span class="hint">${e.d}</span> ${e.m}</div>`).join('')||'<div class="hint">まだ売買はありません</div>';
   if(tab==='demo')chart(document.getElementById('dmChart'),[{pts:D.equityCurve,color:dp>=0?'#22c55e':'#fb7185',w:2}],D.initial);}
+ // --- 成長株発掘 ---
+ const GR=S.growth;if(GR&&GR.rows){const stg=GR.stages||{},fs=document.getElementById('grStage').value,ft=document.getElementById('grTheme').value.trim();
+  document.getElementById('grHead').innerHTML=`${GR.date||''}｜${GR.scanned}銘柄を走査 → 条件通過 ${GR.passed}銘柄（${GR.source}）<br>`+['sprout','takeoff','hot','watch','pricelead'].map(k=>`${stg[k]} <b>${GR.counts[k]}</b>`).join('　')+(GR.fundamentals?'':'<br><span class="warn">⚠️ 決算データが無いため株価の形だけで採点しています。J-Quants のトークンか fundamentals.csv を用意してください</span>');
+  const rows=GR.rows.filter(r=>(!fs||r.stage===fs)&&(!ft||(r.theme||'').includes(ft)||(r.sector||'').includes(ft)||(r.name||'').includes(ft)));
+  const n0=v=>v==null?'—':Math.round(v);
+  document.getElementById('grTable').innerHTML=rows.length?'<tr><th>順位</th><th>銘柄</th><th>段階</th><th class="n">総合</th><th class="n">業績</th><th class="n">勢い</th><th class="n">伸びしろ</th><th class="n">割安</th><th class="n">株価</th><th class="n">時価総額</th><th class="n">PER</th><th>理由</th></tr>'+rows.map(r=>`<tr><td>${r.rank}</td><td style="min-width:120px">${r.code} ${r.name||''}<div class="hint">${[r.market,r.sector].filter(Boolean).join('・')}</div></td><td style="white-space:nowrap">${stg[r.stage]||''}</td><td class="n"><b>${n0(r.total)}</b></td><td class="n">${n0(r.G)}</td><td class="n">${n0(r.M)}</td><td class="n">${n0(r.R)}</td><td class="n">${n0(r.V)}</td><td class="n">${r.price!=null?r.price.toLocaleString('ja-JP'):'—'}</td><td class="n" style="white-space:nowrap">${r.mcap?Math.round(r.mcap/1e8).toLocaleString('ja-JP')+'億':'—'}</td><td class="n">${r.per?r.per.toFixed(1):'—'}</td><td class="hint">${(r.why||[]).join(' / ')}</td></tr>`).join(''):'<tr><td class="hint">該当なし</td></tr>';}
+ else{document.getElementById('grTable').innerHTML='<tr><td class="hint">未実行 —「発掘を実行」を押してください</td></tr>';}
+ const GV=S.growthValidate;if(GV){if(!GV.ok){document.getElementById('grVal').innerHTML='<span class="warn">'+(GV.error||'検証できませんでした')+'</span>';}
+  else{const m=GV.summary,f=v=>v==null?'—':pc(v),b=v=>v==null?'—':v.toFixed(0)+'%';
+  document.getElementById('grVal').innerHTML=`<div class="verd" style="margin-bottom:.6rem">${GV.from} 〜 ${GV.to} の各時点で採点し、${GV.horizon}営業日後の値動きを比較（${GV.source}）<br>${GV.verdict}</div>`+
+   '<table><tr><th>選び方</th><th class="n">平均騰落</th><th class="n">+50%以上になった割合</th></tr>'+[['top','総合上位'+GV.top],['takeoff','🚀 離陸'],['sprout','🌱 芽'],['all','全銘柄の平均']].map(([k,l])=>`<tr><td>${l}</td><td class="n ${(m[k]||0)>=0?'pos':'neg'}">${f(m[k])}</td><td class="n">${b(m[k+'BigRate'])}</td></tr>`).join('')+`<tr><td>上位が平均に勝った時点の割合</td><td class="n">${b(m.winRate)}</td><td></td></tr></table>`;}}
  // --- 比較 ---
  const C=S.compare;if(C&&C.rows){const vd=document.getElementById('cmVerd');vd.style.display='';vd.innerHTML=`<b>${C.from} 〜 ${C.to}（${C.symbols}銘柄）</b><br>${C.verdict}`;
   document.getElementById('cmTable').innerHTML='<tr><th>戦略</th><th class="n">損益</th><th class="n">最終資産</th><th class="n">最大下落</th><th class="n">売買</th><th class="n">コスト</th><th class="n">勝ち月率</th><th class="n">最長連敗</th><th></th></tr>'+C.rows.map(r=>`<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${COL[r.type]||'#fff'};margin-right:.4rem"></span>${r.label}</td><td class="n ${r.totalRet>=0?'pos':'neg'}"><b>${pc(r.totalRet)}</b></td><td class="n">${y(r.finalEquity)}</td><td class="n neg">${r.maxDD.toFixed(1)}%</td><td class="n">${r.trades}</td><td class="n">${y(r.costs)}</td><td class="n">${r.winMonthRate!=null?r.winMonthRate.toFixed(0)+'%':'—'}</td><td class="n">${r.maxLoseStreak}</td><td>${r.halted?'<span class="warn">⛔停止</span>':''}</td></tr>`).join('');
