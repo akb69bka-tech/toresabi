@@ -8,6 +8,8 @@
   python run.py fetch                   株価を取得してキャッシュする
   python run.py export [--out DIR]      いま使っているデータ（デモ相場も可）を CSV に書き出す
   python run.py screen                  全銘柄スクリーニング
+  python run.py growth [--validate]     成長株発掘（ドリーム株の候補探し）。--validate で過去の当たり具合を検証
+  python run.py setkey KEY              J-Quants の API キーを config.yaml に書き、全上場銘柄を対象にする
   python run.py demo [--days 250]       過去データで運用を再生（成績の要約）
   python run.py backtest [--days 500]   バックテスト（買い持ち比較・堅実さ評価）
   python run.py learn                   再学習（ウォークフォワード検証つき）
@@ -37,7 +39,8 @@ CONFIG_TEMPLATE = """# 株式自動売買 自走エンジン 設定
 mode: paper            # demo / paper / live-dryrun / live  ← この順に進めてください
 
 data:
-  source: stooq        # stooq(無料) / jquants(要トークン) / csv(手元のCSV)
+  source: stooq        # stooq(無料) / jquants(要APIキー) / csv(手元のCSV)
+  jquants_api_key: ""  # J-Quants V2 の API キー（J-Quants のダッシュボードで発行）
   history_days: 600
 
 universe:
@@ -87,6 +90,16 @@ live:
 schedule:
   signal_time: "18:00"
   order_time: "08:30"
+
+# 成長株発掘（python run.py growth / 画面の「成長株発掘」タブ）
+growth:
+  fundamentals: auto     # auto / jquants / csv / none（決算データの取得元）
+  fundamentals_csv: fundamentals.csv
+  csv_unit_yen: 1        # fundamentals.csv の金額を百万円で書いたなら 1000000
+  universe: file         # file=universe.file（JPXの上場銘柄一覧CSVも可） / listed=J-Quantsの全上場銘柄
+  themes_file: themes.csv
+  min_turnover_yen: 20000000
+  top_n: 30
 """ % LIVE_CONFIRM_PHRASE
 
 
@@ -208,6 +221,87 @@ def cmd_screen(args, cfg):
     save_account(r.state_dir, r.acc)
 
 
+def cmd_growth(args, cfg):
+    from autotrader import growth
+    g = growth.growth_cfg(cfg)
+    print("株価と決算を読み込み中…（初回は銘柄数に応じて時間がかかります）")
+    try:
+        inputs = growth.load_inputs(cfg)
+    except RuntimeError as e:
+        print(f"⚠️ {e}"); return
+    if args.validate:
+        if args.days:
+            cfg.setdefault("growth", {}).setdefault("validate", {})["horizon_days"] = args.days
+        v = growth.run_validate(cfg, inputs=inputs)
+        if not v.get("ok"):
+            print(v.get("error")); return
+        sm = v["summary"]
+        f = lambda x: "—" if x is None else f"{x:+.1f}%"
+        b = lambda x: "—" if x is None else f"{x:.0f}%"
+        print(f"\n【検証】{v['from']} 〜 {v['to']} の各時点で採点し、{v['horizon']}営業日後の値動きを比べました（{v['source']}）")
+        print(f"  {'選び方':<16}{'平均騰落':>9}{'+50%以上になった割合':>14}")
+        for k, lab in (("top", f"総合上位{v['top']}"), ("takeoff", "🚀 離陸"), ("sprout", "🌱 芽"), ("all", "全銘柄の平均")):
+            print(f"  {lab:<16}{f(sm[k]):>9}{b(sm[k + 'BigRate']):>14}")
+        print(f"  上位が平均に勝った時点の割合: {b(sm['winRate'])}")
+        print("\n" + v["verdict"])
+        return
+    res = growth.discover(cfg, inputs=inputs)
+    st = res["stages"]
+    rows = res["rows"]
+    if args.stage:
+        rows = [r for r in rows if r["stage"] == args.stage or st.get(r["stage"]) == args.stage]
+    if args.theme:
+        rows = [r for r in rows if args.theme in (r.get("theme") or "") or args.theme in (r.get("sector") or "")]
+    print(f"\n【成長株発掘】{res['date']}  {res['scanned']}銘柄を走査 → 条件通過 {res['passed']}銘柄（{res['source']}）")
+    if not res["fundamentals"]:
+        print("  ⚠️ 決算データが無いため、株価の形だけで採点しています。python run.py setkey で J-Quants の API キーを設定するか、fundamentals.csv を用意すると精度が上がります")
+    print("  " + "  ".join(f"{st[k]} {res['counts'][k]}" for k in ("sprout", "takeoff", "hot", "watch", "pricelead")))
+    print(f"\n  {'順位':>4} {'コード':<6}{'銘柄':<14}{'段階':<8}{'総合':>5}{'業績':>5}{'勢い':>5}{'時価総額':>10}  理由")
+    for r in rows[: args.top or int(g["top_n"])]:
+        cap = f"{r['mcap'] / 1e8:,.0f}億" if r.get("mcap") else "—"
+        gs = f"{r['G']:.0f}" if r.get("G") is not None else "—"
+        print(f"  {r['rank']:>4} {r['code']:<6}{(r['name'] or '')[:12]:<14}{st[r['stage']]:<8}{r['total']:>5.0f}{gs:>5}"
+              f"{r['M']:>5.0f}{cap:>10}  {' / '.join(r['why'][:4])}")
+    print("\n※ 候補を絞る道具です。買う前に決算短信・事業内容・リスクを必ず自分で確かめてください。")
+
+
+def set_jquants_key(path: str, key: str) -> str:
+    """config.yaml のコメントを残したまま、J-Quants を使う設定に書き換える"""
+    import re
+    import yaml
+    text = open(path, encoding="utf-8").read() if os.path.exists(path) else ""
+    def put(text, section, name, value):
+        line = f"  {name}: {value}"
+        sec = re.search(rf"(?m)^{section}:[^\n]*\n((?:[ \t]+[^\n]*\n|[ \t]*\n)*)", text)
+        if not sec:
+            return text.rstrip("\n") + f"\n\n{section}:\n{line}\n"
+        body = sec.group(1)
+        if re.search(rf"(?m)^  {name}:", body):
+            body2 = re.sub(rf"(?m)^  {name}:[^\n]*", lambda m: line, body, count=1)
+        else:
+            body2 = line + "\n" + body
+        return text[:sec.start(1)] + body2 + text[sec.end(1):]
+    text = put(text, "data", "source", "jquants")
+    text = put(text, "data", "jquants_api_key", f'"{key}"')
+    text = put(text, "growth", "universe", "listed")
+    if not os.path.exists(path) or "mode:" not in text:
+        text = "mode: paper\n" + text
+    yaml.safe_load(text)                       # 壊れた YAML を書かない
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
+    return text
+
+
+def cmd_setkey(args):
+    key = (args.key or "").strip()
+    if not key:
+        key = input("J-Quants の API キーを貼り付けて Enter: ").strip()
+    if not key:
+        print("キーが空です。J-Quants のダッシュボード（https://jpx-jquants.com/）で発行してください"); return
+    set_jquants_key(args.config, key)
+    print(f"{args.config} を J-Quants（APIキー方式）＋全上場銘柄の設定にしました")
+
+
 def cmd_loop(args, cfg):
     sched = cfg["schedule"]
     print(f"自動実行を開始（判定 {sched['signal_time']} / 発注 {sched['order_time']}、Ctrl+C で終了）")
@@ -229,22 +323,31 @@ def cmd_loop(args, cfg):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("cmd", choices=["init", "status", "fetch", "screen", "demo", "backtest", "learn", "compare",
-                                    "strategies", "export", "cycle", "orders", "loop", "dashboard", "stop", "resume"])
+                                    "strategies", "export", "cycle", "orders", "loop", "dashboard", "stop", "resume",
+                                    "growth", "setkey"])
+    ap.add_argument("key", nargs="?", default=None, help="setkey: J-Quants の API キー")
     ap.add_argument("--out", default=None, help="export の出力先")
     ap.add_argument("--config", default="config.yaml")
     ap.add_argument("--days", type=int, default=None)
     ap.add_argument("--demo", action="store_true", help="init 時に擬似相場の設定で作る")
     ap.add_argument("--open", action="store_true", help="dashboard 起動時にブラウザを開く")
+    ap.add_argument("--validate", action="store_true", help="growth: 過去の時点で採点して当たり具合を検証")
+    ap.add_argument("--theme", default=None, help="growth: テーマ・業種で絞る（部分一致）")
+    ap.add_argument("--stage", default=None, help="growth: 段階で絞る（sprout/takeoff/hot/watch/pricelead）")
+    ap.add_argument("--top", type=int, default=None, help="growth: 表示する件数")
     args = ap.parse_args()
     if args.cmd == "init":
         return cmd_init(args)
     if args.cmd == "strategies":
         return cmd_strategies(args)
+    if args.cmd == "setkey":
+        return cmd_setkey(args)
     cfg = load_config(args.config)
     if args.cmd == "status":   return cmd_status(args, cfg)
     if args.cmd == "fetch":    Runner(cfg).load_history(); return
     if args.cmd == "export":   return cmd_export(args, cfg)
     if args.cmd == "screen":   return cmd_screen(args, cfg)
+    if args.cmd == "growth":   return cmd_growth(args, cfg)
     if args.cmd == "demo":     args.days = args.days or 250; return cmd_demo(args, cfg)
     if args.cmd == "compare":  return cmd_compare(args, cfg)
     if args.cmd == "backtest": return cmd_backtest(args, cfg)
