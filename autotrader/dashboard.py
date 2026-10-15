@@ -309,8 +309,8 @@ canvas{width:100%;height:220px;display:block;background:rgba(0,0,0,.2);border-ra
 <b>🌱 芽</b>＝業績が伸び始めたのに株価はまだ動いていない（安いうちに拾えるが外れも多い）／
 <b>🚀 離陸</b>＝業績も株価も上向き（当たりやすいが既に上がっている）／<b>🔥 過熱</b>＝株価が先に走りすぎ／<b>👀 監視</b>＝兆しが一部だけ。<br>
 株価を当てる仕組みではありません。<b>調べる候補を絞る道具</b>です。買う前に決算短信と事業内容を必ず自分で確かめてください。</p>
-<div class="row"><button class="btn p" onclick="api('/api/growth')">🔍 発掘を実行</button>
-<button class="btn" onclick="api('/api/growth/validate')">🧪 過去の当たり具合を検証</button>
+<div class="row"><button class="btn p" onclick="grRun('/api/growth')">🔍 発掘を実行</button>
+<button class="btn" onclick="grRun('/api/growth/validate')">🧪 過去の当たり具合を検証</button>
 <label class="hint">段階 <select id="grStage" onchange="render()"><option value="">すべて</option><option value="sprout">🌱 芽</option><option value="takeoff">🚀 離陸</option><option value="hot">🔥 過熱</option><option value="watch">👀 監視</option><option value="pricelead">📈 株価先行</option></select></label>
 <label class="hint">テーマ・業種 <input id="grTheme" placeholder="例: 半導体" style="width:120px" oninput="render()"></label></div>
 <div id="grHead" class="hint"></div></div>
@@ -328,6 +328,7 @@ let S=null, playing=null, tab='ops';
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{tab=t.dataset.t;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===t));['ops','demo','cmp','grow','log'].forEach(k=>document.getElementById('t-'+k).style.display=k===tab?'':'none');render();});
 async function api(p,b){const r=await fetch(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});const j=await r.json();await load();return j;}
 async function load(){S=await (await fetch('/state.json')).json();render();}
+async function grRun(p){const j=await api(p);if(!j.ok&&j.error)alert(j.error);}
 async function demoStep(n){await api('/api/demo/step',{n});}
 async function demoReset(){if(playing){clearInterval(playing);playing=null;}await api('/api/demo/reset');}
 async function demoToggle(){if(playing){clearInterval(playing);playing=null;render();return;}

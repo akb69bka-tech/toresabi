@@ -9,6 +9,7 @@
   python run.py export [--out DIR]      いま使っているデータ（デモ相場も可）を CSV に書き出す
   python run.py screen                  全銘柄スクリーニング
   python run.py growth [--validate]     成長株発掘（ドリーム株の候補探し）。--validate で過去の当たり具合を検証
+  python run.py setkey KEY              J-Quants の API キーを config.yaml に書き、全上場銘柄を対象にする
   python run.py demo [--days 250]       過去データで運用を再生（成績の要約）
   python run.py backtest [--days 500]   バックテスト（買い持ち比較・堅実さ評価）
   python run.py learn                   再学習（ウォークフォワード検証つき）
@@ -224,7 +225,10 @@ def cmd_growth(args, cfg):
     from autotrader import growth
     g = growth.growth_cfg(cfg)
     print("株価と決算を読み込み中…（初回は銘柄数に応じて時間がかかります）")
-    inputs = growth.load_inputs(cfg)
+    try:
+        inputs = growth.load_inputs(cfg)
+    except RuntimeError as e:
+        print(f"⚠️ {e}"); return
     if args.validate:
         if args.days:
             cfg.setdefault("growth", {}).setdefault("validate", {})["horizon_days"] = args.days
@@ -250,7 +254,7 @@ def cmd_growth(args, cfg):
         rows = [r for r in rows if args.theme in (r.get("theme") or "") or args.theme in (r.get("sector") or "")]
     print(f"\n【成長株発掘】{res['date']}  {res['scanned']}銘柄を走査 → 条件通過 {res['passed']}銘柄（{res['source']}）")
     if not res["fundamentals"]:
-        print("  ⚠️ 決算データが無いため、株価の形だけで採点しています。J-Quants のトークンか fundamentals.csv を用意すると精度が上がります")
+        print("  ⚠️ 決算データが無いため、株価の形だけで採点しています。python run.py setkey で J-Quants の API キーを設定するか、fundamentals.csv を用意すると精度が上がります")
     print("  " + "  ".join(f"{st[k]} {res['counts'][k]}" for k in ("sprout", "takeoff", "hot", "watch", "pricelead")))
     print(f"\n  {'順位':>4} {'コード':<6}{'銘柄':<14}{'段階':<8}{'総合':>5}{'業績':>5}{'勢い':>5}{'時価総額':>10}  理由")
     for r in rows[: args.top or int(g["top_n"])]:
@@ -259,6 +263,43 @@ def cmd_growth(args, cfg):
         print(f"  {r['rank']:>4} {r['code']:<6}{(r['name'] or '')[:12]:<14}{st[r['stage']]:<8}{r['total']:>5.0f}{gs:>5}"
               f"{r['M']:>5.0f}{cap:>10}  {' / '.join(r['why'][:4])}")
     print("\n※ 候補を絞る道具です。買う前に決算短信・事業内容・リスクを必ず自分で確かめてください。")
+
+
+def set_jquants_key(path: str, key: str) -> str:
+    """config.yaml のコメントを残したまま、J-Quants を使う設定に書き換える"""
+    import re
+    import yaml
+    text = open(path, encoding="utf-8").read() if os.path.exists(path) else ""
+    def put(text, section, name, value):
+        line = f"  {name}: {value}"
+        sec = re.search(rf"(?m)^{section}:[^\n]*\n((?:[ \t]+[^\n]*\n|[ \t]*\n)*)", text)
+        if not sec:
+            return text.rstrip("\n") + f"\n\n{section}:\n{line}\n"
+        body = sec.group(1)
+        if re.search(rf"(?m)^  {name}:", body):
+            body2 = re.sub(rf"(?m)^  {name}:[^\n]*", lambda m: line, body, count=1)
+        else:
+            body2 = line + "\n" + body
+        return text[:sec.start(1)] + body2 + text[sec.end(1):]
+    text = put(text, "data", "source", "jquants")
+    text = put(text, "data", "jquants_api_key", f'"{key}"')
+    text = put(text, "growth", "universe", "listed")
+    if not os.path.exists(path) or "mode:" not in text:
+        text = "mode: paper\n" + text
+    yaml.safe_load(text)                       # 壊れた YAML を書かない
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
+    return text
+
+
+def cmd_setkey(args):
+    key = (args.key or "").strip()
+    if not key:
+        key = input("J-Quants の API キーを貼り付けて Enter: ").strip()
+    if not key:
+        print("キーが空です。J-Quants のダッシュボード（https://jpx-jquants.com/）で発行してください"); return
+    set_jquants_key(args.config, key)
+    print(f"{args.config} を J-Quants（APIキー方式）＋全上場銘柄の設定にしました")
 
 
 def cmd_loop(args, cfg):
@@ -283,7 +324,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("cmd", choices=["init", "status", "fetch", "screen", "demo", "backtest", "learn", "compare",
                                     "strategies", "export", "cycle", "orders", "loop", "dashboard", "stop", "resume",
-                                    "growth"])
+                                    "growth", "setkey"])
+    ap.add_argument("key", nargs="?", default=None, help="setkey: J-Quants の API キー")
     ap.add_argument("--out", default=None, help="export の出力先")
     ap.add_argument("--config", default="config.yaml")
     ap.add_argument("--days", type=int, default=None)
@@ -298,6 +340,8 @@ def main():
         return cmd_init(args)
     if args.cmd == "strategies":
         return cmd_strategies(args)
+    if args.cmd == "setkey":
+        return cmd_setkey(args)
     cfg = load_config(args.config)
     if args.cmd == "status":   return cmd_status(args, cfg)
     if args.cmd == "fetch":    Runner(cfg).load_history(); return

@@ -86,8 +86,20 @@ def parse_bar(q: dict) -> Optional[Bar]:
                c, float(pick(q, "AdjVo", "AdjustmentVolume", "Vo", "Volume") or 0))
 
 
+def describe_error(e: Exception) -> str:
+    code = getattr(getattr(e, "response", None), "status_code", None)
+    if code in (401, 403):
+        return f"J-Quants が認証を拒否しました（{code}）。API キーが正しいか、プランでこのデータが使えるかを確認してください"
+    if code == 429:
+        return "J-Quants の回数制限に達しました（429）。data.request_interval_sec を大きくして時間をおいてください"
+    if code:
+        return f"J-Quants がエラーを返しました（{code}）"
+    return f"J-Quants に接続できません（{type(e).__name__}）。インターネット接続を確認してください"
+
+
 class JQuantsSource:
     name = "jquants"
+    last_error = ""
 
     def __init__(self, refresh_token: str, cache_dir: str, interval: float = 0.6, session=None,
                  api_key: str = ""):
@@ -103,7 +115,8 @@ class JQuantsSource:
         try:
             rows = self.client.get("/prices/daily_quotes", "/equities/bars/daily",
                                    {"code": code5, "from": frm, "to": date.today().isoformat()}, "daily_quotes")
-        except requests.RequestException:
+        except requests.RequestException as e:
+            self.last_error = describe_error(e)
             old = self.cache.load(code)
             return [Bar(**b) for b in old["bars"]][-days:] if old else []
         out = [b for b in (parse_bar(q) for q in rows) if b]

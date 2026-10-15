@@ -184,3 +184,35 @@ def test_themes_file_shipped_is_readable():
     import os
     t = growth.load_themes(os.path.join(os.path.dirname(os.path.dirname(__file__)), "themes.csv"))
     assert "285A" in t and "code" not in t and all(not c.startswith("#") for c in t)
+
+
+def test_setkey_keeps_comments_and_sets_jquants(tmp_path):
+    import importlib.util, os, yaml
+    spec = importlib.util.spec_from_file_location("run", os.path.join(os.path.dirname(os.path.dirname(__file__)), "run.py"))
+    run = importlib.util.module_from_spec(spec); spec.loader.exec_module(run)
+    p = tmp_path / "config.yaml"
+    p.write_text(run.CONFIG_TEMPLATE, encoding="utf-8")
+    run.set_jquants_key(str(p), "ABC123")
+    text = p.read_text(encoding="utf-8")
+    cfg = yaml.safe_load(text)
+    assert cfg["data"]["source"] == "jquants" and cfg["data"]["jquants_api_key"] == "ABC123"
+    assert cfg["growth"]["universe"] == "listed" and cfg["mode"] == "paper"
+    assert "# 成長株発掘" in text and cfg["risk"]["initialCash"] == 500000      # 他の設定とコメントは残る
+    run.set_jquants_key(str(p), "NEW")                                          # 2回目は置き換え
+    assert yaml.safe_load(p.read_text(encoding="utf-8"))["data"]["jquants_api_key"] == "NEW"
+    q = tmp_path / "none.yaml"
+    run.set_jquants_key(str(q), "K")                                            # 設定ファイルが無くても作れる
+    assert yaml.safe_load(q.read_text(encoding="utf-8"))["data"]["jquants_api_key"] == "K"
+
+
+def test_auth_error_is_reported(tmp_path):
+    import requests
+    from autotrader.data.jquants import JQuantsSource
+
+    class Denied:
+        headers = {}
+        def get(self, *a, **k):
+            r = requests.Response(); r.status_code = 403
+            raise requests.HTTPError(response=r)
+    src = JQuantsSource("", str(tmp_path / "c"), interval=0, session=Denied(), api_key="BAD")
+    assert src.fetch("7203", 50) == [] and "API キー" in src.last_error

@@ -576,6 +576,9 @@ def load_inputs(cfg: dict, runner=None):
         from .runner import Runner
         runner = Runner(cfg)
     hist = runner.load_history(syms, days=int(g["history_days"]))
+    if not hist:
+        why = getattr(runner.source, "last_error", "") or "データ取得元・銘柄リスト・インターネット接続を確認してください"
+        raise RuntimeError(f"株価を1銘柄も取得できませんでした。{why}")
     stmts = {s.code: fsrc.statements(s.code) for s in hist} if fsrc.name != "none" else {}
     return ({s.code: Prepared(s) for s in hist}, stmts, info, themes,
             f"{cfg['data'].get('source')} + 決算:{fsrc.name}")
