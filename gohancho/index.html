@@ -18,7 +18,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 /* レイアウト: 1カラムの献立帳。主役は「お膳」を真上から見た図（奥左=副菜・奥右=主菜・手前左=ご飯・手前右=汁もの）。
-   色: 藍染めの藍と和紙の地、器は染付・漆・青磁、アレンジだけ山吹色。書体: 見出しは明朝（品書き）、本文は角ゴシック */
+   色: 操作はすべて藍の1色。山吹は「変えたところ・プラス」の目印だけ。器は染付・漆・青磁。書体: 見出しは明朝（品書き）、本文は角ゴシック
+   形: 白いカード（.card）1種類・角丸16px・見出しは「章（h2）」と「カードの小見出し（.eyebrow）」の2段だけ */
 :root{
     --bg:#eef1f4;
     --surface:#ffffff;
@@ -29,7 +30,7 @@
     --accent:#22406b;          /* 藍 */
     --accent-ink:#ffffff;
     --accent-soft:#dde6f2;
-    --yolk:#c98e0c;            /* 山吹: ひとひねり専用 */
+    --yolk:#c98e0c;            /* 山吹: 変えたところ・プラスの目印だけ */
     --yolk-soft:#f6ecd2;
     --yolk-ink:#5b3f00;
     --danger:#b23a2a;
@@ -40,7 +41,7 @@
     --shadow:0 1px 2px rgba(23,32,51,.06),0 8px 24px rgba(23,32,51,.08);
     --font-display:'Shippori Mincho B1','Hiragino Mincho ProN','Yu Mincho',serif;
     --font-body:'Zen Kaku Gothic New','Hiragino Kaku Gothic ProN','Noto Sans JP','Yu Gothic',sans-serif;
-    --r:12px;
+    --r:16px;
 }
 @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
@@ -64,7 +65,7 @@
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.7;-webkit-font-smoothing:antialiased;padding-inline:16px}
 .wrap{max-width:680px;margin:0 auto;padding-block:18px 124px;display:flex;flex-direction:column;gap:20px}
-#view{display:flex;flex-direction:column;gap:36px}
+#view{display:flex;flex-direction:column;gap:40px}
 h1,h2,h3{font-family:var(--font-display);font-weight:700;margin:0;text-wrap:balance;line-height:1.35;letter-spacing:.02em}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
@@ -78,20 +79,24 @@ a{color:var(--accent)}
 .top .date{font-size:.8rem;color:var(--muted);letter-spacing:.12em}
 
 /* 見出し */
-.sec{display:flex;flex-direction:column;gap:14px}
+.sec{display:flex;flex-direction:column;gap:12px}
 .sec-head{display:flex;flex-direction:column;gap:2px}
-.sec-head h2{font-size:1.3rem}
-.sec-head h3{font-size:1.08rem}
+.sec-head h2{font-size:1.3rem;padding-left:12px;border-left:4px solid var(--accent)}
+.sec-head h3{font-size:1rem;margin-top:8px}
 .sec-head .hint{font-size:.8rem;color:var(--muted)}
+.sec-head h2+.hint{padding-left:16px}
+/* カード: 画面の中の囲みはすべてこれ */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.eyebrow{font-size:.72rem;letter-spacing:.16em;color:var(--accent);font-weight:700}
+.foot{font-size:.76rem;color:var(--muted);margin:0;line-height:1.7}
 .sec-head.split{flex-direction:row;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.label{font-size:.72rem;letter-spacing:.16em;color:var(--muted);font-weight:700}
+.label{font-size:.72rem;letter-spacing:.16em;color:var(--accent);font-weight:700}
 
 /* ボタン */
-.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:.5rem 1rem;font-size:.88rem;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:.4rem;transition:background .15s,border-color .15s,transform .1s;min-height:42px;text-decoration:none;color:var(--ink)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:.5rem 1rem;font-size:.88rem;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:.4rem;transition:background .15s,border-color .15s,transform .1s;min-height:42px;text-decoration:none;color:var(--ink)}
 .btn:hover{border-color:var(--accent)}
 .btn:active{transform:scale(.98)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
-.btn.yolk{background:var(--yolk);border-color:var(--yolk);color:#231800;font-weight:700}
 .btn.ghost{background:transparent;border-color:transparent}
 .btn.ghost:hover{border-color:var(--line)}
 .btn.sm{min-height:34px;padding:.25rem .75rem;font-size:.8rem}
@@ -106,7 +111,6 @@ a{color:var(--accent)}
 .chips.scroll::-webkit-scrollbar{display:none}
 .chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:.3rem .85rem;font-size:.84rem;display:inline-flex;align-items:center;gap:.35rem;min-height:36px;white-space:nowrap;flex-shrink:0}
 .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-.chip.yolk[aria-pressed="true"]{background:var(--yolk);border-color:var(--yolk);color:#231800}
 .chip .x{border:0;background:transparent;padding:0 0 0 .1rem;font-size:1rem;line-height:1;color:inherit;opacity:.7}
 .chip.have{background:var(--accent-soft);border-color:transparent}
 .badge{display:inline-block;font-size:.7rem;padding:.02rem .5rem;border-radius:999px;background:var(--surface-2);color:var(--muted);margin-right:4px;vertical-align:1px;white-space:nowrap}
@@ -116,14 +120,21 @@ a{color:var(--accent)}
 /* お膳 */
 .tray{
     background:radial-gradient(120% 90% at 30% 0%,var(--tray-2),var(--tray) 70%);
-    border-radius:18px;padding:18px 14px 16px;box-shadow:inset 0 0 0 2px var(--tray-edge),inset 0 0 0 7px var(--tray),inset 0 0 0 8px rgba(255,255,255,.06),0 14px 30px rgba(20,12,8,.25);
+    border-radius:var(--r);padding:18px 14px 16px;box-shadow:inset 0 0 0 2px var(--tray-edge),inset 0 0 0 7px var(--tray),inset 0 0 0 8px rgba(255,255,255,.06),0 14px 30px rgba(20,12,8,.25);
     display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"side main" "rice soup";gap:14px 10px;color:var(--tray-ink)
 }
 .spot{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0;text-align:center}
 .vessel{position:relative;aspect-ratio:1;border-radius:50%;border:0;padding:0;background:var(--porcelain);transition:transform .2s ease;max-width:100%}
 .vessel:hover{transform:translateY(-2px) scale(1.02)}
 .vessel .food{position:absolute;border-radius:47% 53% 50% 50%/55% 45% 55% 45%;background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.4),transparent 42%),var(--food,#a8652b);background-size:cover;background-position:center}
-.vessel .food.photo{border-radius:50%;background-image:var(--img)}
+.vessel .food.photo{border-radius:50%;background-image:var(--img);background-size:cover;background-position:center;background-repeat:no-repeat}
+/* ChatGPT で作った絵: 器ごと描いてあるので、アプリの器は消して絵だけを出す */
+.vessel.gen,.vessel.gen:hover{background:none;box-shadow:none}
+.vessel.gen::before{display:none}
+.vessel.gen .food.photo,.v-plate.gen .food.photo,.v-kobachi.gen .food.photo{inset:-4%;border-radius:0;background-color:transparent;background-size:contain;filter:drop-shadow(0 6px 8px rgba(0,0,0,.35))}
+.thumb.gen{background-color:var(--porcelain);background-size:112%}
+.hero.gen{background:radial-gradient(120% 90% at 30% 0%,var(--tray-2),var(--tray) 70%)}
+.hero.gen img{object-fit:contain;padding:10px 0 26px;filter:drop-shadow(0 10px 14px rgba(0,0,0,.35))}
 .v-plate{width:92%;box-shadow:inset 0 0 0 6px var(--porcelain),inset 0 0 0 8px var(--rim),inset 0 -8px 18px rgba(0,0,0,.12),0 8px 16px rgba(0,0,0,.45)}
 .v-plate .food{inset:20%}.v-plate .food.photo{inset:11%}
 .v-donburi{width:92%;background:repeating-conic-gradient(var(--rim) 0 5deg,var(--porcelain) 5deg 15deg);box-shadow:0 8px 16px rgba(0,0,0,.45)}
@@ -146,28 +157,25 @@ a{color:var(--accent)}
 .spot-label .last{font-size:.66rem;color:#f0c874}
 .credit{font-size:.7rem;color:var(--muted)}
 
-/* ひとひねり: 短冊 */
-.tanzaku{display:grid;grid-template-columns:34px 1fr;background:var(--yolk-soft);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
-.tanzaku .band{background:var(--yolk);color:#231800;writing-mode:vertical-rl;font-family:var(--font-display);font-weight:700;letter-spacing:.3em;display:flex;align-items:center;justify-content:center;font-size:.85rem;padding-block:12px}
-.tanzaku .body{padding:14px 14px 14px 16px;display:flex;flex-direction:column;gap:8px;min-width:0}
-.tw-item{display:grid;grid-template-columns:64px 1fr;gap:12px;align-items:start;padding-block:10px;border-top:1px dashed color-mix(in srgb,var(--yolk) 55%,transparent)}
-.tw-item:first-child{border-top:0;padding-top:0}
-.thumb{width:64px;height:64px;border-radius:50%;background:var(--surface-2);background-size:cover;background-position:center;box-shadow:inset 0 0 0 3px var(--porcelain),0 2px 6px rgba(0,0,0,.15);flex-shrink:0;position:relative}
+/* ひとひねり */
+.tw-item{display:grid;grid-template-columns:64px 1fr;gap:12px;align-items:start;padding-block:12px;border-top:1px solid var(--line)}
+.tw-item:first-of-type,.eyebrow+.tw-item{border-top:0;padding-top:0}
+.thumb{display:block;width:64px;height:64px;border-radius:50%;background:var(--surface-2);background-size:cover;background-position:center;box-shadow:inset 0 0 0 3px var(--porcelain),0 2px 6px rgba(0,0,0,.15);flex-shrink:0;position:relative}
 .thumb.none{background:radial-gradient(circle,var(--food,#a8652b) 0 36%,var(--porcelain) 37%)}
 .tw-name{font-family:var(--font-display);font-weight:700;font-size:1.1rem;line-height:1.4;cursor:pointer;color:var(--ink)}
 .from{font-size:.78rem;color:var(--muted)}
 .changes{display:flex;flex-wrap:wrap;gap:4px;margin:0;padding:0;list-style:none}
-.changes li{font-size:.72rem;background:var(--surface);border-radius:999px;padding:.05rem .55rem;color:var(--yolk-ink);border:1px solid color-mix(in srgb,var(--yolk) 40%,transparent)}
+.changes li{font-size:.72rem;background:var(--yolk-soft);border-radius:999px;padding:.05rem .55rem;color:var(--yolk-ink)}
 
 /* リスト */
-.list{display:flex;flex-direction:column;background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+.list{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
 .item{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:12px 14px;border-top:1px solid var(--line)}
 .item:first-child{border-top:0}
 .item .t{font-weight:500;cursor:pointer;min-width:0}
 .item .t:hover{color:var(--accent)}
 .item .s{font-size:.76rem;color:var(--muted);font-weight:400}
 .empty{padding:18px 14px;color:var(--muted);font-size:.88rem}
-.note{font-size:.85rem;background:var(--accent-soft);border-radius:10px;padding:.7rem .9rem;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.note{font-size:.85rem;background:var(--accent-soft);border-radius:12px;padding:.7rem .9rem;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 
 /* 入力 */
 .field{display:flex;flex-direction:column;gap:6px}
@@ -205,11 +213,11 @@ textarea{min-height:90px;resize:vertical}
 
 /* 統計 */
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.stat{background:var(--surface);border-radius:var(--r);padding:12px;box-shadow:var(--shadow)}
+.stat{background:var(--surface-2);border-radius:12px;padding:10px 12px}
 .stat .n{font-family:var(--font-display);font-weight:700;font-size:1.5rem;font-variant-numeric:tabular-nums;line-height:1.2}
 .stat .k{font-size:.72rem;color:var(--muted)}
 
-details.box{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:0 14px}
+details.box{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:0 16px}
 details.box>summary{padding:14px 0;cursor:pointer;font-weight:500;list-style:none;display:flex;justify-content:space-between}
 details.box>summary::-webkit-details-marker{display:none}
 details.box>summary::after{content:'＋';color:var(--muted)}
@@ -240,13 +248,13 @@ nav.tabs button[aria-selected="true"] svg{stroke-width:2}
 .sheet h2{font-size:1.5rem}
 .facts{display:flex;flex-wrap:wrap;gap:6px}
 .fact{font-size:.76rem;border:1px solid var(--line);border-radius:999px;padding:.05rem .6rem;background:var(--surface)}
-.recipe-ings{list-style:none;margin:0;padding:0;background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow)}
+.recipe-ings{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
 .recipe-ings li{display:flex;justify-content:space-between;gap:10px;padding:.55rem .9rem;border-top:1px dashed var(--line);font-size:.92rem}
 .recipe-ings li:first-child{border-top:0}
 .recipe-ings li.add{background:var(--yolk-soft)}
 .recipe-ings li .q{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
 .recipe-ings li .ok{color:var(--accent);font-weight:700;margin-right:.3rem}
-.seasoning{font-size:.86rem;color:var(--muted);background:var(--surface);border-radius:var(--r);padding:.7rem .9rem;box-shadow:var(--shadow)}
+.seasoning{font-size:.86rem;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:.7rem .9rem;box-shadow:var(--shadow)}
 .steps{margin:0;padding:0;list-style:none;counter-reset:st;display:flex;flex-direction:column;gap:12px}
 .steps li{counter-increment:st;display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start}
 .steps li::before{content:counter(st);width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-family:var(--font-display);font-weight:700;font-size:.9rem;margin-top:1px}
@@ -264,19 +272,16 @@ nav.tabs button[aria-selected="true"] svg{stroke-width:2}
 .thumb.svg svg{transform:scale(1.08)}
 .hero.illust{background:radial-gradient(120% 90% at 30% 0%,var(--tray-2),var(--tray) 70%)}
 /* あいさつ */
-.greet{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:12px 14px;display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}
-.greet .mark{width:36px;height:36px;border-radius:50%;background:var(--accent-soft);display:grid;place-items:center;font-family:var(--font-display);font-weight:700;color:var(--accent)}
+.greet{display:flex;flex-direction:column;gap:0;margin-top:-6px}
+.greet:empty{display:none}
 .greet .hello{font-family:var(--font-display);font-weight:700;font-size:1rem}
-.greet .line{font-size:.86rem;color:var(--muted);line-height:1.6}
+.greet .line{font-size:.84rem;color:var(--muted);line-height:1.6}
 /* ひと手間 */
-.skill{display:grid;grid-template-columns:34px 1fr;background:var(--surface);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
-.skill .band{background:var(--accent);color:var(--accent-ink);writing-mode:vertical-rl;font-family:var(--font-display);font-weight:700;letter-spacing:.18em;display:flex;align-items:center;justify-content:center;font-size:.85rem;padding-block:12px}
-.skill.done .band{background:var(--yolk);color:#231800}
-.skill .body{padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.skill{gap:6px}
 .skill .add{font-family:var(--font-display);font-weight:700;font-size:1.05rem}
 .skill .plus{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-size:.9rem;margin-right:6px;vertical-align:2px}
 .skill .why{font-size:.86rem}
-.skill .how{font-size:.82rem;color:var(--muted);background:var(--surface-2);border-radius:8px;padding:.45rem .6rem}
+.skill .how{font-size:.82rem;color:var(--muted);background:var(--surface-2);border-radius:10px;padding:.45rem .6rem}
 .skill .how b{color:var(--ink)}
 /* 買い足し提案 */
 .hint-row{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;padding:10px 14px;border-top:1px solid var(--line)}
@@ -285,10 +290,10 @@ nav.tabs button[aria-selected="true"] svg{stroke-width:2}
 .hint-row .v{font-size:.8rem;color:var(--muted)}
 .hint-row .v b{color:var(--ink)}
 /* ふりかえり・称号 */
-.review{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:14px;display:flex;flex-direction:column;gap:10px}
+.review{gap:10px}
 .review p{margin:0;font-family:var(--font-display);font-weight:700;font-size:1rem;line-height:1.6}
-.review .stat{box-shadow:none;background:var(--surface-2)}
-.titles{display:flex;flex-direction:column;background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+.review p.foot{font-family:var(--font-body);font-weight:400;font-size:.76rem}
+.titles{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
 .title-row{padding:12px 14px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:4px}
 .title-row:first-child{border-top:0}
 .title-head{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
@@ -316,7 +321,7 @@ nav.tabs button[aria-selected="true"] svg{stroke-width:2}
 .tiny{font-size:.7rem;line-height:1.5;margin:0}
 /* 設定 */
 .settings-head{display:flex;align-items:center;gap:8px}
-.set-group{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:14px;display:flex;flex-direction:column;gap:14px}
+.set-group{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:14px 16px;display:flex;flex-direction:column;gap:14px}
 .set-group details.box{box-shadow:none;border:1px solid var(--line)}
 .set-title{font-family:var(--font-display);font-weight:700;font-size:1.05rem}
 /* はじめての設定・プラス案内 */
@@ -350,9 +355,29 @@ nav.tabs button[aria-selected="true"] svg{stroke-width:2}
 .locked .veil{filter:blur(3px);color:var(--muted);letter-spacing:.1em;user-select:none}
 .week .item.locked .t{cursor:pointer}
 .hint-row.locked{cursor:pointer}
+.btn.line{color:#06a046;font-weight:700}
+.btn.line::before{content:"LINE";background:#06c755;color:#fff;font-size:.62rem;font-weight:700;letter-spacing:.04em;border-radius:5px;padding:.08rem .35rem}
+.btn.line:hover{border-color:#06c755}
+.sheet .btn.line{background:#06c755;border-color:#06c755;color:#fff}
+.sheet .btn.line::before{display:none}
+.share-text{min-height:150px;font-size:.88rem;line-height:1.6;background:var(--surface)}
+.shop .shop-row{display:grid;grid-template-columns:22px 1fr auto;gap:2px 10px;align-items:center;padding:10px 14px;border-top:1px solid var(--line);cursor:pointer}
+.shop .shop-row:first-child{border-top:0}
+.shop .shop-row input{width:18px;height:18px;accent-color:var(--accent);grid-row:span 2}
+.shop .nm{font-weight:700}
+.shop .q{font-size:.8rem;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.shop .for{grid-column:2 / 4;font-size:.72rem;color:var(--muted)}
+.shop .shop-row.done .nm,.shop .shop-row.done .q{text-decoration:line-through;color:var(--muted)}
+/* 料理のイラスト */
+.vessel .food.svg{background:#fbf8f1}
 @keyframes rise{from{transform:translateY(8px)}to{transform:none}}
 .pop{animation:rise .28s ease-out}
 .tray .vessel{animation:rise .35s ease-out backwards}
+.cond .field{gap:4px}
+.cond .chips.scroll{margin-inline:-16px;padding-inline:16px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.actions .btn{width:100%}
+.actions .full{grid-column:1 / -1}
 .tray .spot.main .vessel{animation-delay:.04s}.tray .spot.rice .vessel{animation-delay:.08s}.tray .spot.soup .vessel{animation-delay:.12s}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
@@ -381,6 +406,17 @@ nav.tabs button[aria-selected="true"] svg{stroke-width:2}
 </nav>
 <div id="modal-root"></div>
 <div id="sheet-root"></div>
+<!-- ポップなイラストのための共通フィルター -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <!-- 色を少し鮮やかに -->
+    <filter id="pop-fill" color-interpolation-filters="sRGB"><feColorMatrix type="saturate" values="1.25"/></filter>
+    <!-- 料理全体のやわらかい影（皿から少し浮いて見える） -->
+    <filter id="pop-shadow" x="-15%" y="-15%" width="130%" height="135%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="1.6" stdDeviation="1.1" flood-color="#3a2416" flood-opacity=".32"/>
+    </filter>
+  </defs>
+</svg>
 <div id="toast-root"></div>
 
 <script>
@@ -463,6 +499,69 @@ R('consomme','玉ねぎのコンソメスープ','洋','汁物','汁',15,'玉ね
 R('wakamesoup','韓国風わかめスープ','韓','汁物','汁',10,'わかめ（乾燥） 5g|牛こま切れ肉 50g?|長ねぎ 少々?','ごま油 小さじ2・おろしにんにく 少々・水 400ml・鶏ガラスープの素 小さじ2・醤油 小さじ1・白ごま 少々','わかめは水でもどして食べやすく切る。|ごま油でにんにくと牛肉を炒め、わかめを加えてさっと炒める。|水と鶏ガラスープの素を加えて5分煮る。|醤油で味をととのえ、ねぎと白ごまを散らす。');
 R('sundubu','スンドゥブチゲ','韓','汁物','汁',20,'絹ごし豆腐 1丁|あさり 150g?|豚バラ薄切り肉 80g|白菜キムチ 100g|卵 2個?|長ねぎ 1/2本?','コチュジャン 大さじ1・おろしにんにく 小さじ1・鶏ガラスープの素 小さじ2・醤油 小さじ1・水 400ml・ごま油 大さじ1','ごま油でにんにく・豚肉・キムチを炒める。|水・鶏ガラスープの素・コチュジャンを加えて煮立て、あさりを入れる。|豆腐をスプーンで大きくすくって入れ、5分煮て醤油で味をととのえる。|卵を落とし、ねぎを散らして半熟で火を止める。');
 
+// ---- 追加レシピ（v1.1）: 主菜 ----
+R('tonkatsu','とんかつ','和','主菜','揚',30,'豚ロース厚切り肉 2枚|卵 1個|キャベツ 1/6個?','塩 こしょう 少々・小麦粉 大さじ2・パン粉 1カップ・揚げ油 適量・とんかつソース 適量','豚肉は脂身と赤身の境目の筋を数か所切り、塩こしょうをふる。|小麦粉→溶き卵→パン粉の順に衣をつけ、手で軽く押さえる。|170℃の油で4分、返して2分揚げる。|油を切って3分休ませてから切り、千切りキャベツとソースを添える。');
+R('sabashio','さばの塩焼き','和','主菜','焼',20,'さば 2切れ|大根 3cm?','塩 小さじ1/2・醤油 少々','さばの両面に塩をふって10分おき、出てきた水気を拭く。|皮に浅く切り目を入れる。|魚焼きグリルで盛りつける面から中火で6分、返して4分焼く。|大根おろしを添え、醤油を少したらす。');
+R('sanma','さんまの塩焼き','和','主菜','焼',20,'さんま 2尾|大根 3cm?|すだち 1個?','塩 小さじ1/2','さんまは洗って水気を拭き、半分に切る。|両面に塩をふって10分おく。|グリルで中火で片面5分ずつ、皮がこんがりするまで焼く。|大根おろしとすだちを添える。');
+R('ajifry','あじフライ','和','主菜','揚',30,'あじ（開いたもの） 4枚|卵 1個|キャベツ 1/6個?','塩 こしょう 少々・小麦粉 大さじ2・パン粉 1カップ・揚げ油 適量・中濃ソース 適量','あじは水気を拭き、塩こしょうをふる。|小麦粉→溶き卵→パン粉の順に衣をつける。|170℃の油で3分、きつね色になるまで揚げる。|千切りキャベツを添え、ソース（またはタルタル）で食べる。');
+R('iwashiume','いわしの梅煮','和','主菜','煮',30,'いわし 4尾|梅干し 2個|生姜 1かけ?','水 200ml・酒 50ml・醤油 大さじ2・みりん 大さじ2・砂糖 大さじ1','いわしは頭と内臓を除き、よく洗って水気を拭く。生姜は薄切りにする。|鍋に調味料と水を煮立て、いわし・梅干し・生姜を並べ入れる。|落としぶたをして中弱火で15分煮る。|煮汁をかけながら、とろみが出るまで煮詰める（骨までやわらかく食べられる）。');
+R('kareini','かれいの煮付け','和','主菜','煮',20,'かれい 2切れ|生姜 1かけ?|ごぼう 1/3本?','水 150ml・酒 50ml・醤油 大さじ2・みりん 大さじ2・砂糖 大さじ1','かれいは皮に切り目を入れ、熱湯を回しかけて臭みを取る。ごぼうは5cm長さに切る。|フライパンに調味料と水、生姜を煮立てる。|かれいとごぼうを入れ、落としぶたをして中火で10分煮る。|煮汁をかけながら2〜3分煮て、照りを出す。');
+R('hoilyaki','鮭のホイル焼き','洋','主菜','焼',20,'生鮭 2切れ|玉ねぎ 1/4個|しめじ 1/2パック|ピーマン 1個?','塩 こしょう 少々・バター 20g・醤油 小さじ2・レモン 適量','鮭に塩こしょうをふる。玉ねぎは薄切り、しめじはほぐす。|アルミホイルに玉ねぎを敷き、鮭・しめじ・ピーマンをのせてバターをのせる。|口をしっかり閉じ、フライパンに並べてふたをし、中火で12分蒸し焼きにする。|開いて醤油をたらし、レモンを添える。');
+R('amazu_sakana','白身魚の甘酢あんかけ','中','主菜','揚',25,'生だら 2切れ|玉ねぎ 1/4個|にんじん 1/4本|ピーマン 1個?','塩 少々・片栗粉 大さじ2・揚げ油 適量・酢 大さじ2・砂糖 大さじ2・醤油 大さじ1・ケチャップ 大さじ1・水 大さじ4・片栗粉 小さじ1','たらは一口大に切って塩をふり、水気を拭いて片栗粉をまぶす。野菜は細切りにする。|多めの油でたらを揚げ焼きにして取り出す。|同じフライパンで野菜を炒め、甘酢の材料（酢・砂糖・醤油・ケチャップ・水・片栗粉）を加えてとろみをつける。|たらにあんをかける。');
+R('tebasappari','手羽元のさっぱり煮','和','主菜','煮',35,'鶏手羽元 8本|ゆで卵 2個?','水 200ml・酢 100ml・醤油 大さじ3・砂糖 大さじ2・おろしにんにく 小さじ1','手羽元は骨に沿って切り目を入れる。|フライパンで手羽元の表面を焼きつける。|水・酢・醤油・砂糖・にんにくを加え、ふたをして中火で20分煮る。|ゆで卵を加え、煮汁をからめながら5分煮詰める（酢の酸味はとんでまろやかになる）。');
+R('yurinchi','油淋鶏','中','主菜','揚',25,'鶏もも肉 1枚|長ねぎ 1/2本','塩 こしょう 少々・片栗粉 大さじ3・揚げ油 適量・醤油 大さじ2・酢 大さじ1.5・砂糖 大さじ1・おろし生姜 小さじ1・ごま油 小さじ1','鶏肉は厚みを均一に開き、塩こしょうをして片栗粉をまぶす。|長ねぎはみじん切りにし、醤油・酢・砂糖・生姜・ごま油と混ぜてねぎだれを作る。|多めの油で皮目から鶏肉を揚げ焼きにし、両面カリッとさせる。|食べやすく切って、ねぎだれをたっぷりかける。');
+R('piccata','鶏むね肉のピカタ','洋','主菜','焼',15,'鶏むね肉 1枚|卵 1個','塩 こしょう 少々・小麦粉 大さじ1・粉チーズ 大さじ1・サラダ油 大さじ1・ケチャップ 適量','鶏肉はそぎ切りにして塩こしょうをふり、小麦粉をまぶす。|溶き卵に粉チーズを混ぜる。|鶏肉を卵液にくぐらせ、油を熱したフライパンで弱めの中火で両面焼く。|残った卵液をからめながら焼き、ケチャップを添える。');
+R('nikudango','肉団子の甘酢あん','中','主菜','揚',30,'豚ひき肉 250g|玉ねぎ 1/4個|卵 1個?','片栗粉 大さじ1・塩 少々・揚げ油 適量・ケチャップ 大さじ2・酢 大さじ2・砂糖 大さじ2・醤油 大さじ1・水 大さじ4・片栗粉 小さじ1','玉ねぎはみじん切りにし、ひき肉・卵・片栗粉・塩とよく練る。|一口大に丸め、170℃の油で4分揚げる（多めの油で転がしながら焼いてもよい）。|甘酢の材料をフライパンで煮立て、とろみをつける。|肉団子を入れてからめる。');
+R('butadaikon','豚バラ大根','和','主菜','煮',35,'豚バラ薄切り肉 150g|大根 1/3本|生姜 1かけ?','だし 300ml・醤油 大さじ2・みりん 大さじ2・砂糖 大さじ1・酒 大さじ1・ごま油 小さじ1','大根は1cm幅のいちょう切り、豚肉は4cm幅に切る。|ごま油で豚肉を炒め、大根を加えて全体に油を回す。|だしと調味料、せん切りの生姜を加え、落としぶたで20分煮る。|大根が透き通ったら火を止め、少しおいて味を含ませる。');
+R('kakuni','豚の角煮','和','主菜','煮',90,'豚バラかたまり肉 400g|長ねぎの青い部分 1本?|生姜 1かけ?|ゆで卵 2個?','水 600ml・酒 100ml・醤油 大さじ4・砂糖 大さじ3・みりん 大さじ2','豚肉は4cm角に切り、フライパンで全面に焼き色をつける。|鍋にたっぷりの水と長ねぎ・生姜を入れて豚肉を40分下ゆでし、ゆで汁を捨てる。|水600mlと調味料を加え、落としぶたで30分煮る。|ゆで卵を加え、煮汁が半分になるまで10分煮詰める。');
+R('nasumiso','なすと豚肉の味噌炒め','和','主菜','炒',15,'なす 2本|豚バラ薄切り肉 150g|ピーマン 2個?','味噌 大さじ1.5・みりん 大さじ1・砂糖 小さじ2・酒 大さじ1・サラダ油 大さじ2','なすは乱切り、ピーマンは乱切り、豚肉は4cm幅に切る。調味料を混ぜておく。|油でなすを焼き、しんなりしたら取り出す。|豚肉を炒め、なすとピーマンを戻す。|合わせ味噌を加えて炒めからめる。');
+R('shigureni','牛肉とごぼうのしぐれ煮','和','主菜','煮',20,'牛こま切れ肉 200g|ごぼう 1/2本|生姜 1かけ','醤油 大さじ2・みりん 大さじ2・砂糖 大さじ1・酒 大さじ2・水 50ml','ごぼうはささがきにして水にさらし、生姜はせん切りにする。|鍋に調味料と水、生姜を煮立て、ごぼうを3分煮る。|牛肉をほぐしながら加え、アクを取る。|汁気がほとんどなくなるまで煮詰める（作り置きにも向く）。');
+R('nikudofu','肉豆腐','和','主菜','煮',20,'牛こま切れ肉 150g|木綿豆腐 1丁|長ねぎ 1本|しらたき 1袋?','だし 200ml・醤油 大さじ3・みりん 大さじ2・砂糖 大さじ1.5・酒 大さじ2','豆腐は8等分に切り、長ねぎは斜め切りにする。しらたきは下ゆでする。|鍋にだしと調味料を煮立て、牛肉を入れてアクを取る。|豆腐・長ねぎ・しらたきを加え、落としぶたで10分煮る。|火を止めて少しおき、豆腐に味を含ませる。');
+R('bulgogi','プルコギ','韓','主菜','炒',20,'牛こま切れ肉 200g|玉ねぎ 1/2個|にんじん 1/3本|ピーマン 2個?|ニラ 1/3束?','醤油 大さじ2・砂糖 大さじ1・ごま油 大さじ1・おろしにんにく 小さじ1・酒 大さじ1・白ごま 少々','牛肉に醤油・砂糖・にんにく・酒をもみ込んで10分おく。|玉ねぎは薄切り、にんじんとピーマンは細切り、ニラは4cm長さに切る。|ごま油で牛肉を炒め、色が変わったら野菜を加えて炒め合わせる。|ニラを加えてさっと混ぜ、白ごまをふる。');
+R('dakgalbi','タッカルビ','韓','主菜','炒',25,'鶏もも肉 1枚|キャベツ 1/6個|玉ねぎ 1/2個|さつまいも 1/2本?|ピザ用チーズ 50g?','コチュジャン 大さじ2・醤油 大さじ1・砂糖 大さじ1・酒 大さじ1・おろしにんにく 小さじ1・ごま油 大さじ1','鶏肉は一口大に切り、調味料をもみ込んで10分おく。|キャベツはざく切り、玉ねぎはくし切り、さつまいもは1cm幅の半月切りにする。|ごま油で鶏肉を焼き、野菜を加えてふたをし、中火で8分蒸し焼きにする。|全体を混ぜ、チーズをのせてふたをし、溶けたら完成。');
+R('banbanji','棒棒鶏','中','主菜','和え',20,'鶏むね肉 1枚|きゅうり 1本|トマト 1個?','酒 大さじ1・塩 少々・練りごま 大さじ2・醤油 大さじ1・酢 大さじ1・砂糖 小さじ2・ごま油 小さじ1','鶏肉に酒と塩をふり、ふたをして弱火で8分蒸し焼きにし、そのまま冷ます。|きゅうりは細切り、トマトは薄切りにする。|鶏肉を手で細く裂く。|器に野菜と鶏肉を盛り、練りごま・醤油・酢・砂糖・ごま油を混ぜたたれをかける。');
+R('tofuhamburg','豆腐ハンバーグ','和','主菜','焼',30,'鶏ひき肉 150g|木綿豆腐 1/2丁|玉ねぎ 1/4個|しめじ 1/2パック?','パン粉 大さじ3・塩 少々・サラダ油 小さじ1・大根おろし 適量・ポン酢 大さじ3','豆腐はキッチンペーパーで包み、10分重しをして水切りする。玉ねぎはみじん切り。|ひき肉・豆腐・玉ねぎ・パン粉・塩をよく練り、4等分して小判形にする。|油を熱して両面に焼き色をつけ、ふたをして弱火で6分蒸し焼き。しめじも一緒に焼く。|大根おろしをのせ、ポン酢をかける。');
+R('pimannikuzume','ピーマンの肉詰め','洋','主菜','焼',30,'ピーマン 4個|合いびき肉 200g|玉ねぎ 1/4個|卵 1個?','パン粉 大さじ3・牛乳 大さじ2・塩 こしょう 少々・小麦粉 少々・サラダ油 小さじ2・ケチャップ 大さじ2・中濃ソース 大さじ2','ピーマンは縦半分に切って種を取り、内側に小麦粉をふる。|ひき肉・みじん切りの玉ねぎ・卵・パン粉・牛乳・塩こしょうを練る。|ピーマンに肉だねをすき間なく詰める。|肉の面から焼き、焼き色がついたら返してふたをし、弱火で6分。ケチャップとソースを加えてからめる。');
+R('torinotomatoni','鶏肉のトマト煮','洋','主菜','煮',30,'鶏もも肉 1枚|玉ねぎ 1/2個|トマト缶 1缶|しめじ 1パック?','塩 こしょう 少々・オリーブオイル 大さじ1・おろしにんにく 小さじ1・コンソメ 小さじ1・砂糖 小さじ1','鶏肉は一口大に切り、塩こしょうをふる。玉ねぎは薄切り、しめじはほぐす。|オリーブオイルとにんにくで鶏肉を皮目から焼く。|玉ねぎ・しめじを加えて炒め、トマト缶・コンソメ・砂糖を入れる。|ふたをして15分煮て、塩こしょうで味をととのえる。');
+R('ikasatoimo','いかと里芋の煮物','和','主菜','煮',35,'いか 1杯|里芋 6個','だし 300ml・醤油 大さじ2・砂糖 大さじ1.5・みりん 大さじ1・酒 大さじ2','いかは内臓と軟骨を除き、胴は輪切り、足は食べやすく切る。|里芋は皮をむいて塩もみし、水で洗ってぬめりを取る。|だしと調味料で里芋を15分煮る。|いかを加えて5分煮る（煮すぎると固くなる）。火を止めて味を含ませる。');
+R('atsuagesoboro','厚揚げのそぼろあんかけ','和','主菜','煮',15,'厚揚げ 1枚|鶏ひき肉 100g|長ねぎ 少々?','だし 200ml・醤油 大さじ1.5・みりん 大さじ1.5・砂糖 小さじ1・水溶き片栗粉 大さじ1','厚揚げは熱湯をかけて油抜きし、一口大に切る。|鍋でひき肉を炒め、だしと調味料を加える。|厚揚げを入れて5分煮る。|水溶き片栗粉でとろみをつけ、小口切りのねぎを散らす。');
+// ---- 追加レシピ: ごはん・麺 ----
+R('soborodon','鶏そぼろ丼','和','ごはん','炒',20,'鶏ひき肉 200g|卵 2個|さやいんげん 6本?|ご飯 2杯分','醤油 大さじ2・砂糖 大さじ1.5・みりん 大さじ1・酒 大さじ1・おろし生姜 小さじ1・（卵用）砂糖 小さじ2・塩 少々','鍋にひき肉と調味料・生姜を入れ、火にかける前によく混ぜる。|中火で菜箸4〜5本を使って混ぜながら、汁気がなくなるまで炒る。|卵に砂糖と塩を混ぜ、別の鍋で同じように炒り卵にする。いんげんはゆでて斜め切り。|ご飯にそぼろ・炒り卵・いんげんを彩りよくのせる。');
+R('chukadon','中華丼','中','ごはん','炒',20,'豚こま切れ肉 120g|白菜 1/8個|にんじん 1/3本|しいたけ 2枚?|うずらの卵（水煮） 4個?|ご飯 2杯分','鶏ガラスープの素 小さじ2・水 250ml・オイスターソース 大さじ1・醤油 小さじ1・水溶き片栗粉 大さじ2・ごま油 小さじ1・サラダ油 大さじ1','白菜はそぎ切り、にんじんは短冊切り、しいたけは薄切りにする。|油で豚肉を炒め、野菜を加えて炒める。|水・鶏ガラ・オイスターソース・醤油・うずらの卵を加えて3分煮る。|水溶き片栗粉でとろみをつけてごま油をたらし、ご飯にかける。');
+R('bibimbap','ビビンバ','韓','ごはん','和え',25,'牛こま切れ肉 120g|もやし 1/2袋|ほうれん草 1/2束|にんじん 1/3本|卵 2個?|ご飯 2杯分','ごま油 大さじ2・醤油 大さじ1.5・砂糖 小さじ2・おろしにんにく 小さじ1/2・塩 少々・白ごま 適量・コチュジャン 適量','もやし・ほうれん草・細切りのにんじんをそれぞれゆで、ごま油・塩・白ごまで和えてナムルにする。|牛肉をごま油で炒め、醤油・砂糖・にんにくで甘辛く味をつける。|卵は目玉焼き（または温泉卵）にする。|ご飯にナムルと牛肉、卵をのせ、コチュジャンを添えて混ぜて食べる。');
+R('hayashi','ハヤシライス','洋','ごはん','煮',30,'牛こま切れ肉 200g|玉ねぎ 1個|しめじ 1パック?|ハヤシルウ 1/2箱|ご飯 2杯分','水 400ml・サラダ油 大さじ1','玉ねぎは薄切り、しめじはほぐす。|油で玉ねぎをしんなりするまで炒め、牛肉としめじを加えて炒める。|水を加えて煮立て、アクを取って10分煮る。|火を止めてルウを溶かし、とろみがつくまで5分煮てご飯にかける。');
+R('drycurry','ドライカレー','洋','ごはん','炒',20,'合いびき肉 200g|玉ねぎ 1/2個|にんじん 1/3本|ピーマン 1個?|ご飯 2杯分','カレー粉 大さじ1・ケチャップ 大さじ2・中濃ソース 大さじ1・コンソメ 小さじ1・塩 こしょう 少々・サラダ油 小さじ2','野菜はすべてみじん切りにする。|油で玉ねぎとにんじんを炒め、ひき肉を加えてポロポロになるまで炒める。|カレー粉をふって香りを出し、ピーマン・ケチャップ・ソース・コンソメを加える。|汁気を飛ばし、塩こしょうで味をととのえてご飯に添える。');
+R('hiyashichuka','冷やし中華','中','麺','和え',20,'中華麺 2玉|ハム 4枚|きゅうり 1本|卵 2個|トマト 1個?','醤油 大さじ3・酢 大さじ3・砂糖 大さじ2・ごま油 大さじ1・水 大さじ2・（卵用）砂糖 小さじ1・サラダ油 少々','たれの材料（醤油・酢・砂糖・ごま油・水）を混ぜて冷やす。|卵に砂糖を混ぜて薄焼きにし、細切りにして錦糸卵を作る。ハム・きゅうりも細切り、トマトはくし切り。|麺をゆでて冷水でしめ、水気をよく切る。|器に麺を盛って具を並べ、たれをかける。');
+R('yakiudon','焼きうどん','和','麺','炒',15,'ゆでうどん 2玉|豚こま切れ肉 120g|キャベツ 1/8個|玉ねぎ 1/4個?|にんじん 1/4本?','醤油 大さじ2・みりん 大さじ1・和風だしの素 小さじ1/2・かつお節 適量・サラダ油 大さじ1','うどんは電子レンジで2分温めてほぐしておく。野菜は食べやすく切る。|油で豚肉を炒め、野菜を加えて炒める。|うどんを加え、醤油・みりん・だしの素で味をつける。|器に盛り、かつお節をのせる。');
+R('salmoncreampasta','鮭とほうれん草のクリームパスタ','洋','麺','煮',20,'スパゲッティ 200g|生鮭 1切れ|ほうれん草 1/2束|牛乳 200ml|玉ねぎ 1/4個?','バター 10g・小麦粉 大さじ1・コンソメ 小さじ1・塩 こしょう 少々・粉チーズ 大さじ1','スパゲッティをゆで始める。鮭は皮と骨を除いて一口大、ほうれん草は4cm長さ、玉ねぎは薄切り。|バターで鮭と玉ねぎを炒め、小麦粉をふり入れて炒める。|牛乳を少しずつ加えてとろみをつけ、コンソメ・ほうれん草を加える。|ゆでたスパゲッティを和え、塩こしょうと粉チーズで味をととのえる。');
+R('tunatomatopasta','ツナとトマトのパスタ','洋','麺','炒',15,'スパゲッティ 200g|ツナ缶 1缶|トマト缶 1/2缶|玉ねぎ 1/4個?','オリーブオイル 大さじ1・おろしにんにく 小さじ1/2・コンソメ 小さじ1/2・塩 こしょう 少々','スパゲッティをゆで始める。玉ねぎは薄切り。|オリーブオイルとにんにくで玉ねぎを炒め、トマト缶とコンソメを加えて5分煮詰める。|ツナを油ごと加えて混ぜる。|ゆでたスパゲッティとゆで汁大さじ2を加えて和え、塩こしょうで味をととのえる。');
+// ---- 追加レシピ: 副菜 ----
+R('kiriboshi','切り干し大根の煮物','和','副菜','煮',25,'切り干し大根 30g|にんじん 1/3本|油揚げ 1枚','だし 200ml・醤油 大さじ1.5・砂糖 大さじ1・みりん 大さじ1・ごま油 小さじ1','切り干し大根は水で10分もどし、水気を絞って食べやすく切る。|にんじんと油揚げは細切りにする。|ごま油で切り干し大根とにんじんを炒め、油揚げを加える。|だしと調味料を加え、汁気が少なくなるまで10分煮る。');
+R('gomaae','ほうれん草の胡麻和え','和','副菜','和え',10,'ほうれん草 1束','すりごま 大さじ2・醤油 大さじ1・砂糖 小さじ2','ほうれん草は塩少々を入れた湯でゆで、冷水にとって水気を絞る。|4cm長さに切り、もう一度水気を絞る。|すりごま・醤油・砂糖を混ぜる。|食べる直前にほうれん草と和える。');
+R('okraokaka','オクラのおかか和え','和','副菜','和え',5,'オクラ 1袋','かつお節 1パック・醤油 小さじ2・塩 少々','オクラは塩をまぶしてこすり、うぶ毛を取る。|熱湯で1分ゆでて冷水にとる。|斜め半分に切る。|かつお節と醤油で和える。');
+R('harusamesalad','春雨サラダ','中','副菜','和え',15,'春雨 40g|きゅうり 1本|ハム 3枚|にんじん 1/4本?','酢 大さじ2・醤油 大さじ1.5・砂糖 大さじ1・ごま油 大さじ1・白ごま 少々','春雨はゆでて水気を切り、食べやすく切る。|きゅうり・ハム・にんじんは細切りにし、にんじんはさっとゆでる。|調味料を混ぜてたれを作る。|すべてを和え、冷蔵庫で10分なじませて白ごまをふる。');
+R('macaronisalad','マカロニサラダ','洋','副菜','和え',20,'マカロニ 60g|きゅうり 1/2本|ハム 3枚|玉ねぎ 1/4個?','マヨネーズ 大さじ4・酢 小さじ1・塩 こしょう 少々','マカロニは表示どおりゆでて水気を切り、酢をまぶして冷ます。|きゅうりと玉ねぎは薄切りにして塩もみし、水気を絞る。|ハムは短冊切りにする。|すべてをマヨネーズ・塩こしょうで和える。');
+R('kabochasalad','かぼちゃサラダ','洋','副菜','和え',15,'かぼちゃ 1/8個|玉ねぎ 1/4個?|ハム 2枚?','マヨネーズ 大さじ2・塩 こしょう 少々','かぼちゃは種を取って一口大に切り、ラップをして電子レンジで4分加熱する。|熱いうちに粗くつぶす。|玉ねぎは薄切りにして水にさらし、水気を絞る。ハムは短冊切り。|粗熱が取れたら、すべてをマヨネーズ・塩こしょうで和える。');
+R('satoimonikkorogashi','里芋の煮っころがし','和','副菜','煮',25,'里芋 8個','だし 200ml・醤油 大さじ1.5・砂糖 大さじ1・みりん 大さじ1','里芋は皮をむいて塩もみし、水で洗ってぬめりを取る。|鍋に里芋とだしを入れて火にかけ、煮立ったら砂糖を加えて10分煮る。|醤油とみりんを加え、ときどき鍋をゆすりながら汁気がなくなるまで煮る。|照りが出たら完成。');
+R('daigakuimo','大学芋','和','副菜','揚',25,'さつまいも 1本','揚げ油 適量・砂糖 大さじ3・醤油 小さじ1・水 大さじ1・黒ごま 少々','さつまいもは皮つきのまま乱切りにし、水に5分さらして水気を拭く。|160℃の油で5分、竹串が通るまで揚げる。|フライパンに砂糖・醤油・水を入れて煮立て、とろみが出たら火を止める。|さつまいもを入れてからめ、黒ごまをふる。');
+R('hakusaiasazuke','白菜の浅漬け','和','副菜','和え',10,'白菜 1/8個|昆布 3cm?','塩 小さじ1・赤唐辛子 少々','白菜はざく切りにする。|ポリ袋に白菜・塩・細切りの昆布・唐辛子を入れてよくもむ。|空気を抜いて口を閉じ、冷蔵庫で30分以上おく。|水気を軽く絞って器に盛る。');
+R('chingensai','チンゲン菜のにんにく炒め','中','副菜','炒',5,'チンゲン菜 2株','ごま油 大さじ1・おろしにんにく 小さじ1/2・鶏ガラスープの素 小さじ1/2・塩 少々','チンゲン菜は根元を切り、茎と葉に分けて食べやすく切る。|ごま油とにんにくを熱し、茎を先に1分炒める。|葉を加え、鶏ガラと塩で味をつける。|しんなりしすぎないうちに火を止める。');
+R('broccoligoma','ブロッコリーのごまマヨ和え','洋','副菜','和え',10,'ブロッコリー 1株','マヨネーズ 大さじ1.5・すりごま 大さじ1・醤油 小さじ1','ブロッコリーは小房に分ける。|塩少々を入れた湯で2分ゆで、ざるに上げて冷ます。|マヨネーズ・すりごま・醤油を混ぜる。|水気をよく切ったブロッコリーと和える。');
+R('kinokobutter','きのこのバター醤油炒め','和','副菜','炒',10,'しめじ 1パック|エリンギ 1パック|まいたけ 1パック?','バター 10g・醤油 小さじ2・こしょう 少々','しめじとまいたけはほぐし、エリンギは縦に薄切りにする。|フライパンでバターを溶かす。|きのこを強めの中火で、あまり動かさずに焼き色をつける。|醤油を鍋肌から回し入れ、こしょうをふる。');
+R('nagaimoume','長いもの梅和え','和','副菜','和え',5,'長いも 10cm|梅干し 1個|大葉 3枚?','醤油 少々','長いもは皮をむいて拍子木切りにする。|梅干しは種を取ってたたく。|長いもと梅を和え、醤油を少したらす。|器に盛り、せん切りの大葉をのせる。');
+R('spinachbacon','ほうれん草とベーコンのソテー','洋','副菜','炒',10,'ほうれん草 1束|ベーコン 2枚','バター 5g・塩 こしょう 少々','ほうれん草は4cm長さ、ベーコンは1cm幅に切る。|フライパンでベーコンを炒めて脂を出す。|ほうれん草の茎、葉の順に加えて強火でさっと炒める。|バターを加え、塩こしょうで味をととのえる。');
+R('gobosalad','ごぼうサラダ','和','副菜','和え',15,'ごぼう 1本|にんじん 1/3本','マヨネーズ 大さじ3・醤油 小さじ1・砂糖 小さじ1・すりごま 大さじ1','ごぼうは細切りにして水にさらし、にんじんも細切りにする。|ごぼうを3分、にんじんを最後の1分一緒にゆでる。|ざるに上げて水気をよく切り、冷ます。|マヨネーズ・醤油・砂糖・すりごまで和える。');
+R('unohana','卯の花','和','副菜','煮',20,'おから 100g|にんじん 1/4本|しいたけ 2枚?|油揚げ 1/2枚?','だし 200ml・醤油 大さじ1.5・砂糖 大さじ1.5・みりん 大さじ1・サラダ油 大さじ1','にんじん・しいたけ・油揚げは細かく切る。|油で野菜と油揚げを炒め、おからを加えてポロポロになるまで炒める。|だしと調味料を加える。|しっとりするまで混ぜながら5分煮る。');
+R('takosunomono','たこときゅうりの酢の物','和','副菜','和え',10,'ゆでだこ 80g|きゅうり 1本|わかめ（乾燥） 2g?','酢 大さじ2・砂糖 大さじ1・醤油 小さじ1/2・塩 少々','きゅうりは薄切りにして塩もみし、水気を絞る。|わかめは水でもどして水気を絞る。|たこは薄くそぎ切りにする。|酢・砂糖・醤油を混ぜ、すべてを和える。');
+// ---- 追加レシピ: 汁物 ----
+R('kenchinjiru','けんちん汁','和','汁物','汁',25,'大根 3cm|にんじん 1/3本|ごぼう 1/3本|木綿豆腐 1/2丁|里芋 2個?|こんにゃく 1/4枚?','だし 600ml・醤油 大さじ1.5・塩 少々・ごま油 小さじ2','野菜はいちょう切りや乱切りに、こんにゃくはちぎって下ゆでする。|ごま油で野菜とこんにゃくを炒める。|豆腐を手でくずし入れて炒め、だしを加えて10分煮る。|醤油と塩で味をととのえる。');
+R('namekomiso','なめこと豆腐の味噌汁','和','汁物','汁',10,'なめこ 1袋|豆腐 1/2丁|長ねぎ 少々?','だし 400ml・味噌 大さじ2','なめこはさっと洗い、豆腐はさいの目に切る。|だしを温め、豆腐となめこを入れる。|ひと煮立ちしたら火を弱め、味噌を溶き入れる。|小口切りのねぎを散らす。');
+R('asarimiso','あさりの味噌汁','和','汁物','汁',10,'あさり 200g|長ねぎ 少々?','水 400ml・味噌 大さじ2','あさりは砂抜きして、殻をこすり洗いする。|鍋に水とあさりを入れて火にかける。|殻が開いたらアクを取り、火を弱めて味噌を溶き入れる。|小口切りのねぎを散らす（あさりからだしが出るので、だしは不要）。');
+R('cornsoup','コーンスープ','洋','汁物','汁',15,'コーン缶（クリーム） 1缶|牛乳 200ml|玉ねぎ 1/4個?','バター 10g・コンソメ 小さじ1・塩 こしょう 少々','玉ねぎは薄切りにし、バターでしんなりするまで炒める。|コーン缶とコンソメを加えて混ぜる。|牛乳を加え、沸騰させないように弱火で温める。|塩こしょうで味をととのえる。');
+R('clamchowder','クラムチャウダー','洋','汁物','汁',25,'あさり 200g|じゃがいも 1個|玉ねぎ 1/2個|にんじん 1/3本|牛乳 300ml|ベーコン 2枚?','バター 10g・小麦粉 大さじ1・水 200ml・コンソメ 小さじ1・塩 こしょう 少々','あさりは水200mlで酒蒸しのように加熱し、殻が開いたら身と蒸し汁に分ける。|野菜とベーコンは1cm角に切り、バターで炒めて小麦粉をふり入れる。|あさりの蒸し汁とコンソメを加え、野菜がやわらかくなるまで10分煮る。|牛乳とあさりを加えて温め、塩こしょうで味をととのえる。');
+R('sanratan','酸辣湯','中','汁物','汁',15,'絹ごし豆腐 1/2丁|しいたけ 2枚|卵 1個|たけのこ水煮 50g?','水 400ml・鶏ガラスープの素 小さじ2・醤油 小さじ2・酢 大さじ2・こしょう 少々・ラー油 少々・水溶き片栗粉 大さじ1','豆腐・しいたけ・たけのこは細切りにする。|水と鶏ガラを煮立て、具を入れて3分煮る。|醤油で味をつけ、水溶き片栗粉でとろみをつけて溶き卵を回し入れる。|火を止めてから酢を加え、こしょうとラー油をふる（酢は最後に入れると香りが立つ）。');
+R('tomatoeggsoup','トマトと卵のスープ','中','汁物','汁',10,'トマト 1個|卵 1個','水 400ml・鶏ガラスープの素 小さじ2・塩 こしょう 少々・ごま油 少々','トマトはくし切りにする。|水と鶏ガラを煮立て、トマトを入れて2分煮る。|塩こしょうで味をととのえ、溶き卵を細く回し入れる。|卵がふんわり固まったら、ごま油をたらす。');
+
 /* =========================================================
    食材の名寄せ（表記ゆれ → 代表名）
    ========================================================= */
@@ -477,7 +576,13 @@ const CANON = [
     ['鮭',['鮭','さけ','しゃけ','サーモン']],
     ['さば',['さば','鯖']],
     ['ぶり',['ぶり','鰤']],
-    ['たら',['たら','鱈','白身魚']],
+    ['たら',['たら','鱈','白身魚','生だら','生鱈']],
+    ['あじ',['あじ','鯵','アジ']],
+    ['いわし',['いわし','鰯','イワシ']],
+    ['さんま',['さんま','秋刀魚','サンマ']],
+    ['かれい',['かれい','鰈','カレイ']],
+    ['いか',['いか','イカ','するめいか']],
+    ['たこ',['ゆでだこ','たこ','タコ','蛸']],
     ['えび',['えび','海老','エビ']],
     ['あさり',['あさり','浅利']],
     ['ツナ',['ツナ','シーチキン']],
@@ -532,6 +637,20 @@ const CANON = [
     ['コーン',['コーン','とうもろこし']],
     ['カレールウ',['カレールウ','カレールー','カレー']],
     ['シチュールウ',['シチュールウ','シチュー']],
+    ['ハヤシルウ',['ハヤシルウ','ハヤシ']],
+    ['梅干し',['梅干し','梅']],
+    ['紅しょうが',['紅しょうが','紅生姜']],
+    ['生姜',['生姜','しょうが','ショウガ']],
+    ['切り干し大根',['切り干し大根','切干大根','切干し大根']],
+    ['里芋',['里芋','さといも','サトイモ']],
+    ['さつまいも',['さつまいも','さつま芋','サツマイモ']],
+    ['長いも',['長いも','長芋','山芋','やまいも']],
+    ['オクラ',['オクラ']],
+    ['チンゲン菜',['チンゲン菜','青梗菜','ちんげんさい']],
+    ['エリンギ',['エリンギ']],
+    ['なめこ',['なめこ']],
+    ['おから',['おから']],
+    ['さやいんげん',['いんげん']],
     ['ご飯',['ご飯','ごはん','白米','米']],
     ['食パン',['食パン','パン']],
 ];
@@ -586,7 +705,7 @@ const SUBS = {
     '豆腐':['厚揚げ'], '厚揚げ':['豆腐'], 'レタス':['キャベツ'],
 };
 const FAMILY = {'豚肉':'豚','豚ひき肉':'豚','鶏肉':'鶏','鶏ひき肉':'鶏','牛肉':'牛','合いびき肉':'ひき肉',
-    '鮭':'魚','さば':'魚','ぶり':'魚','たら':'魚','えび':'魚介','あさり':'魚介','豆腐':'大豆','厚揚げ':'大豆',
+    '鮭':'魚','さば':'魚','ぶり':'魚','たら':'魚','あじ':'魚','いわし':'魚','さんま':'魚','かれい':'魚','いか':'魚介','たこ':'魚介','えび':'魚介','あさり':'魚介','豆腐':'大豆','厚揚げ':'大豆',
     '卵':'卵','ウインナー':'加工肉','ベーコン':'加工肉','ハム':'加工肉','ツナ':'魚'};
 const FAMILY_LABEL = {'豚':'豚肉','鶏':'鶏肉','牛':'牛肉','ひき肉':'ひき肉','魚':'魚','魚介':'魚介','大豆':'豆腐・大豆','卵':'卵','加工肉':'ハム・ベーコン','野菜':'野菜'};
 function prepRecipe(r){
@@ -1012,7 +1131,7 @@ function badges(r){
 function render(){
     $('#today-label').textContent = jpDate(TODAY);
     const g = greeting();
-    $('#greet').innerHTML = `<div class="mark" aria-hidden="true">${esc(g.hello.slice(0,1))}</div><div><div class="hello">${esc(g.hello)}</div><div class="line">${esc(g.line)}</div></div>`;
+    $('#greet').innerHTML = tab === 'today' ? `<div class="hello">${esc(g.hello)}</div><div class="line">${esc(g.line)}</div>` : '';
     const v = $('#view');
     if (tab === 'today') v.innerHTML = viewToday();
     if (tab === 'fridge') v.innerHTML = viewFridge();
@@ -1037,6 +1156,11 @@ const WIKI = {   // 候補を前から順に探し、Commons に写真がある�
     nasubitashi:['揚げ浸し'], komatsuna:['煮浸し'], tatakikyuri:['たたききゅうり','拍黄瓜'], namul:['ナムル'], sakamushi:['酒蒸し'], coleslaw:['コールスロー'],
     hiyayakko:['冷奴'], sunomono:['酢の物'], tomatotamago:['トマトと卵の炒め物','西紅柿炒鶏蛋'], misoshiru:['味噌汁'], tonjiru:['豚汁'], minestrone:['ミネストローネ'],
     tamagosoup:['かき玉汁','卵スープ'], consomme:['オニオンスープ'], wakamesoup:['ミヨックク','わかめスープ'], sundubu:['スンドゥブチゲ'],
+    tonkatsu:['とんかつ'], sabashio:['塩焼き'], sanma:['サンマ'], ajifry:['アジフライ'], iwashiume:['イワシ'], kareini:['煮付け'], hoilyaki:['ホイル焼き'],
+    tebasappari:['手羽元'], yurinchi:['油淋鶏'], piccata:['ピカタ'], nikudango:['肉団子'], kakuni:['角煮','豚の角煮'], shigureni:['しぐれ煮'], nikudofu:['肉豆腐'],
+    bulgogi:['プルコギ'], dakgalbi:['タッカルビ'], banbanji:['棒棒鶏'], tofuhamburg:['豆腐ハンバーグ'], pimannikuzume:['ピーマンの肉詰め'],
+    soborodon:['そぼろ丼','三色丼'], chukadon:['中華丼'], bibimbap:['ビビンバ'], hayashi:['ハヤシライス'], drycurry:['ドライカレー'], hiyashichuka:['冷やし中華'], yakiudon:['焼きうどん'],
+    gomaae:['胡麻和え','ごま和え'], macaronisalad:['マカロニサラダ'], daigakuimo:['大学芋'], kenchinjiru:['けんちん汁'], cornsoup:['コーンスープ'], clamchowder:['クラムチャウダー'], sanratan:['酸辣湯'],
     rice:['ご飯','白飯'], konomono:['漬物','たくあん'],
 };
 const PHOTO_KEY = 'gohancho.photos.v2';
@@ -1049,8 +1173,11 @@ function stripHtml(h){ try{ return (new DOMParser().parseFromString(String(h||''
 async function loadPhotos(){
     if (photoStatus === 'done' || photoStatus === 'loading') return;
     photoStatus = 'loading';
+    // 同梱の絵がある料理は、Wikipedia に問い合わせない
+    const need = Object.entries(WIKI).filter(([id]) => !GEN[id]);
+    if (!need.length){ photoStatus = 'done'; return; }
     try{
-        const titles = [...new Set(Object.values(WIKI).flat())], fileOf = {};
+        const titles = [...new Set(need.map(([, ts]) => ts).flat())], fileOf = {};
         for (let k = 0; k < titles.length; k += 40){
             const chunk = titles.slice(k, k+40);
             const url = 'https://ja.wikipedia.org/w/api.php?action=query&format=json&formatversion=2&origin=*&redirects=1&prop=pageimages&piprop=name&titles=' + encodeURIComponent(chunk.join('|'));
@@ -1075,7 +1202,7 @@ async function loadPhotos(){
             });
         }
         const out = {};
-        Object.entries(WIKI).forEach(([id, ts]) => { for (const t of ts){ const f = fileOf[t]; const rec = f && (info[f] || info[f.replace(/_/g,' ')]); if (rec && rec.src && /^https:\/\//.test(rec.src)){ out[id] = rec; break; } } });
+        need.forEach(([id, ts]) => { for (const t of ts){ const f = fileOf[t]; const rec = f && (info[f] || info[f.replace(/_/g,' ')]); if (rec && rec.src && /^https:\/\//.test(rec.src)){ out[id] = rec; break; } } });
         PHOTOS = out; photoStatus = 'done';
         try{ localStorage.setItem(PHOTO_KEY, JSON.stringify({v:2, t:Date.now(), data:out})); }catch(e){}
     }catch(e){ photoStatus = 'blocked'; }
@@ -1087,14 +1214,14 @@ async function loadPhotos(){
 let MINE = {};
 function openDb(){
     return openDb.p || (openDb.p = new Promise((res, rej) => {
-        const q = indexedDB.open('gohancho', 1);
-        q.onupgradeneeded = () => q.result.createObjectStore('photos');
+        const q = indexedDB.open('gohancho', 2);
+        q.onupgradeneeded = () => { const db = q.result; ['photos', 'sketches'].forEach(n => { if (!db.objectStoreNames.contains(n)) db.createObjectStore(n); }); };
         q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error);
     }));
 }
-async function idbDo(mode, fn){
+async function idbDo(mode, fn, store='photos'){
     const db = await openDb();
-    return new Promise((res, rej) => { const tx = db.transaction('photos', mode); const out = fn(tx.objectStore('photos')); tx.oncomplete = () => res(out && out.result); tx.onerror = () => rej(tx.error); });
+    return new Promise((res, rej) => { const tx = db.transaction(store, mode); const out = fn(tx.objectStore(store)); tx.oncomplete = () => res(out && out.result); tx.onerror = () => rej(tx.error); });
 }
 async function loadMine(){
     try{
@@ -1134,14 +1261,146 @@ async function removeMine(id){
 }
 function photoOf(r){
     if (!r) return null;
-    if (MINE[r.id]) return MINE[r.id];
-    return PHOTOS[r.isTwist ? r.base.id : r.id] || null;
+    if (MINE[r.id]) return MINE[r.id];               // 自分で撮った写真はそのまま
+    const id = r.isTwist ? r.base.id : r.id;
+    return GEN[id] || sketchOf(PHOTOS[id]);          // 次に同梱の絵（手描き・ChatGPT）、その次に写真をイラスト化したもの
+}
+
+/* ---- アプリに同梱した料理の絵 ----
+   img/dish/manifest.json に並んだ絵を使う。via が 'svg' は tools/illustrations/draw で描いたイラスト、
+   'api' / 'chatgpt' は ChatGPT（OpenAI の画像生成）で前もって作った画像。アプリから外部へは通信しない。 */
+const GEN = {};
+async function loadGenerated(){
+    try{
+        const res = await fetch('img/dish/manifest.json', {cache:'no-cache'});
+        if (!res.ok) return;
+        const m = await res.json(), items = (m && m.items) || {};
+        Object.keys(items).forEach(id => {
+            const it = items[id]; if (!it || !it.file || !/^[\w.-]+$/.test(it.file)) return;
+            GEN[id] = {src: 'img/dish/' + it.file + '?v=' + encodeURIComponent(it.date || ''), gen: true, ai: it.via === 'api' || it.via === 'chatgpt'};
+        });
+        if (Object.keys(GEN).length) scheduleRender();
+    }catch(e){}
+}
+
+/* ---- 参考写真をもとに、ポップなイラストに描き直す ----
+   Wikipedia の写真は、端末の中で一度だけ「細部をなめらかに → 明るさを数段階のぬり分けにして鮮やかに → くっきりした輪郭に太い線」でイラスト化して保存し、以後はそれを表示する。
+   変換が終わるまで・変換できない写真は、アプリが描くイラストを表示する（元の写真そのものは出さない）。 */
+const SKETCH = {};          // 元の写真URL → イラスト化した画像のURL（null は変換できなかった）
+const sketchQueue = [];
+let sketchBusy = false;
+function sketchOf(ph){
+    if (!ph) return null;
+    const u = SKETCH[ph.src];
+    if (u) return Object.assign({}, ph, {src: u, sketch: true});
+    if (u === undefined) requestSketch(ph.src);
+    return null;
+}
+function requestSketch(src){
+    if (SKETCH[src] !== undefined || sketchQueue.includes(src)) return;
+    sketchQueue.push(src); pumpSketches();
+}
+async function pumpSketches(){
+    if (sketchBusy) return; sketchBusy = true;
+    while (sketchQueue.length){
+        const src = sketchQueue.shift();
+        try{
+            const key = 'pop3:' + src;
+            let blob = await idbDo('readonly', st => st.get(key), 'sketches').catch(() => null);
+            if (!blob){ blob = await popIllustrate(src); idbDo('readwrite', st => st.put(blob, key), 'sketches').catch(() => {}); }
+            SKETCH[src] = URL.createObjectURL(blob);
+        }catch(e){ SKETCH[src] = null; }
+        scheduleRender();
+    }
+    sketchBusy = false;
+}
+let renderTimer = null;
+function scheduleRender(){
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(() => {
+        const a = document.activeElement;
+        if (!(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) render();
+        if (modalId) renderModal();
+    }, 250);
+}
+function popIllustrate(src){
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onerror = () => reject(new Error('load'));
+        img.onload = () => {
+            try{
+                const k = Math.min(1, 520 / Math.max(img.naturalWidth, img.naturalHeight));
+                const W = Math.max(1, Math.round(img.naturalWidth * k)), H = Math.max(1, Math.round(img.naturalHeight * k)), n = W * H;
+                const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+                const ctx = cv.getContext('2d', {willReadFrequently: true});
+                ctx.drawImage(img, 0, 0, W, H);
+                const im = ctx.getImageData(0, 0, W, H), d = im.data;     // 許可のない画像はここで例外 → イラスト表示
+                // 1) 細部をなめらかに（輪郭は残すぼかし）
+                let px = new Float32Array(n * 3);
+                for (let i = 0; i < n; i++){ px[i*3] = d[i*4]; px[i*3+1] = d[i*4+1]; px[i*3+2] = d[i*4+2]; }
+                for (let it = 0; it < 3; it++) px = smoothKeepEdges(px, W, H, 3, 26);
+                // 2) 色（色み）はそのままに、明るさだけを数段階にそろえて「ぬり分け」にする → 赤いトマトは赤、緑の野菜は緑のまま
+                const LEVELS = 5, lumS = new Float32Array(n);
+                for (let i = 0; i < n; i++){
+                    const r = px[i*3], g = px[i*3+1], b = px[i*3+2];
+                    const L = .3 * r + .59 * g + .11 * b; lumS[i] = L;
+                    const band = Math.min(LEVELS - 1, Math.floor(L / 256 * LEVELS));
+                    const Lq = (band + .62) * 256 / LEVELS;                 // 段階の中ほどへ（少し明るめ）
+                    const f = Lq / Math.max(8, L);
+                    let R = r * f, G = g * f, B = b * f;
+                    const l2 = .3 * R + .59 * G + .11 * B;                   // 鮮やかに
+                    R = l2 + (R - l2) * 1.55; G = l2 + (G - l2) * 1.55; B = l2 + (B - l2) * 1.55;
+                    d[i*4] = Math.max(0, Math.min(255, R + 6)); d[i*4+1] = Math.max(0, Math.min(255, G + 4)); d[i*4+2] = Math.max(0, Math.min(255, B));
+                    d[i*4+3] = 255;
+                }
+                // 3) くっきりした輪郭だけに太い線（明るさの変化が大きい所）
+                const thr = 22, edge = new Uint8Array(n);
+                for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++){
+                    const i = y * W + x;
+                    const gx = -lumS[i-W-1] - 2*lumS[i-1] - lumS[i+W-1] + lumS[i-W+1] + 2*lumS[i+1] + lumS[i+W+1];
+                    const gy = -lumS[i-W-1] - 2*lumS[i-W] - lumS[i-W+1] + lumS[i+W-1] + 2*lumS[i+W] + lumS[i+W+1];
+                    if (Math.hypot(gx, gy) / 4 > thr) edge[i] = 1;
+                }
+                const thick = Math.max(1, Math.round(W / 300));
+                for (let y = 0; y < H; y++) for (let x = 0; x < W; x++){
+                    if (!edge[y*W+x]) continue;
+                    for (let dy = -thick; dy <= thick; dy++) for (let dx = -thick; dx <= thick; dx++){
+                        const yy = y + dy, xx = x + dx; if (yy < 0 || yy >= H || xx < 0 || xx >= W) continue;
+                        const q = (yy * W + xx) * 4; d[q] = 74; d[q+1] = 46; d[q+2] = 31;
+                    }
+                }
+                ctx.putImageData(im, 0, 0);
+                cv.toBlob(bl => bl ? resolve(bl) : reject(new Error('blob')), 'image/png');
+            }catch(e){ reject(e); }
+        };
+        img.src = src;
+    });
+}
+// 似た色どうしだけを混ぜるぼかし（バイラテラルフィルターの簡易版）。輪郭は残り、面はなめらかになる
+function smoothKeepEdges(px, W, H, r, sigma){
+    const out = new Float32Array(px.length), s2 = 2 * sigma * sigma;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++){
+        const i = (y * W + x) * 3, R = px[i], G = px[i+1], B = px[i+2];
+        let sr = 0, sg = 0, sb = 0, sw = 0;
+        for (let dy = -r; dy <= r; dy += 1) for (let dx = -r; dx <= r; dx += 1){
+            const yy = Math.min(H - 1, Math.max(0, y + dy)), xx = Math.min(W - 1, Math.max(0, x + dx)), j = (yy * W + xx) * 3;
+            const dr = px[j] - R, dg = px[j+1] - G, db = px[j+2] - B;
+            const w = Math.exp(-(dr*dr + dg*dg + db*db) / s2);
+            sr += px[j] * w; sg += px[j+1] * w; sb += px[j+2] * w; sw += w;
+        }
+        out[i] = sr / sw; out[i+1] = sg / sw; out[i+2] = sb / sw;
+    }
+    return out;
 }
 function videoSearchUrl(r){ return 'https://www.youtube.com/results?search_query=' + encodeURIComponent((r.isTwist ? r.base.name : r.name).replace(/（.*?）/g,'') + ' 作り方'); }
 function cssUrl(u){ return `url('${String(u).replace(/['"()\\\s]/g, c => encodeURIComponent(c))}')`; }
 function imageSearchUrl(r){ return 'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(r.name.replace(/（.*?）/g,'') + ' 料理'); }
 function photoNote(){
-    if (Object.keys(PHOTOS).filter(k => k !== 'rice' && k !== 'konomono').length) return '写真: Wikipedia / Wikimedia Commons。撮影者とライセンスは各料理の詳細に表示しています。';
+    const ai = Object.values(GEN).some(g => g.ai), wiki = Object.keys(PHOTOS).some(k => !GEN[k]);
+    if (ai || wiki) return [ai ? '料理の絵の一部は ChatGPT（OpenAI の画像生成）で作成したイメージです。' : '', wiki ? '一部は Wikipedia / Wikimedia Commons の写真をもとにイラスト化し、撮影者とライセンスを各料理の詳細に表示しています。' : ''].join('');
+    if (Object.keys(GEN).length) return '';
+    if (Object.keys(PHOTOS).filter(k => k !== 'rice' && k !== 'konomono').length) return '料理の絵の一部は、Wikipedia / Wikimedia Commons の写真をもとにイラスト化しています。撮影者とライセンスは各料理の詳細に表示しています。';
     return '';
 }
 
@@ -1159,16 +1418,17 @@ function vesselKind(r){
     return 'plate';
 }
 function vesselHtml(kind, r, still=false){
-    const ph = r ? photoOf(r) : (kind === 'chawan' ? PHOTOS.rice : kind === 'konomono' ? PHOTOS.konomono : null) || null;
+    const extra = kind === 'chawan' ? 'rice' : kind === 'konomono' ? 'konomono' : null;
+    const ph = r ? photoOf(r) : extra ? (GEN[extra] || sketchOf(PHOTOS[extra])) : null;
     const style = `--food:${foodColor(r)}` + (ph ? `;--img:${cssUrl(ph.src)}` : '');
-    const food = ph ? '<span class="food photo"></span>' : (kind === 'chawan' || kind === 'konomono') ? '<span class="food"></span>' : `<span class="food svg">${dishSvg(r)}</span>`;
-    const cls = `vessel v-${kind}${kind === 'donburi' && r && r.type === '麺' ? ' noodle' : ''}`;
+    const food = ph ? '<span class="food photo"></span>' : extra ? '<span class="food"></span>' : `<span class="food svg">${dishSvg(r)}</span>`;
+    const cls = `vessel v-${kind}${kind === 'donburi' && r && r.type === '麺' ? ' noodle' : ''}${ph && ph.gen ? ' gen' : ''}`;
     if (!r || still) return `<div class="${cls}" style="${esc(style)}" aria-hidden="true">${food}</div>`;
     return `<button class="${cls}" style="${esc(style)}" data-act="open" data-id="${esc(r.id)}" aria-label="${esc(r.name)}の作り方を見る">${food}</button>`;
 }
 function thumbHtml(r){
     const ph = photoOf(r);
-    return ph ? `<span class="thumb" style="${esc('background-image:' + cssUrl(ph.src))}" role="img" aria-label="${esc(r.name)}の写真"></span>`
+    return ph ? `<span class="thumb${ph.gen ? ' gen' : ''}" style="${esc('background-image:' + cssUrl(ph.src))}" role="img" aria-label="${esc(r.name)}の写真"></span>`
               : `<span class="thumb svg" aria-hidden="true">${dishSvg(r)}</span>`;
 }
 
@@ -1220,7 +1480,13 @@ const ING_ART = {
     'トマト':{g:'round',c:'#e2412f',c2:'#f5a08a',s:9,n:3,z:2}, 'トマト缶':{g:'dot',c:'#c93a2b',s:6,n:5,z:1}, 'きゅうり':{g:'round',c:'#8fc46b',c2:'#e5f2d3',s:7,n:5,z:2},
     'もやし':{g:'strand',c:'#f2eddc',s:11,n:7,z:2}, 'しめじ':{g:'cap',c:'#b18a6a',c2:'#f1e4d2',s:7,n:5,z:3}, 'しいたけ':{g:'cap',c:'#6f4a30',c2:'#e8d7c0',s:9,n:3,z:3}, 'まいたけ':{g:'cap',c:'#8d6a4a',c2:'#e6d6c2',s:7,n:4,z:3}, 'えのき':{g:'strand',c:'#f4efdf',s:10,n:6,z:2},
     'かぼちゃ':{g:'wedge',c:'#f0a63a',c2:'#3f6b34',s:12,n:4,z:2}, 'ゴーヤ':{g:'bitter',c:'#4f9a49',c2:'#a9d59d',s:11,n:5,z:2}, 'ごぼう':{g:'stick',c:'#9a7050',s:12,n:6,z:2}, 'れんこん':{g:'lotus',c:'#f4efe4',c2:'#d9d0bf',s:10,n:3,z:2},
-    'たけのこ':{g:'stick',c:'#efd9a4',s:9,n:4,z:2}, 'コーン':{g:'dot',c:'#f7cf3a',s:3,n:8,z:4}, 'キムチ':{g:'leaf',c:'#d9482c',c2:'#f2a284',s:10,n:5,z:2},
+    'たけのこ':{g:'stick',c:'#efd9a4',s:9,n:4,z:2},
+    'ツナ':{g:'dot',c:'#d9c7a3',s:5,n:6,z:2},
+    'あじ':{g:'fillet',c:'#c9a46a',c2:'#f1dcb4',s:16,n:2,z:2}, 'いわし':{g:'fillet',c:'#7f8fa3',c2:'#e3e9ef',s:15,n:2,z:2}, 'さんま':{g:'fillet',c:'#8a8f98',c2:'#e6e8ec',s:20,n:1,z:2}, 'かれい':{g:'fillet',c:'#b8946a',c2:'#efdcc0',s:20,n:1,z:2},
+    'いか':{g:'ring',c:'#f2e7dc',c2:'#fbf6f0',s:8,n:5,z:3}, 'たこ':{g:'chunk',c:'#c4504a',c2:'#f0c4b8',s:8,n:5,z:3},
+    '里芋':{g:'round',c:'#efe6d4',c2:'#d8c9ad',s:10,n:4,z:2}, 'さつまいも':{g:'wedge',c:'#f1c75a',c2:'#7a2f5a',s:11,n:4,z:2}, '長いも':{g:'stick',c:'#f7f2e6',s:10,n:5,z:2},
+    'オクラ':{g:'ring',c:'#5f9b45',c2:'#e9f3d9',s:5,n:6,z:3}, 'チンゲン菜':{g:'leaf',c:'#7fb85a',c2:'#e3f0d2',s:12,n:4,z:2}, 'エリンギ':{g:'cap',c:'#e9dcc6',c2:'#f6efe2',s:9,n:4,z:3},
+    'なめこ':{g:'dot',c:'#c88a3c',s:4,n:8,z:3}, '切り干し大根':{g:'strand',c:'#efe3c6',s:11,n:8,z:2}, 'おから':{g:'dot',c:'#efe5cc',s:5,n:16,z:1}, 'さやいんげん':{g:'stick',c:'#4f9a49',s:11,n:4,z:3}, 'コーン':{g:'dot',c:'#f7cf3a',s:3,n:8,z:4}, 'キムチ':{g:'leaf',c:'#d9482c',c2:'#f2a284',s:10,n:5,z:2},
     '豆腐':{g:'cube',c:'#faf7ef',c2:'#ffffff',s:9,n:4,z:2}, '厚揚げ':{g:'cube',c:'#e2b060',c2:'#f8f2e2',s:10,n:4,z:2}, '油揚げ':{g:'stick',c:'#e1b25c',s:9,n:4,z:2}, 'こんにゃく':{g:'cube',c:'#8f8a80',c2:'#c8c3b8',s:8,n:3,z:1},
     'わかめ':{g:'strand',c:'#2c5a3f',s:11,n:5,z:2}, 'ひじき':{g:'strand',c:'#2a2622',s:8,n:10,z:2}, '春雨':{g:'strand',c:'#e9e2cf',s:14,n:8,z:1},
     '餃子の皮':{g:'dumpling',c:'#f3e6c8',c2:'#d9c39a',s:13,n:5,z:3}, 'チーズ':{g:'dot',c:'#f6d76a',s:8,n:5,z:4}, '牛乳':{g:'dot',c:'#fbf8ef',s:10,n:2,z:1},
@@ -1351,11 +1617,33 @@ function dishSvg(r, opts={}){
         curry:''}[fl] || '';
     items.sort((a,b) => a.z - b.z);
     const body = items.map(x => place(x.item)).join('');
-    const baseOp = art ? .95 : ({'煮':.95,'炒':.5,'焼':.42,'揚':.35,'和え':.55,'炊':.9,'汁':1}[r.method] || .6);
+    const plated = !art && !under && r.type === '主菜' && (r.method === '焼' || r.method === '揚');   // 焼き物・揚げ物は白い皿にキャベツを添えて盛る
+    const baseOp = art ? .95 : plated ? 0 : ({'煮':.95,'炒':.8,'和え':.6,'炊':.9,'汁':1}[r.method] || .7);
     const baseShape = under || (opts.plain ? '' : `<path opacity="${baseOp}" d="M50,${cy-R} C${cx+R*.9},${cy-R*.9} ${cx+R*1.05},${cy+R*.5} ${cx+R*.55},${cy+R*.85} C${cx-R*.2},${cy+R*1.1} ${cx-R*1.05},${cy+R*.4} ${cx-R*.95},${cy-R*.3} C${cx-R*.85},${cy-R*.95} ${cx-R*.2},${cy-R*1.05} 50,${cy-R} Z" fill="${base}"/>`);
     const tintShape = tint ? `<circle cx="50" cy="50" r="${R}" fill="${tint}"/>` : '';
-    const gloss = `<ellipse cx="38" cy="30" rx="12" ry="6" fill="#fff" opacity=".18" transform="rotate(-25 38 30)"/>`;
-    return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="dish" aria-hidden="true"><g>${baseShape}<g stroke="rgba(40,20,10,.16)" stroke-width=".5">${body}</g>${over}${tintShape}${garnish}${gloss}</g></svg>`;
+    // 仕上げ: 太い輪郭（ぬりの下に引くので、重なった具材の線は隠れる）＋鮮やかなぬり＋つや＋影で、ポップなイラストに
+    const side = plated ? sideGarnish(rng) : '';
+    const shapes = (under || baseShape) + side + body + over + garnish;
+    // 輪郭は「ぬりのある形」だけ（線だけの飾りや細部はなぞらない）
+    const asLines = t => t.replace(/<(path|line)\b[^>]*fill="none"[^>]*\/>/g, '').replace(/<line\b[^>]*\/>/g, '')
+        .replace(/fill="(?!none)[^"]*"/g, 'fill="none"').replace(/stroke="[^"]*"/g, '').replace(/stroke-width="[^"]*"/g, '').replace(/opacity="[^"]*"/g, '');
+    const shine = `<ellipse cx="38" cy="32" rx="9" ry="4.5" fill="#fff" opacity=".35" transform="rotate(-30 38 32)"/><circle cx="31" cy="38" r="1.6" fill="#fff" opacity=".5"/>`;
+    return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="dish pop" aria-hidden="true">
+        <g filter="url(#pop-shadow)">
+            <g fill="none" stroke="#4a2e1f" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round">${asLines(shapes)}</g>
+            <g filter="url(#pop-fill)">${shapes}${tintShape}</g>
+        </g>
+        ${under ? '' : shine}
+    </svg>`;
+}
+function sideGarnish(rng){
+    let out = '';
+    for (let k = 0; k < 22; k++){ const x = 66 + (rng()-.5)*20, y = 64 + (rng()-.5)*16; out += `<path d="M${x.toFixed(1)},${y.toFixed(1)} q${(4+rng()*4).toFixed(1)},${(-2+rng()*4).toFixed(1)} ${(9+rng()*5).toFixed(1)},${(-1+rng()*2).toFixed(1)}" stroke="${rng() < .5 ? '#d9eab0' : '#bcd98a'}" stroke-width="1.3" fill="none" stroke-linecap="round" transform="rotate(${(-30+rng()*60).toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})"/>`; }
+    return `<g>${out}</g><circle cx="76" cy="48" r="4.6" fill="#e2412f"/><circle cx="74.8" cy="46.6" r="1.3" fill="#fff" opacity=".6"/><path d="M76,43.6 l1.2,-1.4 M76,43.6 l-1.4,-.9" stroke="#3f7a35" stroke-width=".9" stroke-linecap="round"/>`;
+}
+function mixHex(a, b, t){
+    const h = x => { x = String(x).replace('#',''); if (x.length === 3) x = x.split('').map(c => c + c).join(''); return [0,2,4].map(i => parseInt(x.slice(i, i+2), 16)); };
+    try{ const A = h(a), B = h(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2,'0')).join(''); }catch(e){ return a; }
 }
 
 /* =========================================================
@@ -1438,9 +1726,8 @@ function upgradeHtml(r, compact=false){
     const u = upgradeOf(r); if (!u) return '';
     const done = skillDone(r);
     const base = r.isTwist ? r.base : r;
-    return `<div class="skill${done?' done':''}">
-        <div class="band">ひと手間</div>
-        <div class="body">
+    return `<div class="card skill${done?' done':''}">
+            <div class="eyebrow">ひと手間${done ? '・習得済み' : ''}</div>
             <div class="add"><span class="plus">＋</span>${esc(u.add)}</div>
             <div class="why">${esc(u.why)}</div>
             <div class="how"><b>${esc(u.skill)}</b>　${esc(u.how)}</div>
@@ -1449,7 +1736,6 @@ function upgradeHtml(r, compact=false){
                 : hasPro()
                 ? `<button class="btn sm primary" data-act="skill-done" data-id="${esc(base.id)}">やってみた</button><span class="small muted">できたら押してください。記録に残ります</span>`
                 : `<button class="btn sm" data-act="paywall-skill">やってみた<span class="plus-mark">プラス</span></button><span class="small muted">記録と腕前の称号はプラスで使えます</span>`}</div>`}
-        </div>
     </div>`;
 }
 
@@ -1540,14 +1826,16 @@ function reviewHtml(){
         if (ws.genres >= 3) parts.push(`${ws.genres}つのジャンルを行き来しています`);
         msg = parts.join('。') + '。' + (ws.days >= 5 ? 'よく回した一週間です。' : ws.days >= 3 ? 'いいペースです。' : '一日一日が積み重なっています。');
     }
-    return `<div class="review">
-        <div class="label">今週のふりかえり（${esc(jpDate(from).replace(/（.*/,''))}〜）</div>
+    const allDays = new Set(S.history.map(h => h.d)).size, monthCount = S.history.filter(h => h.d.startsWith(TODAY.slice(0,7))).length;
+    return `<div class="card review">
+        <div class="eyebrow">今週のふりかえり（${esc(jpDate(from).replace(/（.*/,''))}〜）</div>
         <p>${esc(msg)}</p>
         <div class="stats">
             <div class="stat"><div class="n">${ws.days}</div><div class="k">記録した日</div></div>
             <div class="stat"><div class="n">${ws.fresh.length}</div><div class="k">新しい料理</div></div>
             <div class="stat"><div class="n">${ws.skills}</div><div class="k">ひと手間</div></div>
         </div>
+        <p class="foot">これまで ${allDays}日記録・今月 ${monthCount}品・${streak()}日続けて記録中</p>
     </div>`;
 }
 
@@ -1569,12 +1857,14 @@ function installHtml(){
 
 /* =========================================================
    ごはん帖プラス（課金のしくみ）
-   いまは billingEnabled:false なので、すべての機能が無料で使える。
-   販売を始めるときは billingEnabled を true にし、価格と商品IDを App Store Connect に合わせる。
+   billingMode:'native' のため、Web 版（PWA）は全機能無料。iPhone アプリ版は revenueCatApiKey を入れると課金が有効になる。
+   価格・商品ID・お試しの内容は App Store Connect の設定と合わせる。
    ========================================================= */
 const PLAN_WEEK_FREE = 1;   // 無料版で見られる献立プランの日数
 const PLAN = {
-    billingEnabled: false,              // true にすると、下の freeLimits を超える機能が「プラス」限定になる
+    // 課金を有効にする範囲: 'off'＝全員無料 / 'native'＝iPhone アプリ版だけ（RevenueCat のキーを入れたとき）/ 'all'＝Web 版も
+    billingMode: 'native',
+    get billingEnabled(){ return this.billingMode === 'all' || (this.billingMode === 'native' && isNative() && !!this.revenueCatApiKey); },
     name: 'ごはん帖プラス',
     prices: [                           // 表示用。実際の価格は App Store Connect の設定が正
         {id:'gohancho_plus_monthly', label:'月額プラン', price:'300円 / 月', note:''},
@@ -1585,7 +1875,8 @@ const PLAN = {
     termsUrl: 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',   // 利用規約（独自の規約を作ったら差し替え）
     webCheckoutUrl: '',                 // Web で売るとき（Stripe の Payment Link など）。空なら表示しない
     earlySupporterBefore: '',           // 'YYYY-MM-DD'。この日より前に使い始めた人はずっとプラス扱い（空なら無効）
-    trialDays: 7,                       // 使い始めてこの日数（使った日の数）までは、すべての機能を使える
+    trialDays: 7,
+    introTrialLabel: '最初の7日間は無料',   // App Store Connect の「お試しオファー」と同じ内容にする                       // 使い始めてこの日数（使った日の数）までは、すべての機能を使える
     freeLimits: {dishes:4, twistPerDay:3, myPhotos:12, weekDays:PLAN_WEEK_FREE, shoppingHints:1},
     benefits: [`1週間分の献立プラン（まとめ買いに。無料版は${PLAN_WEEK_FREE}日分まで）`, 'ひと手間の「やってみた」で腕前を記録', '買い足すと作れる料理が増える食材をすべて表示', '5品・6品の献立（おもてなし・作り置きの日に）', 'ひとひねり案を回数無制限で', '「わが家の写真」を枚数無制限で'],
 };
@@ -1594,7 +1885,8 @@ function isSubscribed(){
     return !!(S.pro && S.pro.active);
 }
 // お試し期間: アプリを開いた日の数が trialDays 以下のあいだ（＝4日目の利用から無料版の範囲になる）
-function trialActive(){ return PLAN.billingEnabled && (S.usedDays || []).length <= PLAN.trialDays; }
+// iPhone アプリ版では、お試しは Apple 公式の「お試しオファー」（App Store Connect で7日間無料を設定）で行い、端末では数えない
+function trialActive(){ return PLAN.billingEnabled && !isNative() && (S.usedDays || []).length <= PLAN.trialDays; }
 function trialDaysLeft(){ return Math.max(0, PLAN.trialDays - (S.usedDays || []).length); }
 function hasPro(){
     if (!PLAN.billingEnabled) return true;
@@ -1691,6 +1983,7 @@ function renderSheet(){
         body = `<div class="ob-dots" aria-hidden="true">${dots}</div>${body}
             ${st > 0 ? '' : '<button class="btn sm ghost ob-skip" data-act="ob-skip">設定せずに使う</button>'}`;
     }
+    if (sheet.kind === 'share') body = shareSheetHtml();
     if (sheet.kind === 'paywall'){
         const reason = PAYWALL_REASON[sheet.reason] || '';
         const native = !!purchasesPlugin();
@@ -1700,6 +1993,7 @@ function renderSheet(){
             ${reason ? `<p class="pw-reason">${esc(reason)}</p>` : ''}
             <ul class="pw-list">${PLAN.benefits.map(b => `<li>${esc(b)}</li>`).join('')}</ul>
             ${PLAN.billingEnabled ? `
+                ${native ? `<p class="pw-free">${esc(PLAN.introTrialLabel)}。無料期間中に解約すれば料金はかかりません。</p>` : ''}
                 <div class="pw-prices">${PLAN.prices.map((p,i) => `<button class="pw-price${p.note?' best':''}" data-act="buy" data-id="${esc(p.id)}"><span class="l">${esc(p.label)}</span><span class="p">${esc(p.price)}</span>${p.note?`<span class="n">${esc(p.note)}</span>`:''}</button>`).join('')}</div>
                 ${!native && PLAN.webCheckoutUrl ? `<a class="btn primary" href="${esc(PLAN.webCheckoutUrl)}" target="_blank" rel="noopener">Web で購入する</a>` : ''}
                 <button class="btn sm ghost" data-act="restore">購入を復元</button>
@@ -1775,6 +2069,8 @@ function fmtAmount(v, unit){
         return String(Math.max(step, Math.round(v / step) * step));
     }
     if (v >= 3){ const h = Math.round(v * 2) / 2; return Number.isInteger(h) ? String(h) : `${Math.floor(h)}と1/2`; }
+    const t = Math.round(v * 3);   // 1/3・2/3 はそのまま表す（レシピに多い）
+    if (t % 3 !== 0 && Math.abs(v * 3 - t) < 0.06){ const w3 = Math.floor(t / 3), r3 = t % 3; return (w3 ? `${w3}と` : '') + `${r3}/3`; }
     const q = Math.round(v * 4) / 4;
     if (q === 0) return '1/8';
     const w = Math.floor(q), f = +(q - w).toFixed(2);
@@ -1834,7 +2130,8 @@ function viewSettings(){
         </div>
         <div class="set-group">
             <div class="set-title">アプリ</div>
-            ${installHtml()}
+            ${reminderHtml()}
+            ${isNative() ? '' : installHtml()}
             <button class="btn sm" data-act="ob-again">はじめての設定をもう一度</button>
         </div>
         <div class="set-group">
@@ -1855,12 +2152,140 @@ function viewSettings(){
         </div>
         <div class="set-group">
             <div class="set-title">このアプリについて</div>
-            <p class="small muted" style="margin:0">わが家のごはん帖 ${APP_VERSION}。記録・写真・設定はこの端末の中だけに保存され、外部に送信しません。料理写真は Wikipedia / Wikimedia Commons から読み込み、撮影者とライセンスを表示しています。</p>
-            <a class="btn sm" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
+            <p class="small muted" style="margin:0">わが家のごはん帖 ${APP_VERSION}。記録・写真・設定はこの端末の中だけに保存され、外部に送信しません。料理の絵はアプリに入っているイラストです。</p>
+            <div class="row"><a class="btn sm" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a><a class="btn sm" href="support.html" target="_blank" rel="noopener">サポート・よくある質問</a></div>
         </div>
     </section>`;
 }
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
+
+/* =========================================================
+   iPhone アプリ版（Capacitor）かどうか
+   ========================================================= */
+function isNative(){ try{ return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); }catch(e){ return false; } }
+function nativePlugin(name){ try{ return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins[name]) || null; }catch(e){ return null; } }
+
+/* =========================================================
+   買い物メモ（1週間プランの主菜から、家にない材料をまとめる）
+   ========================================================= */
+function visiblePlanDays(){
+    if (!S.week) return [];
+    const days = S.week.days.filter(x => x.d >= TODAY);
+    return hasPro() ? days : days.slice(0, PLAN.freeLimits.weekDays);
+}
+function shoppingList(){
+    const have = fridgeKeys(), fac = servingFactor(), map = new Map();
+    visiblePlanDays().forEach(x => {
+        const r = byId(x.id); if (!r) return;
+        r.items.forEach(i => {
+            if (i.opt || PANTRY.has(i.key) || have.has(i.key)) return;
+            const e = map.get(i.key) || {key:i.key, label:i.label, qty:[], dishes:[]};
+            if (i.qty) e.qty.push(scaleText(i.qty, fac));
+            if (!e.dishes.includes(r.name)) e.dishes.push(r.name);
+            map.set(i.key, e);
+        });
+    });
+    return [...map.values()].sort((a, b) => b.dishes.length - a.dishes.length || a.label.localeCompare(b.label, 'ja'));
+}
+// 同じ単位の分量は足し合わせる（例: 1/3本＋1/3本 → 2/3本、150g＋200g → 350g）
+function sumQty(list){
+    const groups = new Map(), rest = [];
+    list.forEach(q => {
+        const m = String(q).match(/^(\D*?)(?:(\d+)と)?(\d+(?:\.\d+)?)(?:\/(\d+))?(\D*)$/);
+        if (!m){ rest.push(q); return; }
+        const v = (m[2] ? Number(m[2]) : 0) + (m[4] ? Number(m[3]) / Number(m[4]) : Number(m[3]));
+        const key = m[1] + '|' + m[5];
+        groups.set(key, (groups.get(key) || 0) + v);
+    });
+    const out = [...groups.entries()].map(([k, v]) => { const [pre, unit] = k.split('|'); const f = fmtAmount(v, unit); return pre + (f === '1/8' ? '少々' : f) + unit; });
+    return [...out, ...rest];
+}
+function shopDoneSet(){ const w = S.week ? S.week.start : ''; if (!S.shopDone || S.shopDone.week !== w) S.shopDone = {week:w, keys:[]}; return new Set(S.shopDone.keys); }
+function shoppingHtml(){
+    const list = shoppingList(); if (!S.week || !visiblePlanDays().length) return '';
+    const done = shopDoneSet();
+    return `<div class="sec-head"><h3>買い物メモ</h3><span class="hint">${visiblePlanDays().length}日分の主菜で使う材料のうち、冷蔵庫・常備品にないもの（${Number(S.settings.servings)||2}人分）</span></div>
+        <div class="list shop">${list.length ? list.map(e => `<label class="shop-row${done.has(e.key)?' done':''}"><input type="checkbox" data-act="shop-check" data-k="${esc(e.key)}" ${done.has(e.key)?'checked':''}><span class="nm">${esc(e.label)}</span><span class="q">${esc(sumQty(e.qty).join('＋'))}</span><span class="for">${esc(e.dishes.join('・'))}</span></label>`).join('')
+            : '<div class="empty">必要な材料は、冷蔵庫と常備品でそろっています。</div>'}</div>`;
+}
+
+/* =========================================================
+   LINE・ほかのアプリで家族に送る
+   ========================================================= */
+function menuShareText(){
+    const m = session.menu; if (!m) return '';
+    const lines = [`【${jpDate(TODAY)}の献立】`];
+    m.items.forEach(x => { if (x.r) lines.push(`${x.slot === '汁物' ? '汁もの' : x.slot}：${x.r.name}`); });
+    const main = m.items[0] && m.items[0].r;
+    if (!(main && (main.type === 'ごはん' || main.type === '麺'))) lines.push('ご飯');
+    lines.push('', '― わが家のごはん帖');
+    return lines.join('\n');
+}
+function weekShareText(){
+    const days = visiblePlanDays(); if (!days.length) return '';
+    const lines = ['【献立の予定】'];
+    days.forEach(x => { const r = byId(x.id); if (r) lines.push(`${jpDate(x.d)}　${r.name}`); });
+    const list = shoppingList(); const done = shopDoneSet();
+    const rest = list.filter(e => !done.has(e.key));
+    if (rest.length){ lines.push('', '【買い物メモ】'); rest.forEach(e => lines.push(`□ ${e.label}${e.qty.length ? '（' + sumQty(e.qty).join('＋') + '）' : ''}`)); }
+    lines.push('', '― わが家のごはん帖');
+    return lines.join('\n');
+}
+function lineShareUrl(text){ return 'https://line.me/R/share?text=' + encodeURIComponent(text); }
+function openShare(kind){
+    const text = kind === 'week' ? weekShareText() : menuShareText();
+    if (!text){ toast('送る献立がありません'); return; }
+    sheet = {kind:'share', text, title: kind === 'week' ? '献立の予定と買い物メモ' : '今日の献立'}; renderSheet();
+}
+async function systemShare(text, title){
+    const P = nativePlugin('Share');
+    try{
+        if (P){ await P.share({title, text, dialogTitle:'家族に送る'}); return; }
+        if (navigator.share){ await navigator.share({title, text}); return; }
+    }catch(e){ if (e && (e.name === 'AbortError' || /cancel/i.test(String(e.message)))) return; }
+    copyText(text);
+}
+function copyText(text){
+    const done = () => toast('コピーしました。LINE などに貼りつけて送れます');
+    try{ navigator.clipboard.writeText(text).then(done, () => { const t = $('#share-text'); if (t){ t.select(); toast('文字を選択しました。コピーしてください'); } }); }
+    catch(e){ const t = $('#share-text'); if (t){ t.select(); toast('文字を選択しました。コピーしてください'); } }
+}
+function shareSheetHtml(){
+    const canSystem = !!(nativePlugin('Share') || navigator.share);
+    return `<h2>${esc(sheet.title)}を送る</h2>
+        <textarea id="share-text" class="share-text" readonly aria-label="送る内容">${esc(sheet.text)}</textarea>
+        <a class="btn line wide" href="${esc(lineShareUrl(sheet.text))}" target="_blank" rel="noopener">LINE で送る</a>
+        <div class="row">
+            ${canSystem ? '<button class="btn wide" data-act="share-system">ほかのアプリで送る</button>' : ''}
+            <button class="btn wide" data-act="share-copy">コピーする</button>
+        </div>
+        <p class="tiny muted">LINE を押すと、送り先（家族やグループ）を選ぶ画面が開きます。</p>
+        <button class="btn ghost" data-act="sheet-close">閉じる</button>`;
+}
+
+/* =========================================================
+   毎日のお知らせ（iPhone アプリ版のみ。端末の通知で献立を決める時間を知らせる）
+   ========================================================= */
+const NOTIFY_ID = 1001;
+async function setReminder(hour){
+    const P = nativePlugin('LocalNotifications');
+    if (!P){ toast('お知らせは iPhone アプリ版で使えます'); return; }
+    try{
+        await P.cancel({notifications:[{id: NOTIFY_ID}]}).catch(() => {});
+        if (hour === null){ S.settings.remind = null; save(); toast('お知らせを止めました'); render(); return; }
+        const perm = await P.requestPermissions();
+        if (perm && perm.display && perm.display !== 'granted'){ toast('通知が許可されていません。iPhone の「設定」→「ごはん帖」→「通知」で許可してください'); return; }
+        await P.schedule({notifications:[{id: NOTIFY_ID, title:'今日の献立を決めましょう', body:'おまかせで、主菜・副菜・汁ものをすぐに提案します。', schedule:{on:{hour, minute:0}, allowWhileIdle:true}}]});
+        S.settings.remind = hour; save(); toast(`毎日${hour}時にお知らせします`); render();
+    }catch(e){ toast('お知らせを設定できませんでした'); }
+}
+function reminderHtml(){
+    if (!isNative()) return `<p class="small muted" style="margin:0">毎日のお知らせ（献立を決める時間の通知）は iPhone アプリ版で使えます。</p>`;
+    const cur = S.settings.remind;
+    return `<div class="field"><label>毎日のお知らせ</label>
+        <div class="chips">${[['off','なし'],[15,'15時'],[16,'16時'],[17,'17時'],[18,'18時']].map(([v,l]) => `<button class="chip" data-act="remind" data-v="${v}" aria-pressed="${v==='off' ? !cur : cur===v}">${l}</button>`).join('')}</div>
+        <span class="small muted">献立を決める時間に、端末の通知でお知らせします。</span></div>`;
+}
 
 /* ---- 今日の献立 ---- */
 function viewToday(){
@@ -1900,27 +2325,31 @@ function viewToday(){
     <section class="sec">
         ${planned ? `<div class="note"><span>1週間プランでは、今日の主菜は <b>${esc(planned.name)}</b></span><button class="btn sm" data-act="use-plan">献立にする</button></div>` : ''}
         <div class="sec-head"><h2>今日の献立</h2><span class="hint">${esc(COMPOSE[m.n].name)}・${m.n}品とご飯・${Number(S.settings.servings)||2}人分。${esc(countReason(m.n))}</span></div>
-        <div class="field"><span class="label">気分</span><div class="chips scroll" role="group" aria-label="今日の気分">${moodChips}</div></div>
-        <div class="field"><span class="label">品数</span><div class="chips scroll" role="group" aria-label="品数">${countChips(S.settings.dishCount, 'count')}</div></div>
+        <div class="card cond">
+            <div class="field"><span class="eyebrow">気分</span><div class="chips scroll" role="group" aria-label="今日の気分">${moodChips}</div></div>
+            <div class="field"><span class="eyebrow">品数</span><div class="chips scroll" role="group" aria-label="品数">${countChips(S.settings.dishCount, 'count')}</div></div>
+            <label class="check"><input type="checkbox" id="use-fridge" data-act="use-fridge" ${session.useFridge?'checked':''}><span>「材料から」に登録した食材（冷蔵庫${S.fridge.length}品・常備${S.staples.length}品）を使う料理を優先する</span></label>
+        </div>
         <div class="tray" aria-label="今日のお膳（${m.n}品）">
             <div class="tray-row back">${mains.map(x => spot(x.it, x.i, mainW)).join('')}</div>
             ${sides.length ? `<div class="tray-row mid">${sides.map(x => spot(x.it, x.i, sideW)).join('')}</div>` : ''}
             <div class="tray-row front">${riceSpot}${soups.map(x => spot(x.it, x.i, '40%')).join('')}</div>
         </div>
-        <div class="row">
-            <button class="btn primary wide" data-act="decide" ${main?'':'disabled'}>この献立に決定</button>
+        <div class="actions">
+            <button class="btn primary full" data-act="decide" ${main?'':'disabled'}>この献立に決定</button>
             <button class="btn" data-act="new-menu">まるごと入れ替え</button>
+            <button class="btn line" data-act="share-menu" ${main?'':'disabled'}>家族に送る</button>
         </div>
-        <label class="check"><input type="checkbox" id="use-fridge" data-act="use-fridge" ${session.useFridge?'checked':''}><span>「材料から」に登録した食材（冷蔵庫${S.fridge.length}品・常備${S.staples.length}品）を使う料理を優先する</span></label>
-        ${main ? `<div class="sec-head"><h3>今日のひと手間</h3><span class="hint">${esc(main.name)}に、これを足すと腕が上がります</span></div>${upgradeHtml(main)}` : ''}
-        <p class="small muted" style="margin:0">${S.settings.avoidDays}日以内に作った料理は出しません。前日と同じ肉・魚やジャンルも続かないように選んでいます。${S.settings.avoid.length ? `苦手な食材（${esc(S.settings.avoid.join('・'))}）を使う料理は出しません。` : ''}${photoNote() ? '<br><span class="credit">' + esc(photoNote()) + '</span>' : ''}</p>
     </section>
+
+    ${main ? `<section class="sec">
+        <div class="sec-head"><h2>今日のひと手間</h2><span class="hint">${esc(main.name)}に、これを足すと腕が上がります</span></div>
+        ${upgradeHtml(main)}
+    </section>` : ''}
 
     ${tw ? `<section class="sec">
         <div class="sec-head"><h2>今日のひとひねり</h2><span class="hint">いつもの定番を、ちょっと変えた一品</span></div>
-        <div class="tanzaku pop">
-            <div class="band">ひとひねり</div>
-            <div class="body">
+        <div class="card pop">
                 <div class="tw-item">
                     ${thumbHtml(tw)}
                     <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
@@ -1930,11 +2359,10 @@ function viewToday(){
                     </div>
                 </div>
                 <div class="row">
-                    <button class="btn sm yolk" data-act="open" data-id="${esc(tw.id)}">作り方を見る</button>
+                    <button class="btn sm primary" data-act="open" data-id="${esc(tw.id)}">作り方を見る</button>
                     <button class="btn sm" data-act="twist-main">主菜にする</button>
                     <button class="btn sm ghost" data-act="new-twist">別のひねり</button>
                 </div>
-            </div>
         </div>
     </section>` : ''}
 
@@ -1953,9 +2381,11 @@ function viewToday(){
                 <div class="t" data-act="open" data-id="${esc(r.id)}">${esc(r.name)}<div class="s">${esc(metaLine(r))}</div></div>
                 <button class="btn sm ghost" data-act="week-reroll" data-d="${x.d}">別の案</button>
             </div>`; }).join('')}</div>
-            <div class="row"><button class="btn" data-act="make-week">作り直す</button></div>`
+            <div class="row"><button class="btn line" data-act="share-week">予定と買い物メモを送る</button><button class="btn" data-act="make-week">作り直す</button></div>
+            ${shoppingHtml()}`
         : `<div class="list"><div class="empty">今日から7日分の主菜をまとめて考えます。買い物の前に便利です。${!hasPro() ? `無料版では${PLAN.freeLimits.weekDays}日分まで見られます。` : ''}</div></div>
            <div class="row"><button class="btn" data-act="make-week">1週間分を考える</button></div>`}
+        <p class="foot">${S.settings.avoidDays}日以内に作った料理は出しません。前日と同じ肉・魚やジャンルも続かないように選んでいます。${S.settings.avoid.length ? `苦手な食材（${esc(S.settings.avoid.join('・'))}）を使う料理は出しません。` : ''}${photoNote() ? '<br><span class="credit">' + esc(photoNote()) + '</span>' : ''}</p>
     </section>`;
 }
 
@@ -1981,17 +2411,18 @@ function viewFridge(){
         results = `
         <section class="sec">
             <div class="sec-head split"><h2>作れる料理</h2>
-                <button class="btn sm yolk" data-act="fridge-twist">この材料でひとひねり案</button></div>
+                <button class="btn sm" data-act="fridge-twist">この材料でひとひねり案</button></div>
             ${block('今ある材料で作れる', `${ready.length}品`, ready)}
             ${block('代わりの食材で作れる', '黄色の食材を置きかえます', withSub)}
             ${block('あと1〜2品あれば作れる', '赤字が足りない食材', near)}
             ${!ready.length && !withSub.length && !near.length ? '<div class="list"><div class="empty">この組み合わせに合う料理が見つかりませんでした。食材をもう少し足してみてください。</div></div>' : ''}
-            <p class="small muted" style="margin:0">調味料（醤油・砂糖・みりん・味噌・油など）とご飯、それに「いつも家にある食材」は、あるものとして数えています。</p>
+            <p class="foot">調味料（醤油・砂糖・みりん・味噌・油など）とご飯、それに「いつも家にある食材」は、あるものとして数えています。</p>
         </section>`;
     }
     return `
     <section class="sec">
         <div class="sec-head"><h2>冷蔵庫にある材料</h2><span class="hint">ここに登録した食材は次に開いたときも残ります</span></div>
+        <div class="card">
         <form class="inputbar" data-form="add-ing">
             <input type="text" id="ing-input" placeholder="例: 豚肉と玉ねぎとキャベツ" autocomplete="off" aria-label="材料を入力">
             <button class="btn primary" type="submit">追加</button>
@@ -2000,17 +2431,20 @@ function viewFridge(){
         ${S.fridge.length ? `<div class="chips">${S.fridge.map(f => `<span class="chip have">${esc(f)}<button class="x" data-act="rm-ing" data-v="${esc(f)}" aria-label="${esc(f)}を外す">×</button></span>`).join('')}</div>
             <div class="row"><button class="btn sm ghost danger" data-act="clear-ing">全部外す</button></div>`
         : `<div class="note">まだ材料が登録されていません。下のよく使う食材をタップするか、「豚肉、キャベツ、卵」のようにまとめて入力できます。 <button class="btn sm" data-act="sample-ing">例: 豚肉・キャベツ・卵で試す</button></div>`}
-        <div class="label">よく使う食材</div>
+        <div class="eyebrow">よく使う食材</div>
         <div class="chips">${QUICK.map(q => { const on = S.fridge.some(x => keyOf(x) === keyOf(q)); return `<button class="chip" data-act="toggle-ing" data-v="${esc(q)}" aria-pressed="${on}">${esc(q)}</button>`; }).join('')}</div>
+        </div>
     </section>
     <section class="sec">
         <div class="sec-head"><h2>いつも家にある食材</h2><span class="hint">卵・玉ねぎなど、切らさない常備品。毎回入れなくても「ある」として数えます</span></div>
+        <div class="card">
         <form class="inputbar" data-form="add-staple">
             <input type="text" id="staple-input" placeholder="例: 卵、玉ねぎ、ツナ缶" autocomplete="off" aria-label="常備品を入力">
             <button class="btn primary" type="submit">登録</button>
         </form>
         ${S.staples.length ? `<div class="chips">${S.staples.map(f => `<span class="chip have">${esc(f)}<button class="x" data-act="rm-staple" data-v="${esc(f)}" aria-label="${esc(f)}を外す">×</button></span>`).join('')}</div>` : ''}
         <div class="chips">${STAPLE_QUICK.map(q => { const on = S.staples.some(x => keyOf(x) === keyOf(q)); return `<button class="chip" data-act="toggle-staple" data-v="${esc(q)}" aria-pressed="${on}">${esc(q)}</button>`; }).join('')}</div>
+        </div>
         ${hintsHtml}
     </section>
     ${results}`;
@@ -2044,7 +2478,7 @@ function viewTwist(){
         <option value="">おまかせ（いろいろな定番から）</option>
         ${groups.map(([t,l]) => `<optgroup label="${l}">${RECIPES.filter(r => r.type === t).map(r => `<option value="${r.id}" ${twistState.baseId===r.id?'selected':''}>${esc(r.name)}</option>`).join('')}</optgroup>`).join('')}
     </select>`;
-    const seg = (key, list) => `<div class="chips" role="group">${list.map(([v,l]) => `<button class="chip yolk" data-act="tw-set" data-key="${key}" data-v="${v}" aria-pressed="${String(twistState[key])===String(v)}">${esc(l)}</button>`).join('')}</div>`;
+    const seg = (key, list) => `<div class="chips" role="group">${list.map(([v,l]) => `<button class="chip" data-act="tw-set" data-key="${key}" data-v="${v}" aria-pressed="${String(twistState[key])===String(v)}">${esc(l)}</button>`).join('')}</div>`;
     const flavorList = [['any','おまかせ'],['none','味はそのまま'], ...Object.entries(FLAVORS).map(([k,f]) => [k, f.label])];
     const formList = [['any','おまかせ'],['none','かたちはそのまま'], ...Object.entries(FORMS).map(([k,f]) => [k, f.label])];
     const res = twistState.results || [];
@@ -2052,9 +2486,8 @@ function viewTwist(){
     return `
     <section class="sec">
         <div class="sec-head"><h2>定番をひとひねり</h2><span class="hint">味の方向・かたち・主役の食材を入れかえて、新しい一品を考えます</span></div>
-        <div class="tanzaku pop">
-            <div class="band">ひとひねり案</div>
-            <div class="body">
+        <div class="card pop">
+            <div class="eyebrow">ひとひねり案</div>
             ${res.length ? res.map(t => `
                 <div class="tw-item">
                     ${thumbHtml(t)}
@@ -2062,24 +2495,25 @@ function viewTwist(){
                         <div class="tw-name" data-act="open" data-id="${esc(t.id)}">${esc(t.name)}</div>
                         <div class="from">元の料理: ${esc(t.base.name)}</div>
                         <ul class="changes">${t.changes.map(c => `<li>${esc(c)}</li>`).join('')}</ul>
-                        <div class="row" style="margin-top:4px"><button class="btn sm yolk" data-act="open" data-id="${esc(t.id)}">作り方を見る</button>
+                        <div class="row" style="margin-top:4px"><button class="btn sm primary" data-act="open" data-id="${esc(t.id)}">作り方を見る</button>
                         <button class="btn sm" data-act="fav" data-id="${esc(t.id)}">${S.favs.includes(t.id)?'お気に入り解除':'お気に入り'}</button></div>
                     </div>
                 </div>`).join('') : '<div class="small">この組み合わせでは案が作れませんでした。条件を「おまかせ」に戻してみてください。</div>'}
-            <div class="row"><button class="btn yolk wide" data-act="tw-run">別の案を出す</button></div>
-            </div>
+            <div class="row"><button class="btn wide" data-act="tw-run">別の案を出す</button></div>
         </div>
     </section>
     <section class="sec">
-        <div class="sec-head"><h3>条件を変える</h3></div>
+        <div class="sec-head"><h2>条件を変える</h2></div>
+        <div class="card">
         <div class="field"><label for="tw-base">元にする料理</label>${baseSel}</div>
         <div class="field"><label>ひねり具合</label>${seg('level', [[1,'ちょっとだけ'],[2,'しっかり'],[3,'大胆に']])}</div>
         <div class="field"><label>味の方向</label>${seg('flavor', flavorList)}</div>
         <div class="field"><label>かたち</label>${seg('form', formList)}</div>
         <div class="field"><label>主役の食材</label>${seg('swap', [['any','おまかせ'],['none','そのまま'],['yes','別の食材にかえる']])}</div>
+        </div>
     </section>
     <section class="sec">
-        <div class="sec-head"><h3>最近考えたひとひねり</h3><span class="hint">一度出した案は、しばらく出にくくなります</span></div>
+        <div class="sec-head"><h2>最近考えたひとひねり</h2><span class="hint">一度出した案は、しばらく出にくくなります</span></div>
         <div class="list">${seen.length ? seen.map(t => `<div class="item"><div class="t" data-act="open" data-id="${esc(t.id)}">${esc(t.name)}<div class="s">元の料理: ${esc(t.base.name)}</div></div><span class="small muted">${esc(lastLabel(t.id))}</span></div>`).join('') : '<div class="empty">まだありません。</div>'}</div>
     </section>`;
 }
@@ -2092,9 +2526,6 @@ function runTwist(){
 /* ---- 記録 ---- */
 let pendingConfirm = null;
 function viewLog(){
-    const month = TODAY.slice(0,7);
-    const days = [...new Set(S.history.map(h => h.d))];
-    const monthCount = S.history.filter(h => h.d.startsWith(month)).length;
     const byDay = {};
     S.history.forEach(h => (byDay[h.d] = byDay[h.d] || []).push(h));
     const counts = {};
@@ -2106,18 +2537,13 @@ function viewLog(){
     return `
     <section class="sec">
         ${reviewHtml()}
-        <div class="stats">
-            <div class="stat"><div class="n">${days.length}</div><div class="k">記録した日</div></div>
-            <div class="stat"><div class="n">${monthCount}</div><div class="k">今月作った品数</div></div>
-            <div class="stat"><div class="n">${streak()}</div><div class="k">続けて記録した日</div></div>
-        </div>
     </section>
     <section class="sec">
         <div class="sec-head"><h2>台所の腕前</h2><span class="hint">続けるほど、称号が上がっていきます</span></div>
         <div class="titles">${titlesHtml()}</div>
     </section>
     <section class="sec">
-        <div class="sec-head"><h3>身についたひと手間</h3><span class="hint">料理の詳しい画面の「やってみた」で増えます</span></div>
+        <div class="sec-head"><h2>身についたひと手間</h2><span class="hint">料理の詳しい画面の「やってみた」で増えます</span></div>
         <div class="list">${skillList.length ? skillList.map(sk => { const r = byId(sk.id); return `<div class="item"><div class="t" ${r?`data-act="open" data-id="${esc(sk.id)}"`:''}>${esc(sk.skill)}<div class="s">${esc(r ? r.name : '')}　${esc(jpDate(sk.d))}</div></div><span class="badge fav">習得</span></div>`; }).join('') : '<div class="empty">まだありません。今日の献立の「今日のひと手間」から、ひとつ試してみてください。</div>'}</div>
     </section>
     <section class="sec">
@@ -2127,16 +2553,16 @@ function viewLog(){
             <button class="btn sm ghost danger" data-act="rm-hist" data-d="${d}" data-id="${esc(h.id)}" aria-label="記録を消す">消す</button></div>`).join('')).join('')
             : '<div class="empty">まだ記録がありません。「今日の献立」で「この献立に決定」を押すか、料理の詳しい画面で「作った」を押すと記録されます。</div>'}</div>
     </section>
-    ${top.length ? `<section class="sec"><div class="sec-head"><h3>よく作る料理</h3></div>
+    ${top.length ? `<section class="sec"><div class="sec-head"><h2>よく作る料理</h2></div>
         <div class="list">${top.map(([n,c]) => `<div class="item"><div>${esc(n)}</div><span class="small muted">${c}回</span></div>`).join('')}</div></section>` : ''}
     <section class="sec">
-        <div class="sec-head"><h3>お気に入り</h3></div>
+        <div class="sec-head"><h2>お気に入り</h2></div>
         <div class="list">${favs.length ? favs.map(r => `<div class="item"><div class="t" data-act="open" data-id="${esc(r.id)}">${esc(r.name)}<div class="s">${esc(metaLine(r))}</div></div><span class="small muted">${esc(lastLabel(r.id))}</span></div>`).join('') : '<div class="empty">料理の詳しい画面で「お気に入り」を押すと、ここに並びます。お気に入りは献立に少し出やすくなります。</div>'}</div>
     </section>
-    ${hidden.length ? `<section class="sec"><div class="sec-head"><h3>今は出さない料理</h3></div>
+    ${hidden.length ? `<section class="sec"><div class="sec-head"><h2>今は出さない料理</h2></div>
         <div class="list">${hidden.map(r => `<div class="item"><div>${esc(r.name)}</div><button class="btn sm" data-act="unhide" data-id="${esc(r.id)}">また出す</button></div>`).join('')}</div></section>` : ''}
     <section class="sec">
-        <div class="sec-head"><h3>わが家のレシピ</h3><span class="hint">追加した料理も献立・材料さがし・ひとひねりに使われます</span></div>
+        <div class="sec-head"><h2>わが家のレシピ</h2><span class="hint">追加した料理も献立・材料さがし・ひとひねりに使われます</span></div>
         ${S.custom.length ? `<div class="list">${S.custom.map(r => `<div class="item"><div class="t" data-act="open" data-id="${esc(r.id)}">${esc(r.name)}<div class="s">${esc(r.type)}・${esc(r.min)}分</div></div><button class="btn sm ghost danger" data-act="rm-custom" data-id="${esc(r.id)}">消す</button></div>`).join('')}</div>` : ''}
         <details class="box"><summary>レシピを追加する</summary>
             <form class="inner" data-form="custom">
@@ -2169,11 +2595,14 @@ function renderModal(){
     const ph = photoOf(r);
     const hero = ph && ph.mine
         ? `<img src="${esc(ph.src)}" alt="${esc(r.name + 'の写真（わが家で作ったもの）')}"><div class="cap">わが家の一枚（${esc(jpDate(ph.d))}に登録）</div>`
+        : ph && ph.gen
+        ? `<img src="${esc(ph.src)}" alt="${esc((r.isTwist ? r.base.name : r.name) + 'のイラスト')}">
+           ${r.isTwist || ph.ai ? `<div class="cap">${r.isTwist ? `元の料理「${esc(r.base.name)}」の絵${ph.ai ? ' ／ ' : ''}` : ''}${ph.ai ? 'イラストは ChatGPT（OpenAI の画像生成）で作成したイメージです。実際の盛りつけとは異なります。' : ''}</div>` : ''}`
         : ph
-        ? `<img src="${esc(ph.src)}" alt="${esc((r.isTwist ? r.base.name : r.name) + 'の写真')}">
-           <div class="cap">${r.isTwist ? `元の料理「${esc(r.base.name)}」の写真 ／ ` : '参考写真 ／ '}撮影: ${esc(ph.artist || '不明')}（${esc(ph.license || 'ライセンス不明')}） <a href="${esc(ph.page)}" target="_blank" rel="noopener">出典: Wikimedia Commons</a></div>`
+        ? `<img src="${esc(ph.src)}" alt="${esc((r.isTwist ? r.base.name : r.name) + 'のイラスト（写真をもとに作成）')}">
+           <div class="cap">${r.isTwist ? `元の料理「${esc(r.base.name)}」の絵 ／ ` : ''}写真をもとにイラスト化 ／ 撮影: ${esc(ph.artist || '不明')}（${esc(ph.license || 'ライセンス不明')}） <a href="${esc(ph.page)}" target="_blank" rel="noopener">出典: Wikimedia Commons</a></div>`
         : `<div class="noimg">${vesselHtml(vesselKind(r), r, true)}</div>`;
-    const heroCls = ph ? 'hero' : 'hero illust';
+    const heroCls = ph ? (ph.gen ? 'hero gen' : 'hero') : 'hero illust';
     const genreName = {'和':'和食','洋':'洋食','中':'中華','韓':'韓国','エスニック':'エスニック'}[r.genre] || r.genre;
     const sv = Number(S.settings.servings) || 2, fac = servingFactor();
     const facts = [r.type, genreName, `${r.min}分`, `${sv}人分`, r.family && r.family !== '野菜' ? FAMILY_LABEL[r.family] : ''].filter(Boolean);
@@ -2196,10 +2625,10 @@ function renderModal(){
                         ${MINE[r.id] ? `<button class="btn sm ghost danger" data-act="photo-rm" data-id="${esc(r.id)}">写真を外す</button>` : ''}
                     </div>
                 </div>
-                ${r.isTwist ? `<div class="tanzaku"><div class="band">ひとひねり</div><div class="body">
+                ${r.isTwist ? `<div class="card"><div class="eyebrow">ひとひねり</div>
                     <div class="from">元の料理: <b>${esc(r.base.name)}</b></div>
                     <ul class="changes">${r.changes.map(c => `<li>${esc(c)}</li>`).join('')}</ul>
-                    <div class="small muted">黄色の部分が、元のレシピから変えたところです。写真は元の料理のものです。</div></div></div>` : ''}
+                    <div class="small muted">黄色の部分が、元のレシピから変えたところです。絵は元の料理のものです。</div></div>` : ''}
                 <div class="label">材料（${sv}人分）${have.size ? '　✓ は登録済みの食材' : ''}</div>
                 <ul class="recipe-ings">${r.items.map(i => `<li class="${i.added||i.changed?'add':''}"><span>${have.has(i.key)?'<span class="ok">✓</span>':''}${esc(i.name)}${i.opt?' <span class="small muted">（なくても可）</span>':''}</span><span class="q">${esc(scaleText(i.qty, fac))}</span></li>`).join('')}</ul>
                 ${r.seas ? `<div class="seasoning"><span class="label">調味料（${sv}人分）</span><br>${esc(scaleText(r.seas, fac))}</div>` : ''}
@@ -2212,7 +2641,7 @@ function renderModal(){
                 <div class="row">
                     <button class="btn primary wide" data-act="cooked" data-id="${esc(r.id)}">${last === '今日作った' ? '今日の記録に入っています' : '今日作った'}</button>
                     <button class="btn" data-act="fav" data-id="${esc(r.id)}">${isFav ? 'お気に入り解除' : 'お気に入り'}</button>
-                    ${!r.isTwist ? `<button class="btn yolk" data-act="twist-this" data-id="${esc(r.id)}">これをひとひねり</button>` : ''}
+                    ${!r.isTwist ? `<button class="btn" data-act="twist-this" data-id="${esc(r.id)}">これをひとひねり</button>` : ''}
                 </div>
                 <div class="row small">
                     <label for="cook-date" class="muted">別の日に作った:</label>
@@ -2290,6 +2719,16 @@ document.addEventListener('click', e => {
         case 'settings': setTab('settings'); break;
         case 'settings-back': setTab(prevTab || 'today'); break;
         case 'paywall': openPaywall('info'); break;
+        case 'share-menu': openShare('menu'); break;
+        case 'share-week': openShare('week'); break;
+        case 'share-system': if (sheet) systemShare(sheet.text, sheet.title); break;
+        case 'share-copy': if (sheet) copyText(sheet.text); break;
+        case 'shop-check': {
+            shopDoneSet(); const k = el.dataset.k, a = S.shopDone.keys, i = a.indexOf(k);
+            if (el.checked){ if (i < 0) a.push(k); } else if (i >= 0) a.splice(i, 1);
+            save(); render(); break;
+        }
+        case 'remind': setReminder(el.dataset.v === 'off' ? null : Number(el.dataset.v)); break;
         case 'paywall-week': openPaywall('week'); break;
         case 'paywall-skill': openPaywall('skill'); break;
         case 'paywall-hints': openPaywall('hints'); break;
@@ -2474,9 +2913,9 @@ document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('cl
 setTab(tab);
 if (!(S.usedDays || []).includes(TODAY)){ S.usedDays = [...(S.usedDays || []), TODAY].slice(-400); save(); }
 if (!S.onboarded) startOnboard();
-else if (PLAN.billingEnabled && !trialActive() && !isSubscribed() && !S.trialNoticeShown){ S.trialNoticeShown = true; save(); openPaywall('trialEnd'); }
+else if (PLAN.billingEnabled && !isNative() && !trialActive() && !isSubscribed() && !S.trialNoticeShown){ S.trialNoticeShown = true; save(); openPaywall('trialEnd'); }
 (() => { const r = rcInit(); if (r) r.then(P => P.getCustomerInfo()).then(res => applyCustomerInfo(res && res.customerInfo)).catch(() => {}); })();
-loadPhotos();
+loadGenerated().then(loadPhotos);
 loadMine();
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1') && document.querySelector('link[rel="manifest"]')){ navigator.serviceWorker.register('sw.js').catch(() => {}); }
 </script>
