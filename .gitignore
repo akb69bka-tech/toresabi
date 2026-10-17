@@ -8,3 +8,7 @@ __pycache__/
 *.pyc
 .pytest_cache/
 samples/real_us/
+
+# 鍵（API キー）を書いたファイルはアップロードしない
+.env
+*.env
