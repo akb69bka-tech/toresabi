@@ -17,5 +17,5 @@ def make_source(cfg, universe=None) -> DataSource:
         return CsvDirSource(d.get("csv_dir", "data_csv"))
     if kind == "jquants":
         return JQuantsSource(d.get("jquants_refresh_token", ""), d.get("cache_dir", "data_cache"),
-                             interval=d.get("request_interval_sec", 0.6))
+                             interval=d.get("request_interval_sec", 0.6), api_key=d.get("jquants_api_key", ""))
     return StooqSource(d.get("cache_dir", "data_cache"), interval=d.get("request_interval_sec", 0.6))
