@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>分身ノート</title>
+<meta name="description" content="アイデア・相談・判断・作業を記録して、自分の考え方を映す分身エージェントを育てるノート。Gmail・LINE と連携。">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="分身ノート">
+<meta name="theme-color" content="#4f46e5">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f5fb; --card:#ffffff; --text:#1b1f2e; --muted:#6b7187; --border:#e3e5f0;
+  --primary:#4f46e5; --primary-soft:#eef0ff; --accent:#14b8a6; --accent-soft:#e6faf7;
+  --amber:#d97706; --amber-soft:#fff5e0; --rose:#e11d48; --rose-soft:#ffe9ee; --green:#16a34a; --green-soft:#e8f8ee;
+  --shadow:0 4px 18px rgba(27,31,46,.07); --radius:16px; --nav-h:64px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1220; --card:#181c2e; --text:#eef0f8; --muted:#9aa1ba; --border:#2a2f45;
+    --primary:#8b85ff; --primary-soft:#242653; --accent:#2dd4bf; --accent-soft:#113a37;
+    --amber:#fbbf24; --amber-soft:#3b2d0c; --rose:#fb7185; --rose-soft:#3f1420; --green:#4ade80; --green-soft:#0f3320;
+    --shadow:0 4px 18px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1220; --card:#181c2e; --text:#eef0f8; --muted:#9aa1ba; --border:#2a2f45;
+  --primary:#8b85ff; --primary-soft:#242653; --accent:#2dd4bf; --accent-soft:#113a37;
+  --amber:#fbbf24; --amber-soft:#3b2d0c; --rose:#fb7185; --rose-soft:#3f1420; --green:#4ade80; --green-soft:#0f3320;
+  --shadow:0 4px 18px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text)}
+body{font-family:'Noto Sans JP',-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Segoe UI",sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 12px)}
+button,input,textarea,select{font-family:inherit;font-size:inherit;color:inherit}
+textarea{resize:vertical}
+a{color:var(--primary)}
+.wrap{max-width:720px;margin:0 auto;padding:0 16px}
+header.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 85%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+header.top .wrap{display:flex;align-items:center;justify-content:space-between;height:56px;gap:8px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:900;font-size:1.1rem}
+.brand .logo{width:32px;height:32px;border-radius:9px;background:linear-gradient(160deg,#4f46e5,#14b8a6)}
+.brand small{display:block;font-weight:500;font-size:.72rem;color:var(--muted);line-height:1.1}
+.iconbtn{border:1px solid var(--border);background:var(--card);border-radius:10px;padding:6px 10px;cursor:pointer;font-size:.85rem}
+main{padding-top:14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
+.card h2{margin:0 0 10px;font-size:1.02rem;font-weight:700;display:flex;align-items:center;gap:4px 8px;justify-content:space-between;flex-wrap:wrap}
+.card h2 .r{font-size:.8rem;font-weight:500;color:var(--muted)}
+.muted{color:var(--muted);font-size:.85rem}
+.small{font-size:.8rem}
+.btn{border:1px solid var(--border);background:var(--card);color:var(--text);padding:10px 14px;border-radius:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:.15s;line-height:1.2}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:var(--primary);color:#fff;border-color:transparent}
+.btn.accent{background:var(--accent);color:#04302b;border-color:transparent}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--rose);border-color:color-mix(in srgb,var(--rose) 40%,transparent)}
+.btn.sm{padding:6px 10px;font-size:.8rem;border-radius:9px;font-weight:600}
+.btn.block{width:100%;justify-content:center}
+.btn:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row.between{justify-content:space-between}
+.grow{flex:1}
+input[type=text],input[type=email],input[type=url],input[type=password],input[type=date],input[type=search],textarea,select{
+  width:100%;border:1px solid var(--border);background:var(--bg);border-radius:12px;padding:10px 12px;outline:none}
+input:focus,textarea:focus,select:focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 18%,transparent)}
+label.f{display:block;font-size:.82rem;font-weight:700;color:var(--muted);margin:10px 0 4px}
+label.f:first-child{margin-top:0}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--border);background:var(--bg);border-radius:999px;padding:5px 11px;font-size:.82rem;cursor:pointer;user-select:none;white-space:nowrap}
+.chip.on{background:var(--primary);color:#fff;border-color:transparent}
+.chip.tag{background:var(--accent-soft);border-color:transparent}
+.chip.tag.on{background:var(--accent);color:#04302b}
+.badge{display:inline-block;border-radius:8px;padding:2px 8px;font-size:.75rem;font-weight:700;background:var(--primary-soft);color:var(--primary)}
+.badge.task{background:var(--green-soft);color:var(--green)}
+.badge.src{background:var(--amber-soft);color:var(--amber)}
+.note{border-top:1px solid var(--border);padding:12px 0}
+.note:first-of-type{border-top:0}
+.note .body{white-space:pre-wrap;word-break:break-word;margin:4px 0}
+.note .result{background:var(--accent-soft);border-radius:10px;padding:8px 10px;margin-top:6px;white-space:pre-wrap;font-size:.92rem}
+.note .meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:.78rem;color:var(--muted)}
+.note .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.note.done .body{text-decoration:line-through;color:var(--muted)}
+.dategroup{font-size:.8rem;font-weight:700;color:var(--muted);margin:14px 0 2px}
+.mic{width:44px;height:44px;border-radius:50%;border:1px solid var(--border);background:var(--card);cursor:pointer;font-size:1.2rem;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.mic.rec{background:var(--rose);color:#fff;border-color:transparent;animation:pulse 1s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--rose) 50%,transparent)}100%{box-shadow:0 0 0 12px transparent}}
+.meter{height:12px;border-radius:999px;background:var(--bg);border:1px solid var(--border);overflow:hidden}
+.meter i{display:block;height:100%;background:linear-gradient(90deg,var(--primary),var(--accent));transition:width .4s}
+.levels{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-top:4px}
+.hero{background:linear-gradient(140deg,var(--primary) 0%,#6366f1 45%,var(--accent) 100%);color:#fff;border:0}
+.hero h2,.hero .muted{color:#fff}
+.hero .muted{opacity:.9}
+.hero .meter{background:rgba(255,255,255,.25);border-color:transparent}
+.hero .meter i{background:#fff}
+.hero .levels{color:rgba(255,255,255,.85)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.stat{background:rgba(255,255,255,.15);border-radius:12px;padding:8px;text-align:center}
+.stat b{display:block;font-size:1.3rem;line-height:1.1}
+.stat span{font-size:.72rem;opacity:.9}
+nav.bottom{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--card);border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom)}
+nav.bottom .wrap{display:flex;height:var(--nav-h);padding:0}
+nav.bottom button{flex:1;border:0;background:transparent;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:.72rem;font-weight:700;cursor:pointer}
+nav.bottom button .i{font-size:1.3rem;line-height:1}
+nav.bottom button.on{color:var(--primary)}
+.fab{position:fixed;right:18px;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 16px);width:56px;height:56px;border-radius:50%;background:var(--primary);color:#fff;border:0;font-size:1.8rem;box-shadow:0 8px 24px rgba(79,70,229,.4);cursor:pointer;z-index:25;display:flex;align-items:center;justify-content:center}
+.toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 20px);transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:.88rem;opacity:0;pointer-events:none;transition:.25s;z-index:60;max-width:92vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:none;align-items:flex-end;justify-content:center}
+.modal-bg.show{display:flex}
+.modal{background:var(--card);width:100%;max-width:720px;max-height:90vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+@media(min-width:720px){.modal-bg{align-items:center}.modal{border-radius:20px}}
+.modal h3{margin:0 0 10px;font-size:1.05rem}
+pre.out{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:12px;font-size:.8rem;white-space:pre-wrap;word-break:break-word;max-height:40vh;overflow:auto;font-family:ui-monospace,Menlo,monospace}
+.q{background:var(--primary-soft);border-radius:12px;padding:12px;margin-bottom:10px}
+.q .qt{font-weight:700;margin-bottom:6px}
+.qlist .qi{border-top:1px solid var(--border);padding:10px 0}
+.qlist .qi .qt{font-weight:600}
+.qlist .qi .ans{color:var(--muted);font-size:.88rem;white-space:pre-wrap;margin-top:2px}
+.tabs2{display:flex;gap:6px;overflow:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.tabs2 .chip{flex-shrink:0}
+.empty{color:var(--muted);text-align:center;padding:18px 0;font-size:.9rem}
+.check{width:22px;height:22px;border-radius:7px;border:2px solid var(--border);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:.8rem}
+.check.on{background:var(--green);border-color:transparent;color:#fff}
+.task-item{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--border)}
+.task-item:first-child{border-top:0}
+.help{background:var(--amber-soft);border-radius:12px;padding:10px 12px;font-size:.85rem;margin-top:8px}
+.ok{color:var(--green);font-weight:700}
+.ng{color:var(--rose);font-weight:700}
+details summary{cursor:pointer;font-weight:700;font-size:.92rem;padding:4px 0}
+.mail-item{border-top:1px solid var(--border);padding:10px 0}
+.mail-item:first-child{border-top:0}
+.sr-only{position:absolute;left:-9999px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <div class="brand"><div class="logo"></div><div>分身ノート<small id="brandSub">あなたの考え方を記録して、分身を育てる</small></div></div>
+  <div class="row"><button class="iconbtn" id="themeBtn" title="表示切替">🌓</button></div>
+</div></header>
+
+<main class="wrap">
+  <!-- ===== ホーム ===== -->
+  <section id="tab-home">
+    <div class="card hero">
+      <h2><span id="heroTitle">分身、育成中</span><span class="r" id="heroLevel"></span></h2>
+      <div class="meter"><i id="heroMeter" style="width:0%"></i></div>
+      <div class="levels"><span>たまご</span><span>ひよこ</span><span>見習い</span><span>右腕</span><span>分身</span></div>
+      <div class="stats">
+        <div class="stat"><b id="stNotes">0</b><span>記録</span></div>
+        <div class="stat"><b id="stAns">0</b><span>質問に回答</span></div>
+        <div class="stat"><b id="stProfile">0%</b><span>プロフィール</span></div>
+      </div>
+      <p class="muted small" style="margin:10px 0 0" id="heroHint"></p>
+    </div>
+
+    <div class="card">
+      <h2>今日の質問 <span class="r">答えるほど分身が濃くなります</span></h2>
+      <div id="todayQ"></div>
+    </div>
+
+    <div class="card">
+      <h2>やること <span class="r" id="taskCount"></span></h2>
+      <div id="homeTasks"></div>
+    </div>
+
+    <div class="card">
+      <h2>最近の記録 <span class="r"><button class="btn sm ghost" onclick="go('log')">すべて見る →</button></span></h2>
+      <div id="homeRecent"></div>
+    </div>
+  </section>
+
+  <!-- ===== きろく ===== -->
+  <section id="tab-log" class="hidden">
+    <div class="card" id="captureCard">
+      <h2 id="captureTitle">いま思ったことを記録</h2>
+      <div class="row" style="align-items:flex-start">
+        <textarea id="capBody" class="grow" rows="4" placeholder="話すか、書くか。例：「来週、防除の薬を注文。去年と同じ量だと足りないかも」"></textarea>
+        <button class="mic" id="capMic" title="音声入力">🎤</button>
+      </div>
+      <div class="muted small" id="capVoiceStatus"></div>
+      <label class="f">種類（文章から自動で選びます・変えてもOK）</label>
+      <div class="chips" id="capTypes"></div>
+      <div id="capTaskExtra" class="hidden"><label class="f">期限（任意）</label><input type="date" id="capDue"></div>
+      <details style="margin-top:8px"><summary>結論・結果を書く（相談や判断のとき）</summary>
+        <textarea id="capResult" rows="2" placeholder="どう判断したか／どうなったか。あとから追記もできます"></textarea>
+      </details>
+      <label class="f">タグ（カンマ区切り・任意）</label>
+      <input type="text" id="capTags" placeholder="例：米, 防除, A農協">
+      <div class="chips" id="capTagSug" style="margin-top:6px"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn primary grow" id="capSave" style="justify-content:center">保存する</button>
+        <button class="btn ghost hidden" id="capCancel">やめる</button>
+      </div>
+      <div class="muted small" id="capSource" style="margin-top:6px"></div>
+    </div>
+
+    <div class="card">
+      <h2>記録をさがす</h2>
+      <input type="search" id="logSearch" placeholder="キーワード・タグで検索">
+      <div class="tabs2" id="logTypes" style="margin-top:8px"></div>
+      <div class="chips" id="logTags" style="margin-top:6px"></div>
+    </div>
+    <div class="card"><div id="logList"></div></div>
+  </section>
+
+  <!-- ===== 分身 ===== -->
+  <section id="tab-persona" class="hidden">
+    <div class="card">
+      <h2>分身の土台（プロフィール）</h2>
+      <p class="muted small">ここに書いたことが、分身の「性格」と「判断のしかた」になります。箇条書きでOK。あとから何度でも直せます。</p>
+      <div id="profileForm"></div>
+    </div>
+
+    <div class="card">
+      <h2>質問に答えて、考え方を引き出す</h2>
+      <p class="muted small">「自分では当たり前」なことほど、分身には必要です。答えやすいものから。</p>
+      <div class="tabs2" id="qCats"></div>
+      <div class="qlist" id="qList"></div>
+    </div>
+
+    <div class="card">
+      <h2>分身を使う（Claude に渡す）</h2>
+      <p class="muted small">記録・回答・プロフィールをまとめて「分身の指示書」にします。Claude の「プロジェクト」の指示欄に貼ると、あなたの代わりに考える分身として使えます（手順は README）。</p>
+      <div class="row">
+        <button class="btn primary" onclick="showPersona()">📄 分身の指示書を作る</button>
+        <button class="btn" onclick="askClaude()">💬 分身に相談する（Claude を開く）</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 連携 ===== -->
+  <section id="tab-link" class="hidden">
+    <div class="card">
+      <h2>📬 Gmail</h2>
+      <label class="f">記録を送る先（自分のメールアドレス）</label>
+      <input type="email" id="setMailTo" placeholder="example@gmail.com">
+      <p class="muted small">各記録の「📬 Gmail」ボタンで、メールの下書きが開きます（送信は自分で押す）。</p>
+      <label class="f">Gmail を検索して開く</label>
+      <div class="row"><input type="search" id="gmailQ" class="grow" placeholder="例：注文 農薬 newer_than:30d"><button class="btn" onclick="openGmailSearch()">開く</button></div>
+      <label class="f">メールの文章を貼って記録にする</label>
+      <textarea id="gmailPaste" rows="3" placeholder="Gmail で本文をコピーして、ここに貼る"></textarea>
+      <div class="row" style="margin-top:6px"><button class="btn" onclick="importPaste('gmail')">記録に取り込む</button></div>
+      <details style="margin-top:10px"><summary>ブリッジ経由で最近のメールを取り込む</summary>
+        <div class="row" style="margin-top:6px"><input type="search" id="bridgeGmailQ" class="grow" value="newer_than:7d -category:promotions -category:social"><button class="btn" onclick="fetchBridgeGmail()">取得</button></div>
+        <div id="bridgeMails"></div>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2>💚 LINE</h2>
+      <p class="muted small">各記録の「💚 LINE」ボタンで LINE が開き、送る相手（自分だけのグループでも可）を選べます。</p>
+      <label class="f">トーク履歴（テキスト）を取り込む</label>
+      <p class="muted small">LINE のトーク画面 → メニュー → その他 → トーク履歴を送信 で書き出したテキストを選ぶか、貼り付け。</p>
+      <div class="row"><input type="file" id="lineFile" accept=".txt,text/plain" class="grow"></div>
+      <textarea id="linePaste" rows="3" placeholder="または、トークをコピーしてここに貼る" style="margin-top:6px"></textarea>
+      <div class="row" style="margin-top:6px"><button class="btn" onclick="parseLinePaste()">読み取る</button></div>
+      <div id="lineParsed"></div>
+      <details style="margin-top:10px"><summary>ブリッジ経由で LINE に通知する（Messaging API）</summary>
+        <p class="muted small">LINE Notify は 2025年3月に終了したため、通知は LINE 公式アカウント（Messaging API）＋ブリッジで行います。設定は README を参照。</p>
+        <div class="row"><input type="text" id="lineTestText" class="grow" value="分身ノートからのテスト通知です"><button class="btn" onclick="sendBridgeLine(document.getElementById('lineTestText').value)">送信</button></div>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2>📲 共有シートから受け取る</h2>
+      <p class="muted small">Android（Chrome）でホーム画面に追加すると、Gmail や LINE の「共有」から「分身ノート」を選んで、そのまま記録できます。iPhone の Safari は共有の受け取りに非対応のため、コピーして貼り付けてください。</p>
+      <div id="installBox"></div>
+    </div>
+
+    <div class="card">
+      <h2>🔗 ブリッジ（Google Apps Script）</h2>
+      <p class="muted small">自分の Google アカウントに置く小さな中継所です。記録のスプレッドシート保存、Gmail の取り込み、LINE 通知ができます。作り方は README。</p>
+      <label class="f">ウェブアプリの URL</label>
+      <input type="url" id="setBridgeUrl" placeholder="https://script.google.com/macros/s/....../exec">
+      <label class="f">合言葉（TOKEN）</label>
+      <input type="password" id="setBridgeToken" placeholder="ブリッジ側に設定した TOKEN と同じもの">
+      <div class="row" style="margin-top:10px">
+        <button class="btn" onclick="testBridge()">接続テスト</button>
+        <button class="btn accent" onclick="syncBridge()">記録をスプレッドシートに同期</button>
+      </div>
+      <div class="muted small" id="bridgeStatus" style="margin-top:6px"></div>
+    </div>
+
+    <div class="card">
+      <h2>💾 バックアップ</h2>
+      <p class="muted small">記録はこの端末のブラウザの中にだけ保存されます。機種変更や念のための保存に。</p>
+      <div class="row">
+        <button class="btn" onclick="exportJson()">書き出す（JSON）</button>
+        <label class="btn">読み込む <input type="file" id="importJson" accept=".json,application/json" class="sr-only"></label>
+        <button class="btn danger" onclick="wipeAll()">全部消す</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<button class="fab" id="fab" title="記録する">＋</button>
+
+<nav class="bottom"><div class="wrap">
+  <button data-tab="home"><span class="i">🏠</span>ホーム</button>
+  <button data-tab="log"><span class="i">📝</span>きろく</button>
+  <button data-tab="persona"><span class="i">🧬</span>分身</button>
+  <button data-tab="link"><span class="i">🔗</span>連携</button>
+</div></nav>
+
+<div class="toast" id="toast"></div>
+<div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
+
+<script>
+/* ====================== データ ====================== */
+const KEY = 'bunshin_v1';
+const TYPES = {
+  idea:{l:'アイデア',e:'💡'}, consult:{l:'相談',e:'🤔'}, decision:{l:'判断',e:'⚖️'}, task:{l:'作業',e:'✅'},
+  knowledge:{l:'知識',e:'📒'}, people:{l:'人',e:'👥'}, buy:{l:'購入',e:'🛒'}, sell:{l:'販売',e:'💴'}, material:{l:'農薬・資材',e:'🧪'}
+};
+const SOURCES = {app:'', gmail:'📬 Gmail', line:'💚 LINE', share:'📲 共有', question:'❓ 質問'};
+const PROFILE_FIELDS = [
+  ['name','あなたの名前','例：山田 太郎（分身の名前になります）',1],
+  ['work','仕事・役割','例：米と野菜の農家。直売とJA出荷。株の運用も少し',2],
+  ['fields','得意なこと・よく相談されること','例：栽培計画、資材の仕入れ、機械の修理、値付け',2],
+  ['values','大事にしていること','例：まず安全。借金はしない。家族の時間を削らない',3],
+  ['rules','判断の軸・くせ','例：迷ったら安い方を試してから。数字で比べる。人の紹介を優先',3],
+  ['never','やらないこと','例：即決で高額契約。SNSで値段を公開。日曜の作業',2],
+  ['phrases','口ぐせ・言い回し・文章の好み','例：「まあやってみよう」。メールは短く、結論から。敬語はていねいすぎない',2],
+  ['people','よく連絡する相手・取引先・仕入れ先','例：A農協の〇〇さん（出荷）、B商店（資材・月末払い）、直売所の店長',3],
+  ['materials','使っている資材・農薬・道具のメモ','例：殺菌剤は〇〇を4月と6月、肥料は△△を10a あたり□kg',3],
+];
+const QUESTIONS = [
+  ['judge','判断の軸','迷ったとき、最後は何を基準に決めますか？'],
+  ['judge','判断の軸','お金と時間、どちらを優先することが多いですか？それはなぜ？'],
+  ['judge','判断の軸','「これは絶対やらない」と決めていることはありますか？'],
+  ['judge','判断の軸','失敗したとき、まず何をしますか？'],
+  ['judge','判断の軸','人に相談するのはどんなときですか？誰に相談しますか？'],
+  ['judge','判断の軸','新しいことを始めるとき、どこまで調べてから動きますか？'],
+  ['farm','農業・資材','農薬を選ぶとき、何を一番見ますか？（効き目・値段・残留・使いやすさ・慣れ など）'],
+  ['farm','農業・資材','資材や肥料はどこで、どうやって買っていますか？まとめ買いする基準は？'],
+  ['farm','農業・資材','今年うまくいった栽培の工夫を教えてください。'],
+  ['farm','農業・資材','病気や虫が出たとき、どんな順番で対応しますか？'],
+  ['farm','農業・資材','天気予報はどう使っていますか？どの予報を信じますか？'],
+  ['farm','農業・資材','作業の順番を決めるときの考え方は？（先にやること・後回しにすること）'],
+  ['farm','農業・資材','機械や道具で「これは手放せない」ものと、その理由は？'],
+  ['sell','販売・購入','売り先はどこですか？それぞれの良い点と困る点は？'],
+  ['sell','販売・購入','値段はどうやって決めていますか？'],
+  ['sell','販売・購入','買ってくれる人が喜ぶのはどんなときですか？'],
+  ['sell','販売・購入','新しい売り先を探すとき、どこから手をつけますか？'],
+  ['sell','販売・購入','買う側として、業者や店を選ぶ基準は？（安さ・近さ・人・支払い条件 など）'],
+  ['sell','販売・購入','値引き交渉はしますか？するならどんな言い方で？'],
+  ['idea','アイデア','最近「こうすれば楽になる」と思ったことは？'],
+  ['idea','アイデア','ほかの人がやっていなくて、自分ならできそうなことは？'],
+  ['idea','アイデア','お金をかけずに試せそうなことは？'],
+  ['idea','アイデア','いま一番時間を取られている作業は？それをなくすには？'],
+  ['idea','アイデア','「これ、アプリや道具があったらいいのに」と思うものは？'],
+  ['people','人・連絡','よく連絡を取る相手トップ5と、その用件は？'],
+  ['people','人・連絡','メールや LINE で返事に迷うのはどんな内容ですか？'],
+  ['people','人・連絡','頼みごとをするとき、どんな言い方をしますか？'],
+  ['people','人・連絡','断るときの言い方は？'],
+  ['people','人・連絡','連絡は電話・メール・LINE のどれが好きですか？相手によって変えますか？'],
+  ['style','言葉・性格','よく使う口ぐせ・言い回しは？'],
+  ['style','言葉・性格','人からどんな性格だと言われますか？'],
+  ['style','言葉・性格','文章は長い・短い、ていねい・ざっくり、どれが好みですか？'],
+  ['style','言葉・性格','腹が立つこと・許せないことは？'],
+  ['style','言葉・性格','うれしいのはどんなとき？'],
+  ['daily','一日・習慣','平日の一日の流れを教えてください（朝から夜まで）。'],
+  ['daily','一日・習慣','朝いちばんに確認することは？'],
+  ['daily','一日・習慣','毎週・毎月くり返している作業は？'],
+  ['daily','一日・習慣','季節ごとの大仕事は？（月ごとにざっくり）'],
+  ['know','知識・経験','若いころの自分に教えたいことは？'],
+  ['know','知識・経験','この仕事で「これだけは外せない」コツは？'],
+  ['know','知識・経験','よく見るサイト・本・参考にしている人は？'],
+  ['know','知識・経験','数字で覚えていること（単価・量・日数・面積 など）を思いつくだけ。'],
+  ['know','知識・経験','過去の大きな失敗と、そこから学んだことは？'],
+].map((q,i)=>({id:'q'+(i+1), cat:q[0], catName:q[1], text:q[2]}));
+
+function fresh(){ return { v:1, profile:{}, notes:[], answers:{}, settings:{mailTo:'',bridgeUrl:'',bridgeToken:''}, synced:[] }; }
+function load(){ try{ const d=JSON.parse(localStorage.getItem(KEY)); if(d && d.v===1){ return Object.assign(fresh(), d); } }catch(e){} return fresh(); }
+let DB = load();
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){ toast('保存できませんでした（容量不足の可能性）'); } }
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2,'0');
+const fmtDate = ts => { const d=new Date(ts); return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())}`; };
+const fmtTime = ts => { const d=new Date(ts); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const todayKey = () => fmtDate(Date.now());
+const userName = () => (DB.profile.name||'').trim();
+
+/* ====================== 共通UI ====================== */
+let toastT;
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2400); }
+function openModal(html){ document.getElementById('modal').innerHTML=html; document.getElementById('modalBg').classList.add('show'); }
+function closeModal(){ document.getElementById('modalBg').classList.remove('show'); }
+document.getElementById('modalBg').addEventListener('click', e=>{ if(e.target.id==='modalBg') closeModal(); });
+async function copyText(t){ try{ await navigator.clipboard.writeText(t); toast('コピーしました'); return true; }catch(e){ const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); toast('コピーしました'); return true; }catch(_){ toast('コピーできませんでした'); return false; } finally{ ta.remove(); } } }
+function download(name, text, mime='text/plain'){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type:mime+';charset=utf-8'})); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); }
+
+/* テーマ */
+(function(){ const t=localStorage.getItem('bunshin_theme'); if(t) document.documentElement.dataset.theme=t; })();
+document.getElementById('themeBtn').onclick=()=>{ const cur=document.documentElement.dataset.theme; const dark=cur?cur==='dark':matchMedia('(prefers-color-scheme: dark)').matches; const next=dark?'light':'dark'; document.documentElement.dataset.theme=next; localStorage.setItem('bunshin_theme',next); };
+
+/* タブ */
+let tab='home';
+function go(t){ tab=t; document.querySelectorAll('main > section').forEach(s=>s.classList.toggle('hidden', s.id!=='tab-'+t)); document.querySelectorAll('nav.bottom button').forEach(b=>b.classList.toggle('on', b.dataset.tab===t)); document.getElementById('fab').classList.toggle('hidden', t==='log'); window.scrollTo(0,0); render(); }
+document.querySelectorAll('nav.bottom button').forEach(b=>b.onclick=()=>go(b.dataset.tab));
+document.getElementById('fab').onclick=()=>{ go('log'); setTimeout(()=>document.getElementById('capBody').focus(),50); };
+
+/* ====================== 音声入力 ====================== */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let activeRec=null;
+function dictate(textarea, btn, statusEl){
+  if(!SR){ toast('このブラウザは音声入力に対応していません'); return; }
+  if(activeRec){ activeRec.stop(); return; }
+  const r=new SR(); r.lang='ja-JP'; r.interimResults=true; r.continuous=true;
+  const base = textarea.value ? textarea.value.replace(/\s*$/,'') + '\n' : '';
+  let finalT='';
+  r.onstart=()=>{ activeRec=r; btn.classList.add('rec'); if(statusEl) statusEl.textContent='聞いています… もう一度押すと止まります'; };
+  r.onresult=e=>{ let interim=''; finalT=''; for(let i=0;i<e.results.length;i++){ const t=e.results[i][0].transcript; if(e.results[i].isFinal) finalT+=t; else interim+=t; } textarea.value=base+finalT+interim; textarea.dispatchEvent(new Event('input')); };
+  r.onerror=e=>{ if(statusEl) statusEl.textContent='音声エラー: '+e.error; };
+  r.onend=()=>{ activeRec=null; btn.classList.remove('rec'); if(statusEl) statusEl.textContent=''; textarea.value=base+finalT; if(!finalT) textarea.value=base.replace(/\n$/,''); textarea.dispatchEvent(new Event('input')); };
+  try{ r.start(); }catch(e){ toast('音声入力を開始できませんでした'); }
+}
+
+/* ====================== 記録（きろく） ====================== */
+let cap = { type:null, typeTouched:false, editing:null, source:'app' };
+function guessType(t){
+  if(!t) return 'idea';
+  if(/農薬|防除|殺虫|殺菌|除草|肥料|資材|薬/.test(t)) return 'material';
+  if(/やること|やらな|しなきゃ|しないと|忘れず|までに|締切|期限|TODO/i.test(t)) return 'task';
+  if(/相談|どうしよう|迷|悩|どっち/.test(t)) return 'consult';
+  if(/決めた|決定|にする|やめる|判断/.test(t)) return 'decision';
+  if(/したい|思いつ|アイデア|できそう|案/.test(t)) return 'idea';
+  if(/買|購入|注文|発注|仕入/.test(t)) return 'buy';
+  if(/売|出荷|販売|値段|単価|価格|納品/.test(t)) return 'sell';
+  if(/さん|君|くん|氏|連絡|電話|会う/.test(t)) return 'people';
+  return 'knowledge';
+}
+function renderCapTypes(){
+  const wrap=document.getElementById('capTypes');
+  wrap.innerHTML=Object.entries(TYPES).map(([k,v])=>`<span class="chip ${cap.type===k?'on':''}" data-t="${k}">${v.e} ${v.l}</span>`).join('');
+  wrap.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{ cap.type=c.dataset.t; cap.typeTouched=true; renderCapTypes(); });
+  document.getElementById('capTaskExtra').classList.toggle('hidden', cap.type!=='task');
+}
+function allTags(){ const m={}; DB.notes.forEach(n=>(n.tags||[]).forEach(t=>m[t]=(m[t]||0)+1)); return Object.entries(m).sort((a,b)=>b[1]-a[1]).map(e=>e[0]); }
+function renderCapTagSug(){
+  const cur=parseTags(document.getElementById('capTags').value);
+  document.getElementById('capTagSug').innerHTML=allTags().slice(0,12).map(t=>`<span class="chip tag ${cur.includes(t)?'on':''}" data-t="${esc(t)}">${esc(t)}</span>`).join('');
+  document.getElementById('capTagSug').querySelectorAll('.chip').forEach(c=>c.onclick=()=>{ const t=c.dataset.t; let arr=parseTags(document.getElementById('capTags').value); arr = arr.includes(t)? arr.filter(x=>x!==t) : [...arr,t]; document.getElementById('capTags').value=arr.join(', '); renderCapTagSug(); });
+}
+const parseTags = s => (s||'').split(/[,、，\s]+/).map(x=>x.trim().replace(/^#/,'')).filter(Boolean).filter((x,i,a)=>a.indexOf(x)===i);
+document.getElementById('capBody').addEventListener('input', ()=>{ if(!cap.typeTouched){ cap.type=guessType(document.getElementById('capBody').value); renderCapTypes(); } });
+document.getElementById('capTags').addEventListener('input', renderCapTagSug);
+document.getElementById('capMic').onclick=()=>dictate(document.getElementById('capBody'), document.getElementById('capMic'), document.getElementById('capVoiceStatus'));
+function resetCap(){ cap={type:'idea',typeTouched:false,editing:null,source:'app'}; ['capBody','capResult','capTags','capDue'].forEach(id=>document.getElementById(id).value=''); document.getElementById('captureTitle').textContent='いま思ったことを記録'; document.getElementById('capCancel').classList.add('hidden'); document.getElementById('capSource').textContent=''; renderCapTypes(); renderCapTagSug(); }
+function prefillCap({body='',type=null,tags=[],source='app',result=''}){ go('log'); resetCap(); cap.source=source; document.getElementById('capBody').value=body; document.getElementById('capResult').value=result; document.getElementById('capTags').value=tags.join(', '); cap.type=type||guessType(body); cap.typeTouched=!!type; renderCapTypes(); renderCapTagSug(); if(SOURCES[source]) document.getElementById('capSource').textContent='取り込み元: '+SOURCES[source]; document.getElementById('captureCard').scrollIntoView({behavior:'smooth'}); }
+function editNote(id){ const n=DB.notes.find(x=>x.id===id); if(!n) return; prefillCap({body:n.body,type:n.type,tags:n.tags,source:n.source,result:n.result||''}); cap.editing=id; document.getElementById('capDue').value=n.due||''; document.getElementById('captureTitle').textContent='記録を編集'; document.getElementById('capCancel').classList.remove('hidden'); }
+document.getElementById('capCancel').onclick=resetCap;
+document.getElementById('capSave').onclick=()=>{
+  const body=document.getElementById('capBody').value.trim(); if(!body){ toast('内容を入れてください'); return; }
+  const data={ type:cap.type||'idea', body, result:document.getElementById('capResult').value.trim(), tags:parseTags(document.getElementById('capTags').value), due:document.getElementById('capDue').value||'' };
+  if(cap.editing){ const n=DB.notes.find(x=>x.id===cap.editing); Object.assign(n,data,{updated:Date.now()}); toast('更新しました'); }
+  else { DB.notes.unshift(Object.assign({id:uid(), ts:Date.now(), source:cap.source, done:false}, data)); toast('記録しました'); }
+  save(); resetCap(); render();
+};
+function addNote(partial){ const n=Object.assign({id:uid(), ts:Date.now(), source:'app', done:false, type:'knowledge', body:'', result:'', tags:[], due:''}, partial); DB.notes.unshift(n); save(); return n; }
+function delNote(id){ if(!confirm('この記録を消しますか？')) return; DB.notes=DB.notes.filter(n=>n.id!==id); save(); render(); toast('消しました'); }
+function toggleDone(id){ const n=DB.notes.find(x=>x.id===id); if(!n) return; n.done=!n.done; n.doneAt=n.done?Date.now():null; save(); render(); }
+function addResult(id){ const n=DB.notes.find(x=>x.id===id); if(!n) return; const r=prompt('結論・結果を書く', n.result||''); if(r===null) return; n.result=r.trim(); n.updated=Date.now(); save(); render(); }
+
+let logFilter={q:'',type:'',tag:''};
+document.getElementById('logSearch').addEventListener('input', e=>{ logFilter.q=e.target.value.trim(); renderLog(); });
+function noteText(n){ return [n.body, n.result, (n.tags||[]).join(' ')].join('\n'); }
+function noteHtml(n, compact=false){
+  const t=TYPES[n.type]||TYPES.knowledge;
+  const title = n.body.split('\n')[0];
+  const body = compact ? esc(title.length>80?title.slice(0,80)+'…':title) : esc(n.body);
+  return `<div class="note ${n.done?'done':''}" id="n-${n.id}">
+    <div class="meta">${n.type==='task'?`<span class="check ${n.done?'on':''}" onclick="toggleDone('${n.id}')">${n.done?'✓':''}</span>`:''}
+      <span class="badge ${n.type==='task'?'task':''}">${t.e} ${t.l}</span>
+      <span>${fmtDate(n.ts)} ${fmtTime(n.ts)}</span>
+      ${n.due?`<span class="badge src">期限 ${esc(n.due)}</span>`:''}
+      ${n.source && n.source!=='app'?`<span class="badge src">${SOURCES[n.source]||esc(n.source)}</span>`:''}
+      ${(n.tags||[]).map(x=>`<span class="chip tag" style="padding:1px 8px;font-size:.72rem" onclick="setTagFilter('${esc(x)}')">${esc(x)}</span>`).join('')}
+    </div>
+    <div class="body">${body}</div>
+    ${n.result?`<div class="result">結論・結果: ${esc(n.result)}</div>`:''}
+    ${compact?'':`<div class="acts">
+      <button class="btn sm" onclick="editNote('${n.id}')">✏️ 編集</button>
+      <button class="btn sm" onclick="addResult('${n.id}')">📌 結論</button>
+      <button class="btn sm" onclick="shareGmail('${n.id}')">📬 Gmail</button>
+      <button class="btn sm" onclick="shareLine('${n.id}')">💚 LINE</button>
+      <button class="btn sm" onclick="askClaude('${n.id}')">💬 分身に相談</button>
+      ${navigator.share?`<button class="btn sm" onclick="shareNative('${n.id}')">📤 共有</button>`:''}
+      <button class="btn sm danger" onclick="delNote('${n.id}')">🗑</button>
+    </div>`}
+  </div>`;
+}
+function setTagFilter(t){ logFilter.tag = logFilter.tag===t?'':t; go('log'); }
+function renderLog(){
+  const types=document.getElementById('logTypes');
+  types.innerHTML=`<span class="chip ${!logFilter.type?'on':''}" data-t="">すべて</span>`+Object.entries(TYPES).map(([k,v])=>`<span class="chip ${logFilter.type===k?'on':''}" data-t="${k}">${v.e} ${v.l}</span>`).join('');
+  types.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{ logFilter.type=c.dataset.t; renderLog(); });
+  document.getElementById('logTags').innerHTML=allTags().slice(0,20).map(t=>`<span class="chip tag ${logFilter.tag===t?'on':''}" onclick="setTagFilter('${esc(t)}')">${esc(t)}</span>`).join('');
+  const q=logFilter.q.toLowerCase();
+  const list=DB.notes.filter(n=>(!logFilter.type||n.type===logFilter.type)&&(!logFilter.tag||(n.tags||[]).includes(logFilter.tag))&&(!q||noteText(n).toLowerCase().includes(q)));
+  const el=document.getElementById('logList');
+  if(!list.length){ el.innerHTML='<div class="empty">まだ記録がありません。上の欄に話すか書くかして「保存する」を押してください。</div>'; return; }
+  let html='', lastD='';
+  list.forEach(n=>{ const d=fmtDate(n.ts); if(d!==lastD){ html+=`<div class="dategroup">${d}${d===todayKey()?'（今日）':''}</div>`; lastD=d; } html+=noteHtml(n); });
+  el.innerHTML=html+`<p class="muted small" style="margin:10px 0 0">${list.length} 件</p>`;
+}
+
+/* ====================== ホーム ====================== */
+function score(){
+  const filled=PROFILE_FIELDS.filter(f=>(DB.profile[f[0]]||'').trim()).length;
+  const answered=Object.keys(DB.answers).length;
+  const s=Math.min(100, Math.round(DB.notes.length*0.6 + answered*1.5 + filled*4));
+  const level = s<10?'たまご':s<30?'ひよこ':s<55?'見習い':s<80?'右腕':'分身';
+  return {s, level, filled, answered, profilePct:Math.round(filled/PROFILE_FIELDS.length*100)};
+}
+function renderHome(){
+  const sc=score(); const nm=userName();
+  document.getElementById('heroTitle').textContent = nm?`${nm}さんの分身、育成中`:'分身、育成中';
+  document.getElementById('brandSub').textContent = nm?`${nm}さんの考え方を記録して、分身を育てる`:'あなたの考え方を記録して、分身を育てる';
+  document.getElementById('heroLevel').textContent=`${sc.level}（${sc.s}%）`;
+  document.getElementById('heroMeter').style.width=sc.s+'%';
+  document.getElementById('stNotes').textContent=DB.notes.length;
+  document.getElementById('stAns').textContent=sc.answered;
+  document.getElementById('stProfile').textContent=sc.profilePct+'%';
+  document.getElementById('heroHint').textContent = !nm ? 'まず「分身」タブで名前と仕事を入れると、分身に名前がつきます。' : sc.profilePct<60 ? 'プロフィールを埋めると、分身の判断がぐっと本人らしくなります。' : sc.answered<15 ? '今日の質問に毎日1つ答えると、2週間で「右腕」に近づきます。' : '記録が増えるほど、分身の指示書が濃くなります。たまに「分身の指示書を作る」で書き出してください。';
+  // 今日の質問
+  const unanswered=QUESTIONS.filter(q=>!DB.answers[q.id]);
+  const box=document.getElementById('todayQ');
+  if(!unanswered.length){ box.innerHTML='<div class="empty">すべての質問に答えました！「分身」タブで答えを見直したり、記録を増やしてください。</div>'; }
+  else {
+    const dayN=Math.floor(Date.now()/86400000)+(homeQOffset);
+    const q=unanswered[((dayN%unanswered.length)+unanswered.length)%unanswered.length];
+    box.innerHTML=`<div class="q"><div class="muted small">${esc(q.catName)}</div><div class="qt">${esc(q.text)}</div>
+      <div class="row" style="align-items:flex-start"><textarea id="todayAns" class="grow" rows="3" placeholder="話すか、書くか。短くてOK"></textarea><button class="mic" id="todayMic">🎤</button></div>
+      <div class="muted small" id="todayVoice"></div>
+      <div class="row" style="margin-top:8px"><button class="btn primary" onclick="answerQ('${q.id}', document.getElementById('todayAns').value)">答えを保存</button><button class="btn ghost" onclick="homeQOffset++;renderHome()">別の質問</button></div></div>
+      <div class="muted small">残り ${unanswered.length} 問</div>`;
+    document.getElementById('todayMic').onclick=()=>dictate(document.getElementById('todayAns'), document.getElementById('todayMic'), document.getElementById('todayVoice'));
+  }
+  // やること
+  const tasks=DB.notes.filter(n=>n.type==='task'&&!n.done).sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999'));
+  document.getElementById('taskCount').textContent=tasks.length?`${tasks.length} 件`:'';
+  document.getElementById('homeTasks').innerHTML = tasks.length ? tasks.slice(0,8).map(n=>`<div class="task-item"><span class="check" onclick="toggleDone('${n.id}')"></span><div class="grow"><div>${esc(n.body.split('\n')[0])}</div>${n.due?`<div class="muted small ${n.due<todayKey()?'ng':''}">期限 ${esc(n.due)}${n.due<todayKey()?'（過ぎています）':''}</div>`:''}</div></div>`).join('') : '<div class="empty">未完了の作業はありません。「やること」は記録で種類「✅ 作業」を選ぶと、ここに出ます。</div>';
+  // 最近
+  document.getElementById('homeRecent').innerHTML = DB.notes.length ? DB.notes.slice(0,5).map(n=>noteHtml(n,true)).join('') : '<div class="empty">右下の「＋」から、最初の記録をどうぞ。</div>';
+}
+let homeQOffset=0;
+function answerQ(id, text){ text=(text||'').trim(); if(!text){ toast('答えを入れてください'); return; } DB.answers[id]={ts:Date.now(), text}; save(); toast('保存しました。分身が少し濃くなりました'); homeQOffset=0; render(); }
+
+/* ====================== 分身 ====================== */
+function renderProfile(){
+  const el=document.getElementById('profileForm');
+  if(!el.dataset.built){
+    el.innerHTML=PROFILE_FIELDS.map(([k,l,ph,rows])=>`<label class="f">${esc(l)}</label>${rows===1?`<input type="text" data-k="${k}" placeholder="${esc(ph)}">`:`<div class="row" style="align-items:flex-start"><textarea data-k="${k}" rows="${rows}" class="grow" placeholder="${esc(ph)}"></textarea><button class="mic" data-mic="${k}">🎤</button></div>`}`).join('');
+    el.querySelectorAll('[data-k]').forEach(i=>{ i.addEventListener('change', ()=>{ DB.profile[i.dataset.k]=i.value; save(); renderHome(); }); });
+    el.querySelectorAll('[data-mic]').forEach(b=>b.onclick=()=>{ const ta=el.querySelector(`[data-k="${b.dataset.mic}"]`); dictate(ta,b,null); ta.addEventListener('input',()=>{ DB.profile[b.dataset.mic]=ta.value; save(); },{once:false}); });
+    el.dataset.built='1';
+  }
+  el.querySelectorAll('[data-k]').forEach(i=>{ if(document.activeElement!==i) i.value=DB.profile[i.dataset.k]||''; });
+}
+let qCat='';
+function renderQuestions(){
+  const cats=[...new Map(QUESTIONS.map(q=>[q.cat,q.catName])).entries()];
+  const cnt=c=>QUESTIONS.filter(q=>q.cat===c).length, done=c=>QUESTIONS.filter(q=>q.cat===c&&DB.answers[q.id]).length;
+  document.getElementById('qCats').innerHTML=`<span class="chip ${!qCat?'on':''}" data-c="">すべて ${Object.keys(DB.answers).length}/${QUESTIONS.length}</span>`+cats.map(([c,n])=>`<span class="chip ${qCat===c?'on':''}" data-c="${c}">${esc(n)} ${done(c)}/${cnt(c)}</span>`).join('');
+  document.getElementById('qCats').querySelectorAll('.chip').forEach(x=>x.onclick=()=>{ qCat=x.dataset.c; renderQuestions(); });
+  const list=QUESTIONS.filter(q=>!qCat||q.cat===qCat);
+  document.getElementById('qList').innerHTML=list.map(q=>{ const a=DB.answers[q.id]; return `<div class="qi"><div class="qt">${a?'✅ ':'○ '}${esc(q.text)}</div>${a?`<div class="ans">${esc(a.text)}</div>`:''}<div class="row" style="margin-top:4px"><button class="btn sm" onclick="editAnswer('${q.id}')">${a?'答えを直す':'答える'}</button></div></div>`; }).join('');
+}
+function editAnswer(id){
+  const q=QUESTIONS.find(x=>x.id===id); const a=DB.answers[id];
+  openModal(`<h3>${esc(q.text)}</h3><div class="muted small">${esc(q.catName)}</div>
+    <div class="row" style="align-items:flex-start;margin-top:8px"><textarea id="mAns" class="grow" rows="5">${esc(a?a.text:'')}</textarea><button class="mic" id="mMic">🎤</button></div>
+    <div class="row" style="margin-top:10px"><button class="btn primary" id="mSave">保存</button><button class="btn ghost" onclick="closeModal()">閉じる</button>${a?`<button class="btn sm danger" id="mDel">答えを消す</button>`:''}</div>`);
+  document.getElementById('mMic').onclick=()=>dictate(document.getElementById('mAns'), document.getElementById('mMic'), null);
+  document.getElementById('mSave').onclick=()=>{ const t=document.getElementById('mAns').value.trim(); if(!t){ toast('答えを入れてください'); return; } DB.answers[id]={ts:Date.now(),text:t}; save(); closeModal(); render(); toast('保存しました'); };
+  const d=document.getElementById('mDel'); if(d) d.onclick=()=>{ delete DB.answers[id]; save(); closeModal(); render(); };
+}
+
+function personaMarkdown(){
+  const nm=userName()||'本人'; const p=DB.profile; const L=[];
+  const sec=(t,b)=>{ if(b&&String(b).trim()) L.push(`## ${t}\n${String(b).trim()}\n`); };
+  L.push(`# ${nm}の分身 — 指示書\n`);
+  L.push(`（${todayKey()} 時点・記録 ${DB.notes.length} 件・質問への回答 ${Object.keys(DB.answers).length} 件。分身ノートから書き出し）\n`);
+  L.push(`## あなたの役割\nあなたは「${nm}」の分身です。以下のプロフィール・価値観・判断の軸・言い回し・過去の記録にもとづいて、${nm}本人が考えるように考え、本人の代わりに返事の下書き・段取り・アイデア出し・選択肢の整理をしてください。\n- 口調と文章の長さは「口ぐせ・言い回し」に合わせる\n- 判断は「判断の軸」「やらないこと」を最優先にする\n- 記録にない事実は推測せず「本人に確認」と明記する\n- 金額や契約など取り返しのつかないことは、必ず本人の最終確認を求める\n`);
+  sec('プロフィール', [p.work?`- 仕事・役割: ${p.work}`:'', p.fields?`- 得意・よく相談されること: ${p.fields}`:''].filter(Boolean).join('\n'));
+  sec('大事にしていること', p.values); sec('判断の軸・くせ', p.rules); sec('やらないこと', p.never); sec('口ぐせ・言い回し・文章の好み', p.phrases);
+  sec('よく連絡する相手・取引先・仕入れ先', p.people); sec('使っている資材・農薬・道具', p.materials);
+  // 質問回答
+  const cats=[...new Map(QUESTIONS.map(q=>[q.cat,q.catName])).entries()];
+  const qa=cats.map(([c,n])=>{ const qs=QUESTIONS.filter(q=>q.cat===c&&DB.answers[q.id]); if(!qs.length) return ''; return `### ${n}\n`+qs.map(q=>`- Q: ${q.text}\n  A: ${DB.answers[q.id].text.replace(/\n/g,'\n     ')}`).join('\n'); }).filter(Boolean).join('\n\n');
+  sec('本人への質問と答え（考え方の素材）', qa);
+  // 記録
+  const byType=k=>DB.notes.filter(n=>n.type===k);
+  const line=n=>`- [${fmtDate(n.ts)}] ${n.body.replace(/\n/g,' ')}${n.result?` → 結論: ${n.result.replace(/\n/g,' ')}`:''}${(n.tags||[]).length?` (${n.tags.map(t=>'#'+t).join(' ')})`:''}`;
+  sec('判断の記録（どう決めたか）', [...byType('decision'),...byType('consult')].map(line).join('\n'));
+  sec('アイデアの記録', byType('idea').map(line).join('\n'));
+  sec('購入・販売の記録', [...byType('buy'),...byType('sell')].map(line).join('\n'));
+  sec('農薬・資材の記録', byType('material').map(line).join('\n'));
+  sec('人・連絡の記録', byType('people').map(line).join('\n'));
+  sec('知識・メモ', byType('knowledge').map(line).join('\n'));
+  const tasks=byType('task'); sec('作業の記録（未完了 → 完了）', [...tasks.filter(n=>!n.done).map(n=>line(n)+(n.due?` 期限 ${n.due}`:'')+' [未完了]'), ...tasks.filter(n=>n.done).slice(0,30).map(n=>line(n)+' [完了]')].join('\n'));
+  return L.join('\n');
+}
+function showPersona(){
+  const md=personaMarkdown(); const nm=userName()||'分身';
+  openModal(`<h3>📄 ${esc(nm)}の分身 — 指示書</h3><p class="muted small">${md.length.toLocaleString()} 文字。Claude のプロジェクトの「指示」に貼るか、ファイルとして渡してください。</p>
+    <pre class="out">${esc(md)}</pre>
+    <div class="row" style="margin-top:10px"><button class="btn primary" id="pCopy">コピー</button><button class="btn" onclick="download('${esc(nm)}の分身_指示書_${todayKey().replace(/\\//g,'-')}.md', personaMarkdown(), 'text/markdown')">ファイル保存（.md）</button><button class="btn" onclick="window.open('https://claude.ai/new','_blank')">Claude を開く</button><button class="btn ghost" onclick="closeModal()">閉じる</button></div>`);
+  document.getElementById('pCopy').onclick=()=>copyText(md);
+}
+function personaBrief(){
+  const p=DB.profile; const nm=userName()||'本人';
+  const parts=[`あなたは「${nm}」の分身です。本人の考え方で答えてください。`];
+  if(p.work) parts.push(`仕事: ${p.work}`); if(p.values) parts.push(`大事にしていること: ${p.values}`); if(p.rules) parts.push(`判断の軸: ${p.rules}`); if(p.never) parts.push(`やらないこと: ${p.never}`); if(p.phrases) parts.push(`言い回し: ${p.phrases}`);
+  const ans=Object.entries(DB.answers).slice(-6).map(([id,a])=>{ const q=QUESTIONS.find(x=>x.id===id); return q?`Q:${q.text} A:${a.text}`:''; }).filter(Boolean);
+  if(ans.length) parts.push('本人の答え:\n'+ans.join('\n'));
+  return parts.join('\n');
+}
+async function askClaude(noteId){
+  const n=noteId?DB.notes.find(x=>x.id===noteId):null;
+  let text=personaBrief()+'\n\n';
+  if(n){ text+=`相談したい記録:\n${n.body}${n.result?`\n（これまでの結論: ${n.result}）`:''}\n\nこの件について、分身としてどう考えるか、次にやることを3つまで、本人の言い回しで。わからないことは「本人に確認」と書いて。`; }
+  else { text+='まず「何について相談したい？」と一言で聞いてから、分身として答えて。'; }
+  const ok=await copyText(text);
+  const url='https://claude.ai/new'+(text.length<3000?'?q='+encodeURIComponent(text):'');
+  if(ok) toast(text.length<3000?'Claude を開きます':'文章をコピーしました。Claude に貼り付けてください');
+  window.open(url,'_blank');
+}
+
+/* ====================== 連携 ====================== */
+function noteShareText(n){ const t=TYPES[n.type]||TYPES.knowledge; return `【${t.l}】${n.body}${n.result?`\n結論・結果: ${n.result}`:''}${(n.tags||[]).length?`\n${n.tags.map(x=>'#'+x).join(' ')}`:''}\n（${fmtDate(n.ts)} 分身ノート）`; }
+function shareGmail(id){ const n=DB.notes.find(x=>x.id===id); if(!n) return; const to=(DB.settings.mailTo||'').trim(); const t=TYPES[n.type]||TYPES.knowledge; const su=`[分身ノート/${t.l}] ${n.body.split('\n')[0].slice(0,40)}`; const body=noteShareText(n); location.href=`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(su)}&body=${encodeURIComponent(body)}`; if(!to) toast('連携タブで送り先メールを設定すると宛先が自動で入ります'); }
+function shareLine(id){ const n=DB.notes.find(x=>x.id===id); if(!n) return; window.open('https://line.me/R/share?text='+encodeURIComponent(noteShareText(n)),'_blank'); }
+async function shareNative(id){ const n=DB.notes.find(x=>x.id===id); if(!n) return; try{ await navigator.share({title:'分身ノート', text:noteShareText(n)}); }catch(e){} }
+function openGmailSearch(){ const q=document.getElementById('gmailQ').value.trim(); window.open('https://mail.google.com/mail/u/0/#search/'+encodeURIComponent(q||'newer_than:7d'),'_blank'); }
+function importPaste(source){
+  const el=document.getElementById(source==='gmail'?'gmailPaste':'linePaste'); const t=el.value.trim(); if(!t){ toast('文章を貼ってください'); return; }
+  let body=t; const tags=[];
+  const subj=t.match(/^(?:件名|Subject)\s*[:：]\s*(.+)$/mi); const from=t.match(/^(?:差出人|From)\s*[:：]\s*(.+)$/mi);
+  if(subj||from){ body=`${subj?subj[1].trim():''}${from?`（${from[1].trim()}）`:''}\n`+t.replace(/^(?:件名|Subject|差出人|From|To|宛先|日付|Date)\s*[:：].*$/gmi,'').trim(); }
+  el.value=''; prefillCap({body, source, tags});
+}
+/* LINE トーク履歴 */
+function parseLineExport(text){
+  const lines=text.split(/\r?\n/); let date=null; const out=[];
+  for(const ln of lines){
+    const dm=ln.match(/^(\d{4})[\/.年](\d{1,2})[\/.月](\d{1,2})/); if(dm){ date=`${dm[1]}/${pad(dm[2])}/${pad(dm[3])}`; continue; }
+    if(/^\[LINE\]|^保存日時|^\s*$/.test(ln)){ continue; }
+    const mm=ln.match(/^(\d{1,2}:\d{2})\t([^\t]*)\t(.*)$/) || ln.match(/^(\d{1,2}:\d{2})\s+(\S+)\s+(.*)$/);
+    if(mm){ out.push({date, time:mm[1], name:mm[2], text:mm[3]}); } else if(out.length){ out[out.length-1].text+='\n'+ln; } else { out.push({date, time:'', name:'', text:ln}); }
+  }
+  return out.filter(m=>m.text.trim() && !/^\[(スタンプ|写真|動画|ボイスメッセージ|ファイル|アルバム)\]$/.test(m.text.trim()));
+}
+let lineMsgs=[];
+function renderLineParsed(){
+  const el=document.getElementById('lineParsed');
+  if(!lineMsgs.length){ el.innerHTML=''; return; }
+  const names=[...new Set(lineMsgs.map(m=>m.name).filter(Boolean))];
+  el.innerHTML=`<div class="help">${lineMsgs.length} 件のメッセージを読み取りました${names.length?`（${names.map(esc).join('、')}）`:''}。記録にしたいものにチェック。<br><span class="muted">形式は端末や LINE のバージョンで異なることがあります。読み取れない場合は、必要な部分をコピーして上の欄に貼ってください。</span></div>
+    <div class="row" style="margin:8px 0"><button class="btn sm" onclick="lineMsgs.forEach(m=>m.sel=true);renderLineParsed()">全部選ぶ</button><button class="btn sm" onclick="lineMsgs.forEach(m=>m.sel=false);renderLineParsed()">全部外す</button><button class="btn sm primary" onclick="importLineSelected()">選んだものを記録にする</button></div>
+    ${lineMsgs.slice(0,300).map((m,i)=>`<div class="task-item"><span class="check ${m.sel?'on':''}" onclick="lineMsgs[${i}].sel=!lineMsgs[${i}].sel;renderLineParsed()">${m.sel?'✓':''}</span><div class="grow"><div class="muted small">${esc(m.date||'')} ${esc(m.time)} ${esc(m.name)}</div><div style="white-space:pre-wrap">${esc(m.text)}</div></div></div>`).join('')}
+    ${lineMsgs.length>300?`<p class="muted small">表示は300件まで（選択は全件に効きます）</p>`:''}`;
+}
+function parseLinePaste(){ const t=document.getElementById('linePaste').value; if(!t.trim()){ toast('貼り付けてください'); return; } lineMsgs=parseLineExport(t).map(m=>Object.assign(m,{sel:false})); if(!lineMsgs.length) toast('読み取れませんでした'); renderLineParsed(); }
+document.getElementById('lineFile').addEventListener('change', async e=>{ const f=e.target.files[0]; if(!f) return; const t=await f.text(); lineMsgs=parseLineExport(t).map(m=>Object.assign(m,{sel:false})); toast(lineMsgs.length?`${lineMsgs.length} 件読み取りました`:'読み取れませんでした'); renderLineParsed(); e.target.value=''; });
+function importLineSelected(){
+  const sel=lineMsgs.filter(m=>m.sel); if(!sel.length){ toast('記録にするものを選んでください'); return; }
+  const grouped={}; sel.forEach(m=>{ const k=(m.date||'')+'|'+(m.name||''); (grouped[k]=grouped[k]||[]).push(m); });
+  let count=0;
+  Object.entries(grouped).forEach(([k,ms])=>{ const [d,name]=k.split('|'); const body=(name?`${name}（LINE${d?' '+d:''}）:\n`:'')+ms.map(m=>m.text).join('\n'); addNote({type:guessType(body)==='idea'?'people':guessType(body), body, source:'line', tags:name?[name]:[]}); count++; });
+  lineMsgs=[]; renderLineParsed(); render(); toast(`${count} 件の記録にしました`);
+}
+/* ブリッジ */
+async function bridge(action, payload={}){
+  const url=(DB.settings.bridgeUrl||'').trim(); if(!url) throw new Error('ブリッジの URL が未設定です（連携タブ）');
+  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({token:(DB.settings.bridgeToken||'').trim(),action},payload))});
+  let j; try{ j=await r.json(); }catch(e){ throw new Error('ブリッジの返答が読めません（URL が /exec で終わっているか、公開設定が「全員」か確認）'); }
+  if(!j.ok) throw new Error(j.error||'ブリッジでエラー'); return j;
+}
+const bst=(m,ok)=>{ const el=document.getElementById('bridgeStatus'); el.innerHTML=`<span class="${ok?'ok':'ng'}">${esc(m)}</span>`; };
+async function testBridge(){ bst('接続中…',true); try{ const j=await bridge('ping'); bst(`接続OK ／ シート: ${j.sheet?'あり':'未作成（同期時に自動作成）'} ／ Gmail: ${j.gmail?'使える':'権限なし'} ／ LINE通知: ${j.line?'設定あり':'未設定'}`,true); }catch(e){ bst('失敗: '+e.message,false); } }
+async function syncBridge(){
+  const pending=DB.notes.filter(n=>!DB.synced.includes(n.id+':'+(n.updated||n.ts)));
+  if(!pending.length){ bst('同期するものはありません（すべて送信済み）',true); return; }
+  bst(`${pending.length} 件を送信中…`,true);
+  try{ const j=await bridge('save',{notes:pending.map(n=>({id:n.id, date:fmtDate(n.ts)+' '+fmtTime(n.ts), type:(TYPES[n.type]||{}).l||n.type, body:n.body, result:n.result||'', tags:(n.tags||[]).join(' '), source:n.source||'app', done:n.done?'完了':'', due:n.due||''}))});
+    pending.forEach(n=>DB.synced.push(n.id+':'+(n.updated||n.ts))); DB.synced=DB.synced.slice(-5000); save(); bst(`${j.saved} 件をスプレッドシートに保存しました`,true); }
+  catch(e){ bst('失敗: '+e.message,false); }
+}
+async function fetchBridgeGmail(){
+  const el=document.getElementById('bridgeMails'); el.innerHTML='<div class="muted small">取得中…</div>';
+  try{ const j=await bridge('gmail',{query:document.getElementById('bridgeGmailQ').value, max:20});
+    if(!j.mails.length){ el.innerHTML='<div class="empty">該当するメールはありません</div>'; return; }
+    el.innerHTML=j.mails.map((m,i)=>`<div class="mail-item"><div class="muted small">${esc(m.date)} ／ ${esc(m.from)}</div><div><b>${esc(m.subject)}</b></div><div class="muted small" style="white-space:pre-wrap">${esc(m.snippet)}</div><div class="row" style="margin-top:4px"><button class="btn sm" onclick='prefillCap({body:${JSON.stringify(m.subject+'（'+m.from+'）\n'+m.snippet)},source:"gmail"})'>記録にする</button><a class="btn sm" href="${esc(m.link)}" target="_blank">Gmail で開く</a></div></div>`).join('');
+  }catch(e){ el.innerHTML=`<div class="ng small">${esc(e.message)}</div>`; }
+}
+async function sendBridgeLine(text){ try{ await bridge('line',{text}); toast('LINE に送りました'); }catch(e){ toast('失敗: '+e.message); } }
+
+/* 設定 */
+['setMailTo','setBridgeUrl','setBridgeToken'].forEach(id=>{ const el=document.getElementById(id); el.addEventListener('change',()=>{ DB.settings[{setMailTo:'mailTo',setBridgeUrl:'bridgeUrl',setBridgeToken:'bridgeToken'}[id]]=el.value.trim(); save(); toast('設定を保存しました'); }); });
+function renderLink(){ document.getElementById('setMailTo').value=DB.settings.mailTo||''; document.getElementById('setBridgeUrl').value=DB.settings.bridgeUrl||''; document.getElementById('setBridgeToken').value=DB.settings.bridgeToken||'';
+  const ib=document.getElementById('installBox'); const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+  ib.innerHTML = standalone ? '<div class="ok small">ホーム画面のアプリとして開いています</div>' : installEvent ? '<button class="btn primary" onclick="installEvent.prompt()">ホーム画面に追加する</button>' : '<div class="muted small">iPhone: Safari の共有ボタン →「ホーム画面に追加」／ Android: Chrome の︙ →「アプリをインストール」</div>'; }
+let installEvent=null; window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); installEvent=e; if(tab==='link') renderLink(); });
+
+/* バックアップ */
+function exportJson(){ download(`分身ノート_バックアップ_${todayKey().replace(/\//g,'-')}.json`, JSON.stringify(DB,null,1), 'application/json'); }
+document.getElementById('importJson').addEventListener('change', async e=>{ const f=e.target.files[0]; if(!f) return; try{ const d=JSON.parse(await f.text()); if(!d||d.v!==1||!Array.isArray(d.notes)) throw 0; const mode=confirm(`読み込みます。\n「OK」= 今のデータに追加（重複は除外）\n「キャンセル」= 今のデータを置き換え`); if(mode){ const ids=new Set(DB.notes.map(n=>n.id)); d.notes.forEach(n=>{ if(!ids.has(n.id)) DB.notes.push(n); }); DB.notes.sort((a,b)=>b.ts-a.ts); Object.entries(d.answers||{}).forEach(([k,v])=>{ if(!DB.answers[k]) DB.answers[k]=v; }); Object.entries(d.profile||{}).forEach(([k,v])=>{ if(!DB.profile[k]&&v) DB.profile[k]=v; }); } else { DB=Object.assign(fresh(), d); } save(); render(); toast('読み込みました'); }catch(err){ toast('読み込めませんでした（分身ノートのバックアップ形式ではありません）'); } e.target.value=''; });
+function wipeAll(){ if(!confirm('すべての記録・回答・プロフィール・設定を消します。先にバックアップしましたか？')) return; if(!confirm('本当に消しますか？（元に戻せません）')) return; DB=fresh(); save(); render(); toast('消しました'); }
+
+/* ====================== 共有シートからの受け取り ====================== */
+function handleShareTarget(){
+  const u=new URL(location.href); const title=u.searchParams.get('title')||'', text=u.searchParams.get('text')||'', url=u.searchParams.get('url')||'';
+  if(!(title||text||url)) return false;
+  history.replaceState(null,'',location.pathname);
+  const body=[title, text, url].filter(Boolean).filter((x,i,a)=>a.indexOf(x)===i).join('\n');
+  const src=/line\.me|LINE/.test(title+text+url)?'line':/mail\.google|gmail/i.test(url+text)?'gmail':'share';
+  prefillCap({body, source:src}); return true;
+}
+
+/* ====================== 起動 ====================== */
+function render(){ if(tab==='home') renderHome(); if(tab==='log') renderLog(); if(tab==='persona'){ renderProfile(); renderQuestions(); } if(tab==='link') renderLink(); }
+resetCap();
+if(!handleShareTarget()) go('home'); else render();
+if('serviceWorker' in navigator && location.protocol!=='file:'){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+</script>
+</body>
+</html>
