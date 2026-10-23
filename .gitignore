@@ -8,4 +8,8 @@ __pycache__/
 *.pyc
 .pytest_cache/
 samples/real_us/
+
+# 鍵（API キー）を書いたファイルはアップロードしない
+.env
+*.env
 成長株発掘_結果.txt

@@ -1,6 +1,6 @@
-// わが家のごはん帖: オフラインで開けるようにアプリ本体をキャッシュする
-const VERSION = 'gohancho-v2';
-const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './privacy.html'];
+// わが家のご飯帖: オフラインで開けるようにアプリ本体をキャッシュする
+const VERSION = 'gohancho-v10';
+const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './privacy.html', './support.html', './privacy-en.html', './support-en.html', './i18n/en.js'];
 const IMG = 'gohancho-img-v1';
 
 self.addEventListener('install', e => {
@@ -26,7 +26,23 @@ self.addEventListener('fetch', e => {
     e.respondWith(caches.open(IMG).then(c => c.match(req).then(hit => hit || fetch(req).then(res => { c.put(req, res.clone()); return res; }))));
     return;
   }
-  // 同じサイトのファイル（アイコンなど）
+  // ChatGPT で作った絵の一覧: 作り直したら反映されるよう、まずネットから
+  if (url.origin === self.location.origin && /\/img\/dish\/manifest\.json$/.test(url.pathname)){
+    e.respondWith(fetch(req).then(res => { const copy = res.clone(); caches.open(VERSION).then(c => c.put(req, copy)); return res; })
+      .catch(() => caches.match(req, {ignoreSearch:true})));
+    return;
+  }
+  // 国のレシピ（packs/）と画面の言葉の辞書（i18n/）: 直したら反映されるよう、まずネットから。だめならキャッシュ（電波がなくても使える）
+  if (url.origin === self.location.origin && /\/(packs|i18n)\/.+\.js$/.test(url.pathname)){
+    e.respondWith(fetch(req).then(res => { if (res.ok){ const copy = res.clone(); caches.open(VERSION).then(c => c.put(req, copy)); } return res; })
+      .catch(() => caches.match(req, {ignoreSearch:true}).then(hit => hit || Response.error())));
+    return;
+  }
+  // 同じサイトのファイル（アイコン・料理の絵など）。一度見たものは保存して電波がなくても出す
+  if (url.origin === self.location.origin && /\/img\//.test(url.pathname)){
+    e.respondWith(caches.open(VERSION).then(c => c.match(req).then(hit => hit || fetch(req).then(res => { if (res.ok) c.put(req, res.clone()); return res; }))));
+    return;
+  }
   if (url.origin === self.location.origin){
     e.respondWith(caches.match(req).then(hit => hit || fetch(req)));
   }
