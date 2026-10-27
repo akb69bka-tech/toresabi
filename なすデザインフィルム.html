@@ -152,15 +152,21 @@
     </div>
 
     <div class="card">
-        <h2>③ ブランドのラベル <span class="tag">デザインA（せんとうふぁーむ）の要素</span></h2>
+        <h2>③ 団体名の案 <span class="tag">安芸・高知・太平洋・海・龍馬</span></h2>
+        <div class="presets" id="names"></div>
+        <p class="muted" style="margin:.7rem 0 0">押すと団体名・英語名・商品名・筆記体・ロゴの種類がその案に変わります（ラベルが出ていなければ「案2 デザインA風」の配置で表示）。文言は④で自由に直せます。</p>
+    </div>
+
+    <div class="card">
+        <h2>④ ブランドのラベル <span class="tag">デザインAの要素</span></h2>
         <div class="row">
             <label class="check"><input type="checkbox" data-k="labelOn">ブランドのラベルを使う</label>
         </div>
         <div class="row">
-            <div class="field"><label>農園名（日本語・主役）</label><input type="text" data-k="farmJa"></div>
+            <div class="field"><label>団体名（日本語・主役）</label><input type="text" data-k="farmJa"></div>
         </div>
         <div class="row">
-            <div class="field"><label>農園名（英語）</label><input type="text" data-k="farmEn"></div>
+            <div class="field"><label>団体名（英語）</label><input type="text" data-k="farmEn"></div>
             <div class="field"><label>産地</label><input type="text" data-k="region"></div>
         </div>
         <div class="row">
@@ -179,7 +185,18 @@
                     <option value="mincho">明朝（上品・和）</option>
                 </select>
             </div>
-            <div class="field"><label>農園名の大きさ</label><input type="range" min="60" max="140" data-k="farmSize"></div>
+            <div class="field"><label>団体名の大きさ</label><input type="range" min="60" max="140" data-k="farmSize"></div>
+        </div>
+        <div class="row">
+            <div class="field"><label>ロゴの種類</label>
+                <select data-k="logo">
+                    <option value="sun">朝日と畑（現行）</option>
+                    <option value="wave">太平洋の朝日と波</option>
+                    <option value="mount">土佐の山並みと朝日</option>
+                    <option value="whale">鯨と波</option>
+                    <option value="none">ロゴなし</option>
+                </select>
+            </div>
         </div>
         <div class="row">
             <label class="check"><input type="checkbox" data-k="showLogo">ロゴ（朝日と畑）</label>
@@ -202,7 +219,7 @@
     </div>
 
     <div class="card">
-        <h2>④ 色（インク）</h2>
+        <h2>⑤ 色（インク）</h2>
         <div class="row">
             <div class="field"><label>メインのインク</label><div class="colorrow"><input type="color" data-k="ink"><span class="muted">白（現行は白1色）</span></div></div>
             <div class="field"><label>アクセント</label><div class="colorrow"><input type="color" data-k="gold"><span class="muted">ゴールド（特色＋1版）</span></div></div>
@@ -216,7 +233,7 @@
     </div>
 
     <div class="card">
-        <h2>⑤ 袋（版下テンプレート）</h2>
+        <h2>⑥ 袋（版下テンプレート）</h2>
         <div class="row">
             <div class="field"><label>袋の幅 (mm)</label><input type="number" min="80" max="300" data-k="bagW"></div>
             <div class="field"><label>袋の高さ (mm)</label><input type="number" min="150" max="500" data-k="bagH"></div>
@@ -248,7 +265,7 @@
     </div>
 
     <div class="card">
-        <h2>⑥ 見え方と書き出し</h2>
+        <h2>⑦ 見え方と書き出し</h2>
         <div class="row">
             <div class="field"><label>プレビューの背景</label>
                 <select data-k="bg">
@@ -272,7 +289,7 @@
     </div>
 
     <div class="card">
-        <h2>⑦ 磨き直しメモ</h2>
+        <h2>⑧ 磨き直しメモ</h2>
         <textarea data-k="memo" placeholder="気づいたこと、印刷会社に伝えたいこと、次に試したい案など"></textarea>
         <details style="margin-top:.6rem">
             <summary>目指す方向（デザインA より）</summary>
@@ -288,12 +305,12 @@
         <details style="margin-top:.6rem">
             <summary>磨き直しのチェック項目</summary>
             <ul class="points">
-                <li>離れて見て農園名が最初に目に入るか（2m先・3秒）</li>
+                <li>離れて見て団体名が最初に目に入るか（2m先・3秒）</li>
                 <li>白インク1色でも成立するか（ゴールドは特色で1版増える）</li>
                 <li>なすの濃い紫の上で白が抜けて見えるか、透明部分では背景に負けないか</li>
                 <li>文字が細すぎないか（フィルム印刷は 0.3mm 未満の線がつぶれやすい）</li>
                 <li>図柄が印刷逃がし（外周10mm）と空気穴にかかっていないか（下の警告で確認）</li>
-                <li>産地・農園名・商品名の3つが順に読めるか（視線の流れ）</li>
+                <li>産地・団体名・商品名の3つが順に読めるか（視線の流れ）</li>
             </ul>
         </details>
     </div>
@@ -325,7 +342,7 @@
 <script>
 (function(){
 'use strict';
-const STORAGE_KEY = 'nasu-design-film-v2';
+const STORAGE_KEY = 'nasu-design-film-v3';
 
 // ── 版下テンプレート（平袋11号穴有-3本入_2406.pdf から読み取った実寸 mm） ──
 const TPL = {
@@ -342,7 +359,8 @@ const DEFAULT = {
     preset:'now', side:'front',
     artOn:true, artScale:100, artX:0, artY:0,
     labelOn:false,
-    farmJa:'せんとうふぁーむ', farmEn:'SENTO FARM', region:'高知県安芸市', product:'こだわりの高知なす',
+    nameId:'aki', logo:'sun',
+    farmJa:'安芸なす組合', farmEn:'AKI NASU ASSOCIATION', region:'高知県安芸市', product:'こだわりの安芸ナス',
     script:'Fresh & delicious', stamp1:'KOCHI', stamp2:'AKI CITY',
     fontJa:'maru', farmSize:100,
     showLogo:true, showRegion:true, showProduct:true, showStamp:true, showScript:true, showIllust:true, showFrame:false,
@@ -359,10 +377,10 @@ const DEFAULT = {
 const PRESETS = [
     { id:'now', name:'現行3本入（2024.06）', desc:'いまの版下そのまま。料理道具の円と「なすがまま」。白1色。',
       set:{ artOn:true, artScale:100, artX:0, artY:0, labelOn:false, useBand:false, goldLines:false, goldProduct:false } },
-    { id:'brand', name:'案1 現行＋農園名', desc:'現行の図版を少し小さく下げ、上に朝日ロゴと農園名を足す。白1色のまま。',
+    { id:'brand', name:'案1 現行＋団体名', desc:'現行の図版を少し小さく下げ、上にロゴと団体名を足す。白1色のまま。',
       set:{ artOn:true, artScale:82, artX:0, artY:12, labelOn:true, fontJa:'maru', showLogo:true, showRegion:true, showProduct:false, showStamp:false, showScript:false, showIllust:false, showFrame:false,
             labelScale:95, labelY:55, labelX:0, logoScale:95, gap:100, useBand:false, goldLines:false, goldProduct:false } },
-    { id:'A', name:'案2 デザインA風', desc:'図版をやめ、ロゴ・農園名・産地・商品名・スタンプ・筆記体・線画で高級感。',
+    { id:'A', name:'案2 デザインA風', desc:'図版をやめ、ロゴ・団体名・産地・商品名・スタンプ・筆記体・線画で高級感。',
       set:{ artOn:false, labelOn:true, fontJa:'maru', showLogo:true, showRegion:true, showProduct:true, showStamp:true, showScript:true, showIllust:true, showFrame:false,
             labelScale:100, labelY:95, labelX:0, logoScale:100, gap:100, farmSize:100, useBand:false, goldLines:false, goldProduct:false } },
     { id:'gold', name:'案3 金を効かせる', desc:'案2に細い飾り枠、罫線と英字をゴールド。余白を広めに品よく。',
@@ -376,6 +394,19 @@ const PRESETS = [
             labelScale:98, labelY:94, labelX:0, logoScale:92, gap:112, farmSize:108, useBand:false, goldLines:true, goldProduct:false } },
 ];
 
+// ── 団体名の案（安芸・高知・太平洋・海・龍馬を連想させる） ─────────────
+const NAMES = [
+    { id:'aki',      theme:'安芸',        ja:'安芸なす組合',       en:'AKI NASU ASSOCIATION', product:'こだわりの安芸ナス', script:'Fresh & delicious',       logo:'sun',   desc:'産地名そのまま。いちばん分かりやすく、売り場で説明がいらない' },
+    { id:'pacific',  theme:'太平洋',      ja:'太平洋なす倶楽部',   en:'PACIFIC NASU CLUB',    product:'安芸ナス',           script:'From the Pacific coast',  logo:'wave',  desc:'海に面した安芸の立地をそのまま名前に。倶楽部で親しみやすく' },
+    { id:'kuroshio', theme:'海・黒潮',    ja:'黒潮なす組合',       en:'KUROSHIO NASU',        product:'土佐・安芸ナス',     script:'Kuroshio blue',           logo:'wave',  desc:'高知沖を流れる黒潮。温暖な気候で育つ理由も伝わる' },
+    { id:'umisora',  theme:'海・空',      ja:'海と空のなす会',     en:'UMI TO SORA FARMERS',  product:'安芸ナス',           script:'Sea, sky & sun',          logo:'wave',  desc:'やわらかい響き。女性客・ギフト向け' },
+    { id:'ryoma',    theme:'龍馬',        ja:'龍馬の浜なす会',     en:'RYOMA NO HAMA',        product:'土佐・安芸ナス',     script:'Born in Tosa',            logo:'sun',   desc:'桂浜の龍馬像を連想。県外の売り場で「高知」が一発で伝わる' },
+    { id:'shiokaze', theme:'海・潮風',    ja:'潮風なすグループ',   en:'SHIOKAZE NASU GROUP',  product:'安芸ナス',           script:'Grown in the sea breeze', logo:'wave',  desc:'潮風で育つ、という栽培ストーリーを名前に' },
+    { id:'hinode',   theme:'太平洋の朝日',ja:'日の出なす生産組合', en:'HINODE NASU',          product:'安芸ナス',           script:'Sunrise harvest',         logo:'sun',   desc:'太平洋から昇る朝日。現行ロゴ（朝日と畑）と相性がよい' },
+    { id:'tosa',     theme:'龍馬・土佐',  ja:'土佐なす衆',         en:'TOSA NASU SHU',        product:'安芸ナス',           script:'Spirit of Tosa',          logo:'mount', desc:'幕末・土佐の気骨を感じる短い名前。明朝体と合う' },
+    { id:'kujira',   theme:'海・鯨',      ja:'鯨の海なす組合',     en:'KUJIRA NO UMI',        product:'安芸ナス',           script:'Whale coast, Kochi',      logo:'whale', desc:'高知のホエールウォッチングを連想。ロゴは鯨と波' },
+    { id:'akiblue',  theme:'安芸・海',    ja:'安芸ブルーなす組合', en:'AKI BLUE',             product:'こだわりの安芸ナス', script:'Blue sea, purple nasu',   logo:'wave',  desc:'海の青と、なすの紫の対比。英語ロゴが短く映える' },
+];
 let P = loadState();
 let inkOnlyView = false;
 let warnings = [];
@@ -538,20 +569,62 @@ function drawSvg(ctx, img, x, y, w, h, color){
 }
 function withFont(ctx, sizeMm, family, weight){ ctx.font = `${weight||400} ${sizeMm}px ${family}`; }
 
-function drawLogo(ctx,cx,cy,s,color){
-    ctx.save(); ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineCap='round'; ctx.lineJoin='round';
-    const r=s*.42; ctx.lineWidth=s*.07;
+function logoSun(ctx,cx,cy,s){
+    const r=s*.42;
     ctx.beginPath(); ctx.arc(cx,cy,r,Math.PI,0); ctx.stroke();
     for(let i=0;i<7;i++){
         const a=Math.PI+(Math.PI/8)*(i+1);
         ctx.beginPath(); ctx.moveTo(cx+Math.cos(a)*r*1.25, cy+Math.sin(a)*r*1.25); ctx.lineTo(cx+Math.cos(a)*r*1.65, cy+Math.sin(a)*r*1.65); ctx.stroke();
     }
-    ctx.beginPath();
-    ctx.moveTo(cx-s*1.05, cy+s*.02); ctx.lineTo(cx-s*.45, cy-s*.45); ctx.lineTo(cx-s*.05, cy-s*.05);
-    ctx.lineTo(cx+s*.35, cy-s*.5); ctx.lineTo(cx+s*1.05, cy+s*.02); ctx.stroke();
-    for(let i=0;i<3;i++){
-        const y=cy+s*.18+i*s*.17, k=1-i*.18;
-        ctx.beginPath(); ctx.moveTo(cx-s*1.05*k, y); ctx.bezierCurveTo(cx-s*.4*k, y-s*.09, cx+s*.4*k, y+s*.09, cx+s*1.05*k, y); ctx.stroke();
+}
+function logoWaves(ctx,cx,cy,s,n,shrink){
+    for(let i=0;i<n;i++){
+        const y=cy+i*s*.17, k=1-i*(shrink||.18), w=s*1.05*k;
+        ctx.beginPath(); ctx.moveTo(cx-w, y);
+        const seg=4, sw=(2*w)/seg;
+        for(let j=0;j<seg;j++){
+            const x0=cx-w+j*sw;
+            ctx.bezierCurveTo(x0+sw*.25, y-s*.11, x0+sw*.5, y-s*.11, x0+sw*.5, y);
+            ctx.bezierCurveTo(x0+sw*.5, y+s*.06, x0+sw*.75, y+s*.06, x0+sw, y);
+        }
+        ctx.stroke();
+    }
+}
+function drawLogo(ctx,cx,cy,s,color){
+    ctx.save(); ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.lineWidth=s*.07;
+    const kind=P.logo||'sun';
+    if(kind==='none'){ ctx.restore(); return; }
+    if(kind==='sun'){
+        logoSun(ctx,cx,cy,s);
+        ctx.beginPath();
+        ctx.moveTo(cx-s*1.05, cy+s*.02); ctx.lineTo(cx-s*.45, cy-s*.45); ctx.lineTo(cx-s*.05, cy-s*.05);
+        ctx.lineTo(cx+s*.35, cy-s*.5); ctx.lineTo(cx+s*1.05, cy+s*.02); ctx.stroke();
+        for(let i=0;i<3;i++){
+            const y=cy+s*.18+i*s*.17, k=1-i*.18;
+            ctx.beginPath(); ctx.moveTo(cx-s*1.05*k, y); ctx.bezierCurveTo(cx-s*.4*k, y-s*.09, cx+s*.4*k, y+s*.09, cx+s*1.05*k, y); ctx.stroke();
+        }
+    }else if(kind==='wave'){
+        logoSun(ctx,cx,cy-s*.05,s);
+        ctx.beginPath(); ctx.moveTo(cx-s*1.05, cy+s*.02); ctx.lineTo(cx+s*1.05, cy+s*.02); ctx.stroke();
+        logoWaves(ctx,cx,cy+s*.2,s,3,.18);
+    }else if(kind==='mount'){
+        logoSun(ctx,cx+s*.3,cy+s*.05,s*.8);
+        ctx.beginPath();
+        ctx.moveTo(cx-s*1.1, cy+s*.3); ctx.lineTo(cx-s*.6, cy-s*.35); ctx.lineTo(cx-s*.3, cy-s*.05);
+        ctx.lineTo(cx-s*.05, cy-s*.5); ctx.lineTo(cx+s*.35, cy-s*.02); ctx.lineTo(cx+s*.6, cy-s*.25); ctx.lineTo(cx+s*1.1, cy+s*.3); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx-s*.9, cy+s*.5); ctx.lineTo(cx+s*.9, cy+s*.5); ctx.stroke();
+    }else if(kind==='whale'){
+        ctx.beginPath();
+        ctx.moveTo(cx-s*1.0, cy+s*.02);
+        ctx.bezierCurveTo(cx-s*.95, cy-s*.5, cx+s*.15, cy-s*.5, cx+s*.55, cy-s*.15);
+        ctx.lineTo(cx+s*.95, cy-s*.5); ctx.lineTo(cx+s*.85, cy-s*.08); ctx.lineTo(cx+s*1.08, cy+s*.18);
+        ctx.bezierCurveTo(cx+s*.45, cy+s*.28, cx-s*.5, cy+s*.32, cx-s*1.0, cy+s*.02);
+        ctx.closePath(); ctx.fill();
+        ctx.lineWidth=s*.055;
+        ctx.beginPath(); ctx.arc(cx-s*.78, cy-s*.62, s*.14, Math.PI*1.1, Math.PI*1.9); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx-s*.58, cy-s*.66, s*.1, Math.PI*1.1, Math.PI*1.9); ctx.stroke();
+        ctx.lineWidth=s*.07;
+        logoWaves(ctx,cx,cy+s*.5,s,2,.22);
     }
     ctx.restore();
 }
@@ -662,8 +735,10 @@ function drawLabel(ctx,W,H){
         if(P.showStamp){ const sx=cx-54*ls, sr=13*ls; drawStamp(ctx, sx, by+2*u, sr, ink); addBox('産地スタンプ', sx-sr, by+2*u-sr, sx+sr, by+2*u+sr); }
         if(P.showScript){
             ctx.save(); ctx.translate(cx+3*u, by-7*u); ctx.rotate(-0.12);
-            withFont(ctx, 9*ls, FONT_SCRIPT, 700); ctx.fillStyle=gold; ctx.fillText(P.script, 0, 0);
-            const sw=ctx.measureText(P.script).width; ctx.restore();
+            withFont(ctx, 9*ls, FONT_SCRIPT, 700);
+            let sw=ctx.measureText(P.script).width;
+            if(sw>62*ls){ withFont(ctx, 9*ls*62*ls/sw, FONT_SCRIPT, 700); sw=ctx.measureText(P.script).width; }  // 長い一言は線画に当たらないよう縮める
+            ctx.fillStyle=gold; ctx.fillText(P.script, 0, 0); ctx.restore();
             addBox('筆記体', cx+3*u-sw/2, by-7*u-6*ls, cx+3*u+sw/2, by-7*u+6*ls);
         }
         if(P.showIllust){ const ix=cx+50*ls, is=46*ls; drawEggplantLine(ctx, ix, by+10*u, is, ink); addBox('なすの線画', ix-is*.42, by+10*u-is*.55, ix+is*.3, by+10*u+is*.6); }
@@ -822,6 +897,19 @@ function buildPresets(){
         box.appendChild(b);
     });
 }
+function buildNames(){
+    const box=document.getElementById('names'); box.innerHTML='';
+    NAMES.forEach(n=>{
+        const b=document.createElement('button'); b.className='preset'+(P.nameId===n.id?' active':'');
+        b.innerHTML=`<b>${n.ja} <span class="pill">${n.theme}</span></b><span>${n.en}／${n.product}<br>${n.desc}</span>`;
+        b.addEventListener('click',()=>{
+            Object.assign(P, {nameId:n.id, farmJa:n.ja, farmEn:n.en, product:n.product, script:n.script, logo:n.logo, showLogo:n.logo!=='none'});
+            if(!P.labelOn){ const a=PRESETS.find(p=>p.id==='A'); Object.assign(P, a.set, {preset:'A', side:'front'}); buildPresets(); }
+            syncInputs(); buildNames(); drawPreview(); saveState(true); toast(n.ja+' にしました');
+        });
+        box.appendChild(b);
+    });
+}
 document.querySelectorAll('#sideSeg button').forEach(b=>b.addEventListener('click',()=>{ P.side=b.dataset.side; syncSide(); drawPreview(); saveState(true); }));
 document.getElementById('btnSave').addEventListener('click',()=>saveState(false));
 document.getElementById('btnPng').addEventListener('click',exportPng);
@@ -833,7 +921,7 @@ document.getElementById('btnExportJson').addEventListener('click',()=>{
 document.getElementById('fileJson').addEventListener('change',e=>{
     const f=e.target.files[0]; if(!f) return;
     const r=new FileReader(); r.onload=()=>{
-        try{ P=Object.assign({},DEFAULT,JSON.parse(r.result)); syncInputs(); buildPresets(); drawPreview(); saveState(true); toast('設計データを読み込みました'); }
+        try{ P=Object.assign({},DEFAULT,JSON.parse(r.result)); syncInputs(); buildPresets(); buildNames(); drawPreview(); saveState(true); toast('設計データを読み込みました'); }
         catch(err){ toast('読み込めませんでした'); }
     }; r.readAsText(f); e.target.value='';
 });
@@ -853,11 +941,11 @@ document.getElementById('btnInk').addEventListener('click',()=>{
 });
 document.getElementById('btnReset').addEventListener('click',()=>{
     if(!confirm('設定を初期（現行3本入の版下）に戻します。よろしいですか？')) return;
-    P=Object.assign({},DEFAULT); syncInputs(); buildPresets(); drawPreview(); saveState(true); toast('初期に戻しました');
+    P=Object.assign({},DEFAULT); syncInputs(); buildPresets(); buildNames(); drawPreview(); saveState(true); toast('初期に戻しました');
 });
 window.addEventListener('resize',drawPreview);
 
-bindInputs(); buildPresets(); drawPreview();
+bindInputs(); buildPresets(); buildNames(); drawPreview();
 if(document.fonts && document.fonts.ready){ document.fonts.ready.then(drawPreview); }
 setTimeout(drawPreview,1500); setTimeout(drawPreview,4000);
 })();
