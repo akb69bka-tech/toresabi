@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>デザイン部</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+    :root{
+        --primary:#c9a44c; --primary-hover:#b08e38;
+        --card-bg:rgba(22,34,54,0.72); --text:#f1f5f9; --muted:#8ea3bf; --border:rgba(255,255,255,0.10);
+        --rose:#fb7185; --amber:#fbbf24; --green:#86efac; --sky:#38bdf8; --violet:#a78bfa; --teal:#2dd4bf;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Inter',-apple-system,"Segoe UI","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+        background:linear-gradient(140deg,#0b1220 0%,#101a33 55%,#0d1728 100%);background-attachment:fixed;color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+    .container{max-width:1280px;margin:0 auto;padding:1.4rem 1rem 4rem}
+    header{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.2rem;flex-wrap:wrap}
+    .brand{display:flex;align-items:center;gap:.8rem}
+    .brand .logo{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;background:linear-gradient(135deg,#5b2a86,#c9a44c);box-shadow:0 6px 20px rgba(201,164,76,.35)}
+    .brand h1{font-size:1.4rem;margin:0;font-weight:800}
+    .brand .sub{color:var(--muted);font-size:.8rem;margin-top:2px}
+    .btn{border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);padding:.55rem .9rem;border-radius:10px;font-size:.85rem;font-weight:600;cursor:pointer;transition:all .18s;display:inline-flex;align-items:center;gap:.4rem;font-family:inherit}
+    .btn:hover{background:rgba(255,255,255,.12);transform:translateY(-1px)}
+    .btn.primary{background:var(--primary);border-color:transparent;color:#1a1403}
+    .btn.primary:hover{background:var(--primary-hover);color:#fff}
+    .btn.danger{color:var(--rose);border-color:rgba(251,113,133,.35)}
+    .btn.sm{padding:.35rem .6rem;font-size:.78rem}
+    .btn.active{background:rgba(201,164,76,.22);border-color:rgba(201,164,76,.6)}
+    .btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+    .card{background:var(--card-bg);border:1px solid var(--border);border-radius:18px;padding:1.1rem 1.2rem;margin-bottom:1rem;backdrop-filter:blur(14px);box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    .card h2{font-size:.95rem;margin:0 0 .8rem;letter-spacing:.04em;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+    .card h2 .tag{font-size:.7rem;color:var(--muted);font-weight:500}
+    .layout{display:grid;grid-template-columns:minmax(300px,440px) 1fr;gap:1.2rem;align-items:start}
+    @media (max-width:960px){.layout{grid-template-columns:1fr}}
+    .row{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.6rem;align-items:center}
+    .field{display:flex;flex-direction:column;gap:.25rem;flex:1;min-width:140px}
+    .field label{font-size:.72rem;color:var(--muted);font-weight:600}
+    input[type=text],input[type=password],select,textarea{background:rgba(0,0,0,.25);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:.5rem .6rem;font-size:.9rem;font-family:inherit;width:100%}
+    textarea{min-height:80px;resize:vertical}
+    .check{display:flex;align-items:center;gap:.4rem;font-size:.82rem;padding:.3rem .55rem;border:1px solid var(--border);border-radius:9px;cursor:pointer;user-select:none}
+    .check input{accent-color:var(--primary)}
+    .muted{color:var(--muted);font-size:.78rem;line-height:1.5}
+
+    /* 音声 */
+    .voice{background:radial-gradient(120% 140% at 15% 0%,rgba(201,164,76,.18),transparent 55%),radial-gradient(120% 140% at 100% 100%,rgba(167,139,250,.15),transparent 55%),var(--card-bg);
+        border:1px solid var(--border);border-radius:20px;padding:1.2rem;margin-bottom:1rem}
+    .mic{width:92px;height:92px;border-radius:50%;border:0;background:linear-gradient(135deg,#c9a44c,#a78bfa);color:#1a1403;font-size:2.2rem;cursor:pointer;box-shadow:0 10px 30px rgba(201,164,76,.35);transition:transform .15s;font-family:inherit}
+    .mic:active{transform:scale(.96)}
+    .mic.rec{animation:pulse 1.1s infinite;background:linear-gradient(135deg,#fb7185,#f59e0b)}
+    @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(251,113,133,.6)}70%{box-shadow:0 0 0 22px rgba(251,113,133,0)}100%{box-shadow:0 0 0 0 rgba(251,113,133,0)}}
+    .voicebox{display:flex;gap:1rem;align-items:center}
+    .voicebox .txt{flex:1}
+    .transcript{min-height:2.4em;font-size:1rem;line-height:1.5}
+    .hint{color:var(--muted);font-size:.78rem}
+
+    /* 部員 */
+    .members{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.5rem}
+    .member{border:1px solid var(--border);border-radius:12px;padding:.6rem .7rem;background:rgba(255,255,255,.04)}
+    .member .av{font-size:1.5rem}
+    .member b{display:block;font-size:.85rem;margin:.2rem 0 .1rem}
+    .member span{font-size:.7rem;color:var(--muted);line-height:1.35;display:block}
+    .member .st{margin-top:.35rem;font-size:.7rem;padding:.1rem .45rem;border-radius:999px;display:inline-block;background:rgba(255,255,255,.08)}
+    .member.busy .st{background:rgba(201,164,76,.25);color:#ffe9a8}
+    .member.busy{border-color:rgba(201,164,76,.6)}
+
+    /* 会議ログ */
+    .log{display:flex;flex-direction:column;gap:.55rem;max-height:60vh;overflow:auto;padding-right:.3rem}
+    .msg{display:flex;gap:.6rem;align-items:flex-start}
+    .msg .av{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+    .msg .b{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:12px;padding:.5rem .7rem;font-size:.86rem;line-height:1.55;max-width:100%}
+    .msg .b .who{font-size:.7rem;color:var(--muted);margin-bottom:.15rem}
+    .msg.owner{flex-direction:row-reverse}
+    .msg.owner .b{background:rgba(201,164,76,.16);border-color:rgba(201,164,76,.4)}
+    .msg.sys .b{background:transparent;border-style:dashed;color:var(--muted);font-size:.78rem}
+
+    /* 案 */
+    .props{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:.7rem}
+    .prop{border:1px solid var(--border);border-radius:14px;padding:.8rem .9rem;background:rgba(255,255,255,.04);display:flex;flex-direction:column;gap:.4rem}
+    .prop.rec{border-color:rgba(134,239,172,.6);box-shadow:0 0 0 2px rgba(134,239,172,.15) inset}
+    .prop .id{font-size:.7rem;color:var(--muted)}
+    .prop b{font-size:.95rem}
+    .prop .c{font-size:.8rem;line-height:1.5}
+    .prop .kv{font-size:.72rem;color:var(--muted);line-height:1.5}
+    .prop .chk{font-size:.74rem;line-height:1.45}
+    .prop .chk.ng{color:var(--amber)}
+    .prop .chk.ok{color:var(--green)}
+    .prop .acts{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:auto}
+    .pill{display:inline-block;background:rgba(255,255,255,.08);border-radius:999px;padding:.12rem .5rem;font-size:.7rem;margin:.1rem .2rem .1rem 0}
+    .status{font-size:.8rem;color:var(--muted)}
+    .status b{color:var(--text)}
+    .toast{position:fixed;left:50%;bottom:1.4rem;transform:translateX(-50%);background:#16223a;border:1px solid var(--border);padding:.6rem 1rem;border-radius:12px;font-size:.85rem;opacity:0;pointer-events:none;transition:opacity .2s;z-index:50;max-width:90vw}
+    .toast.show{opacity:1}
+    details summary{cursor:pointer;font-size:.82rem;font-weight:600;margin-bottom:.4rem}
+    code{background:rgba(0,0,0,.3);padding:.05rem .3rem;border-radius:5px;font-size:.8em}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+    <div class="brand">
+        <div class="logo">🎨</div>
+        <div>
+            <h1>デザイン部</h1>
+            <div class="sub">なすデザインフィルムの案を、部員が話し合って出す。オーナーは声で指示するだけ</div>
+        </div>
+    </div>
+    <div class="header-actions">
+        <button class="btn" id="btnNotif">🔔 進捗を通知する</button>
+        <button class="btn" id="btnSpeak">🔊 声で報告する</button>
+        <button class="btn danger sm" id="btnClear">記録を消す</button>
+    </div>
+</header>
+
+<div class="layout">
+<div>
+    <div class="voice">
+        <div class="voicebox">
+            <button class="mic" id="mic" title="押して話す">🎙</button>
+            <div class="txt">
+                <div class="transcript" id="transcript">ここを押して、部に指示を話してください。<br><span class="hint">例：「安芸ナスの袋、海を感じる高級路線で3案出して」「案Bを白1色に直して」「それで決定」</span></div>
+            </div>
+        </div>
+        <div class="row" style="margin-top:.8rem">
+            <div class="field"><label>文字で指示してもよい</label><textarea id="instr" placeholder="例：集荷販売なので農園名は使わない。団体名は海か龍馬を連想させるもの。高級スーパー向けに白＋金で。"></textarea></div>
+        </div>
+        <div class="row">
+            <button class="btn primary" id="btnSend">📣 部に指示を出す</button>
+            <button class="btn" id="btnAuto">🤖 おまかせで3回まわす</button>
+            <button class="btn sm" id="btnStop" disabled>■ 止める</button>
+        </div>
+        <div class="status" id="status">待機中</div>
+    </div>
+
+    <div class="card">
+        <h2>部員 <span class="tag">統括1人＋イラスト3人＋印刷チェック1人</span></h2>
+        <div class="members" id="members"></div>
+    </div>
+
+    <div class="card">
+        <h2>部の動かし方 <span class="tag">頭脳の選択</span></h2>
+        <div class="row">
+            <div class="field"><label>部員の頭脳</label>
+                <select id="engine">
+                    <option value="offline">定型の話し合い（キーなし・無料・すぐ動く）</option>
+                    <option value="claude">Claude API（部員が本当に考える・有料）</option>
+                </select>
+            </div>
+        </div>
+        <div id="apiBox" style="display:none">
+            <div class="row">
+                <div class="field"><label>Anthropic APIキー（この端末のブラウザにだけ保存）</label><input type="password" id="apiKey" placeholder="sk-ant-..."></div>
+            </div>
+            <div class="row">
+                <div class="field"><label>モデル</label>
+                    <select id="model">
+                        <option value="claude-opus-5-5">Claude Opus 5.5（標準）</option>
+                        <option value="claude-sonnet-5-5">Claude Sonnet 5.5（安い・速い）</option>
+                    </select>
+                </div>
+                <div class="field"><label>考える深さ</label>
+                    <select id="effort">
+                        <option value="medium">ふつう</option>
+                        <option value="high">深く</option>
+                        <option value="low">軽く</option>
+                    </select>
+                </div>
+            </div>
+            <p class="muted">ブラウザから直接 Anthropic API を呼びます。1回の会議でおよそ数円〜十数円です（Opus 5.5 は入力 $4／出力 $20 per 100万トークン）。</p>
+        </div>
+        <details style="margin-top:.4rem">
+            <summary>部員が使える道具</summary>
+            <p class="muted">部員は「なすデザインフィルム」の設定（団体名10案、プリセット、ロゴ4種、書体、白／金／帯、現行図版の有無）を組み合わせて案を作ります。印刷チェック担当が、白1色で収まるか・版が増えるか・印刷逃がしや空気穴にかかりそうかを見ます。決まった案は「なすデザインフィルムで開く」でそのまま袋のプレビューになります。</p>
+        </details>
+    </div>
+</div>
+
+<div>
+    <div class="card">
+        <h2>案 <span class="tag" id="roundTag">まだありません</span></h2>
+        <div class="props" id="props"><p class="muted">指示を出すと、A・B・Cの案がここに並びます。緑の枠は統括の推し案です。</p></div>
+    </div>
+    <div class="card">
+        <h2>会議の記録</h2>
+        <div class="log" id="log"></div>
+    </div>
+</div>
+</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+const KEY='nasu-design-dept-v1';
+const FILM_KEY='nasu-design-film-v3';
+const FILM_APP='なすデザインフィルム.html';
+
+// ── 部員 ─────────────────────────────────────────────────────────────
+const MEMBERS = [
+    { id:'dir', av:'🧭', name:'統括（ディレクター）', role:'オーナーの一言を方針に直し、3案を講評して推し案を決める' },
+    { id:'A',   av:'🖋', name:'イラストA', role:'王道・高級路線。ロゴと余白で品よく見せる' },
+    { id:'B',   av:'🌊', name:'イラストB', role:'海と土佐の物語路線。太平洋・黒潮・龍馬' },
+    { id:'C',   av:'🍆', name:'イラストC', role:'親しみ・直売所路線。現行の図版も活かす' },
+    { id:'P',   av:'🖨', name:'印刷チェック', role:'白1色で収まるか、版が増えないか、穴や逃がしに当たらないか' },
+];
+
+// ── なすデザインフィルム側の語彙（同じ ID を使う） ────────────────────
+const NAMES = {
+    aki:{ja:'安芸なす組合',en:'AKI NASU ASSOCIATION',product:'こだわりの安芸ナス',script:'Fresh & delicious',logo:'sun',theme:'安芸'},
+    pacific:{ja:'太平洋なす倶楽部',en:'PACIFIC NASU CLUB',product:'安芸ナス',script:'From the Pacific coast',logo:'wave',theme:'太平洋'},
+    kuroshio:{ja:'黒潮なす組合',en:'KUROSHIO NASU',product:'土佐・安芸ナス',script:'Kuroshio blue',logo:'wave',theme:'海・黒潮'},
+    umisora:{ja:'海と空のなす会',en:'UMI TO SORA FARMERS',product:'安芸ナス',script:'Sea, sky & sun',logo:'wave',theme:'海・空'},
+    ryoma:{ja:'龍馬の浜なす会',en:'RYOMA NO HAMA',product:'土佐・安芸ナス',script:'Born in Tosa',logo:'sun',theme:'龍馬'},
+    shiokaze:{ja:'潮風なすグループ',en:'SHIOKAZE NASU GROUP',product:'安芸ナス',script:'Grown in the sea breeze',logo:'wave',theme:'海・潮風'},
+    hinode:{ja:'日の出なす生産組合',en:'HINODE NASU',product:'安芸ナス',script:'Sunrise harvest',logo:'sun',theme:'太平洋の朝日'},
+    tosa:{ja:'土佐なす衆',en:'TOSA NASU SHU',product:'安芸ナス',script:'Spirit of Tosa',logo:'mount',theme:'龍馬・土佐'},
+    kujira:{ja:'鯨の海なす組合',en:'KUJIRA NO UMI',product:'安芸ナス',script:'Whale coast, Kochi',logo:'whale',theme:'海・鯨'},
+    akiblue:{ja:'安芸ブルーなす組合',en:'AKI BLUE',product:'こだわりの安芸ナス',script:'Blue sea, purple nasu',logo:'wave',theme:'安芸・海'},
+};
+const PRESETS = {
+    now:   { artOn:true, artScale:100, artX:0, artY:0, labelOn:false, useBand:false, goldLines:false, goldProduct:false },
+    brand: { artOn:true, artScale:82, artX:0, artY:12, labelOn:true, fontJa:'maru', showLogo:true, showRegion:true, showProduct:false, showStamp:false, showScript:false, showIllust:false, showFrame:false, labelScale:95, labelY:55, labelX:0, logoScale:95, gap:100, useBand:false, goldLines:false, goldProduct:false },
+    A:     { artOn:false, labelOn:true, fontJa:'maru', showLogo:true, showRegion:true, showProduct:true, showStamp:true, showScript:true, showIllust:true, showFrame:false, labelScale:100, labelY:95, labelX:0, logoScale:100, gap:100, farmSize:100, useBand:false, goldLines:false, goldProduct:false },
+    gold:  { artOn:false, labelOn:true, fontJa:'maru', showLogo:true, showRegion:true, showProduct:true, showStamp:true, showScript:true, showIllust:true, showFrame:true, labelScale:96, labelY:92, labelX:0, logoScale:88, gap:116, farmSize:104, useBand:false, goldLines:true, goldProduct:false },
+    band:  { artOn:false, labelOn:true, fontJa:'maru', showLogo:true, showRegion:true, showProduct:true, showStamp:true, showScript:true, showIllust:true, showFrame:false, labelScale:100, labelY:88, labelX:0, logoScale:100, gap:104, farmSize:100, useBand:true, goldLines:true, goldProduct:true },
+    mincho:{ artOn:false, labelOn:true, fontJa:'mincho', showLogo:true, showRegion:true, showProduct:true, showStamp:true, showScript:true, showIllust:true, showFrame:true, labelScale:98, labelY:94, labelX:0, logoScale:92, gap:112, farmSize:108, useBand:false, goldLines:true, goldProduct:false },
+};
+const PRESET_LABEL = { now:'現行3本入', brand:'現行＋団体名', A:'デザインA風', gold:'金を効かせる', band:'濃紺の帯', mincho:'明朝で和' };
+const FONT_LABEL = { maru:'丸ゴシック', gothic:'ゴシック', mincho:'明朝' };
+const LOGO_LABEL = { sun:'朝日と畑', wave:'朝日と波', mount:'山並みと朝日', whale:'鯨と波', none:'ロゴなし' };
+
+// 案の設定（部員の出力）→ なすデザインフィルムの設計データ
+function toFilmSettings(s){
+    const base = Object.assign({}, PRESETS[s.preset] || PRESETS.A);
+    const n = NAMES[s.nameId] || NAMES.aki;
+    const out = Object.assign(base, {
+        preset: s.preset || 'A', nameId: s.nameId || 'aki',
+        farmJa: s.farmJa || n.ja, farmEn: s.farmEn || n.en, product: s.product || n.product, script: s.script || n.script,
+        logo: s.logo || n.logo, region:'高知県安芸市', side:'front',
+    });
+    if(s.fontJa) out.fontJa = s.fontJa;
+    ['goldLines','goldProduct','useBand','showFrame','artOn','showStamp','showScript','showIllust','showProduct','showLogo'].forEach(k=>{ if(typeof s[k]==='boolean') out[k]=s[k]; });
+    if(out.logo==='none') out.showLogo=false;
+    return out;
+}
+// 印刷チェック（ルール）
+function printCheck(fs){
+    const notes=[]; let plates=1;
+    const usesGold = fs.labelOn && (fs.goldLines || fs.goldProduct || fs.showScript);
+    if(usesGold){ plates++; notes.push({ok:false,t:'ゴールドを使うので特色が1版増える（白＋金の2版）'}); }
+    if(fs.useBand){ plates++; notes.push({ok:false,t:'濃紺の帯でさらに1版。帯はなすの色を隠すので袋の「透明感」は減る'}); }
+    if(!usesGold && !fs.useBand) notes.push({ok:true,t:'白インク1色で収まる（現行と同じ版数）'});
+    if(fs.labelOn && fs.artOn) notes.push({ok:true,t:'団体名と現行図版の併用。図版を82%に縮めれば空気穴は避けられる'});
+    if(fs.labelOn && fs.labelY<40) notes.push({ok:false,t:'ラベルが上すぎる。袋の上10mmは印刷逃がし'});
+    if(fs.fontJa==='mincho') notes.push({ok:false,t:'明朝の細い横線は0.3mm未満になりやすい。団体名の大きさは108%以上を推奨'});
+    return {plates, notes};
+}
+
+// ── 状態 ─────────────────────────────────────────────────────────────
+let S = load();
+function load(){ try{ const r=localStorage.getItem(KEY); if(r) return JSON.parse(r); }catch(e){} return {log:[], proposals:[], round:0, rec:null, settings:{engine:'offline', model:'claude-opus-5-5', effort:'medium', apiKey:'', speak:false, notif:false}, lastBrief:''}; }
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),2200); }
+const $=id=>document.getElementById(id);
+
+// ── 通知・音声 ──────────────────────────────────────────────────────
+function notify(title, body){
+    if(S.settings.notif && 'Notification' in window && Notification.permission==='granted'){
+        try{ new Notification(title, {body, tag:'design-dept'}); }catch(e){}
+    }
+    toast(title+'：'+body);
+    if(S.settings.speak) speak(body);
+}
+function speak(text){
+    if(!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text); u.lang='ja-JP'; u.rate=1.05;
+    const jp=(window.speechSynthesis.getVoices()||[]).find(v=>v.lang&&v.lang.startsWith('ja')); if(jp) u.voice=jp;
+    window.speechSynthesis.speak(u);
+}
+if('speechSynthesis' in window){ window.speechSynthesis.onvoiceschanged=()=>window.speechSynthesis.getVoices(); }
+
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec=null, recOn=false;
+function setupMic(){
+    const mic=$('mic');
+    if(!SR){ mic.disabled=true; $('transcript').innerHTML='このブラウザは音声入力に対応していません（Chrome / Safari / Edge で開いてください）。下の欄に文字で指示できます。'; return; }
+    rec=new SR(); rec.lang='ja-JP'; rec.interimResults=true; rec.continuous=false;
+    let finalText='';
+    rec.onresult=e=>{
+        let interim=''; finalText='';
+        for(let i=0;i<e.results.length;i++){ const r=e.results[i]; if(r.isFinal) finalText+=r[0].transcript; else interim+=r[0].transcript; }
+        $('transcript').textContent = finalText || interim || '…';
+    };
+    rec.onend=()=>{
+        recOn=false; mic.classList.remove('rec');
+        if(finalText.trim()){ $('instr').value=finalText.trim(); runInstruction(finalText.trim()); }
+        else $('transcript').innerHTML='聞き取れませんでした。もう一度押して話してください。';
+    };
+    rec.onerror=()=>{ recOn=false; mic.classList.remove('rec'); $('transcript').textContent='音声が使えませんでした（マイクの許可を確認）。文字で指示できます。'; };
+    mic.addEventListener('click',()=>{
+        if(recOn){ rec.stop(); return; }
+        try{ finalText=''; rec.start(); recOn=true; mic.classList.add('rec'); $('transcript').textContent='聞いています…'; }catch(e){}
+    });
+}
+
+// ── 画面 ─────────────────────────────────────────────────────────────
+function renderMembers(busyId){
+    $('members').innerHTML = MEMBERS.map(m=>`<div class="member ${busyId===m.id?'busy':''}" id="m_${m.id}"><div class="av">${m.av}</div><b>${m.name}</b><span>${m.role}</span><div class="st">${busyId===m.id?'作業中':'待機'}</div></div>`).join('');
+}
+function addLog(who, text, cls){
+    const m = MEMBERS.find(x=>x.id===who);
+    S.log.push({who, text, t:Date.now()}); save();
+    const el=document.createElement('div'); el.className='msg '+(cls|| (who==='owner'?'owner': who==='sys'?'sys':''));
+    const av = who==='owner'?'👤': who==='sys'?'•': (m?m.av:'•');
+    const name = who==='owner'?'オーナー': who==='sys'?'': (m?m.name:who);
+    el.innerHTML=`<div class="av">${av}</div><div class="b">${name?`<div class="who">${name}</div>`:''}${esc(text).replace(/\n/g,'<br>')}</div>`;
+    $('log').appendChild(el); $('log').scrollTop=$('log').scrollHeight;
+}
+function renderLog(){ $('log').innerHTML=''; const tmp=S.log.slice(); S.log=[]; tmp.forEach(l=>addLog(l.who,l.text)); }
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function renderProps(){
+    const box=$('props');
+    $('roundTag').textContent = S.round ? `第${S.round}回の案` : 'まだありません';
+    if(!S.proposals.length){ box.innerHTML='<p class="muted">指示を出すと、A・B・Cの案がここに並びます。緑の枠は統括の推し案です。</p>'; return; }
+    box.innerHTML = S.proposals.map(p=>{
+        const fs=toFilmSettings(p.settings), pc=printCheck(fs);
+        const kv=[`団体名：${fs.farmJa}`, `型：${PRESET_LABEL[fs.preset]||fs.preset}`, `ロゴ：${LOGO_LABEL[fs.logo]||fs.logo}`, `書体：${FONT_LABEL[fs.fontJa]||'丸ゴシック'}`, `版数：${pc.plates}`].join('　');
+        return `<div class="prop ${S.rec===p.id?'rec':''}">
+            <div class="id">案${p.id}　${esc(p.member)}${S.rec===p.id?'　<span class="pill">統括の推し</span>':''}</div>
+            <b>${esc(p.title)}</b>
+            <div class="c">${esc(p.concept)}</div>
+            <div class="kv">${esc(kv)}</div>
+            ${pc.notes.map(n=>`<div class="chk ${n.ok?'ok':'ng'}">${n.ok?'✓':'⚠'} ${esc(n.t)}</div>`).join('')}
+            <div class="acts">
+                <button class="btn sm primary" data-open="${p.id}">🍆 なすデザインフィルムで開く</button>
+                <button class="btn sm" data-json="${p.id}">⬇ 設計データ</button>
+                <button class="btn sm" data-pick="${p.id}">👍 これで進める</button>
+            </div></div>`;
+    }).join('');
+    box.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>openInFilm(b.dataset.open)));
+    box.querySelectorAll('[data-json]').forEach(b=>b.addEventListener('click',()=>downloadJson(b.dataset.json)));
+    box.querySelectorAll('[data-pick]').forEach(b=>b.addEventListener('click',()=>runInstruction(`案${b.dataset.pick}で進める。この案をもとに細部を詰めて`)));
+}
+function openInFilm(id){
+    const p=S.proposals.find(x=>x.id===id); if(!p) return;
+    try{ localStorage.setItem(FILM_KEY, JSON.stringify(toFilmSettings(p.settings))); }catch(e){}
+    window.open(FILM_APP, '_blank');
+    toast('なすデザインフィルムを開きました。開かない場合は設計データを保存して読み込んでください');
+}
+function downloadJson(id){
+    const p=S.proposals.find(x=>x.id===id); if(!p) return;
+    const b=new Blob([JSON.stringify(toFilmSettings(p.settings),null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`デザイン部_案${id}_${p.title}.json`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+function setStatus(t){ $('status').innerHTML=t; }
+
+// ── 会議（1回分） ─────────────────────────────────────────────────────
+let running=false, stopFlag=false;
+async function runInstruction(text){
+    if(running){ toast('いま会議中です。終わってから次の指示を出してください'); return; }
+    if(!text || !text.trim()) { toast('指示が空です'); return; }
+    running=true; stopFlag=false; $('btnSend').disabled=true; $('btnAuto').disabled=true; $('btnStop').disabled=false;
+    addLog('owner', text);
+    S.round++; S.lastBrief=text; save();
+    try{
+        const result = S.settings.engine==='claude' ? await meetClaude(text) : await meetOffline(text);
+        if(result){
+            S.proposals = result.proposals; S.rec = result.recommendation; save(); renderProps();
+            notify('デザイン部から進捗', `第${S.round}回：案が${result.proposals.length}つ出ました。統括の推しは案${result.recommendation}。${result.question?('確認：'+result.question):''}`);
+        }
+    }catch(e){
+        addLog('sys', 'エラー：'+(e.message||e)); toast('うまくいきませんでした：'+(e.message||e));
+    }
+    running=false; $('btnSend').disabled=false; $('btnAuto').disabled=false; $('btnStop').disabled=true; renderMembers(null); setStatus('待機中');
+}
+const wait=(ms)=>new Promise(r=>setTimeout(r,ms));
+async function say(who, text, ms){
+    if(stopFlag) throw new Error('止めました');
+    renderMembers(who); setStatus(`<b>${MEMBERS.find(m=>m.id===who).name}</b> が発言中…`);
+    await wait(ms||600); addLog(who, text);
+}
+
+// ── 定型の話し合い（キー不要） ────────────────────────────────────────
+function kw(text, words){ return words.some(w=>text.includes(w)); }
+function interpret(text){
+    const t=text;
+    const b={};
+    b.sea = kw(t,['海','太平洋','黒潮','潮','波','鯨','くじら','ブルー','青']);
+    b.ryoma = kw(t,['龍馬','土佐','幕末','武士']);
+    b.aki = kw(t,['安芸','産地']);
+    b.sunrise = kw(t,['朝日','日の出','太陽']);
+    b.luxury = kw(t,['高級','上質','ギフト','贈答','百貨店','ブランド']);
+    b.gold = kw(t,['金','ゴールド','箔']);
+    b.band = kw(t,['帯','濃紺','紺']);
+    b.mincho = kw(t,['明朝','和風','和の','料亭']);
+    b.cheap = kw(t,['白1色','白一色','1色','一色','安く','コスト','版を増やさ','そのまま']);
+    b.keepArt = kw(t,['現行','図版','なすがまま','活か']);
+    b.friendly = kw(t,['親しみ','直売','ポップ','かわいい','やさしい','家族']);
+    b.noGold = kw(t,['金なし','金は使わ','ゴールドなし','金を使わ']);
+    const m=t.match(/案([ABC])/); b.pick = m?m[1]:null;
+    b.decide = kw(t,['決定','これで行く','これでいく','確定']);
+    return b;
+}
+async function meetOffline(text){
+    const b=interpret(text);
+    const prev = b.pick ? S.proposals.find(p=>p.id===b.pick) : null;
+    // 統括の方針
+    const aims=[];
+    if(b.luxury) aims.push('高級・ブランド感');
+    if(b.sea) aims.push('海・太平洋の連想');
+    if(b.ryoma) aims.push('龍馬・土佐の連想');
+    if(b.friendly) aims.push('親しみやすさ');
+    if(b.cheap||b.noGold) aims.push('白1色で版を増やさない');
+    if(b.keepArt) aims.push('現行の図版を活かす');
+    if(!aims.length) aims.push('安芸ナスの産地ブランド化');
+    await say('dir', prev
+        ? `了解。案${b.pick}「${prev.title}」を軸に詰めます。${b.decide?'決定版として仕上げます。':'A・B・Cにそれぞれ違う方向の調整案を出してもらいます。'}`
+        : `オーナーの指示を整理します。狙いは「${aims.join('／')}」。団体名は農園名でなく組合・グループ名、商品名は「安芸ナス」。各自、違う路線で1案ずつ。`, 700);
+
+    const pickName=(cands)=>cands.find(id=>NAMES[id])||'aki';
+    // A：王道・高級
+    const nameA = b.ryoma ? 'ryoma' : b.sea ? 'akiblue' : b.sunrise ? 'hinode' : 'aki';
+    const presetA = (b.cheap||b.noGold) ? 'A' : b.band ? 'band' : (b.mincho ? 'mincho' : 'gold');
+    const sA = prev ? Object.assign({}, prev.settings, {preset: (b.cheap||b.noGold)?'A':(b.band?'band':b.mincho?'mincho':'gold')}) : { nameId:nameA, preset:presetA, logo: b.sea?'wave':'sun' };
+    if(b.cheap||b.noGold){ sA.goldLines=false; sA.goldProduct=false; sA.showScript=false; sA.useBand=false; }
+    await say('A', `A案：${prev?'選ばれた案を高級寄りに。':''}「${NAMES[sA.nameId].ja}」を主役に、${PRESET_LABEL[sA.preset]}の型。${(b.cheap||b.noGold)?'筆記体の金はやめて白だけで品を出します。':'罫線と英字だけ金にして、余白で高級感を作ります。'}ロゴは${LOGO_LABEL[sA.logo||NAMES[sA.nameId].logo]}。`, 900);
+    // B：海・土佐の物語
+    const nameB = b.ryoma ? 'tosa' : (kw(text,['鯨','くじら']) ? 'kujira' : (b.sunrise ? 'hinode' : (kw(text,['黒潮'])?'kuroshio':'pacific')));
+    const sB = prev ? Object.assign({}, prev.settings, b.mincho?{preset:'mincho',fontJa:'mincho'}:{}) : { nameId:nameB, preset: b.ryoma||b.mincho ? 'mincho' : 'A', logo: NAMES[nameB].logo };
+    if(b.cheap||b.noGold){ sB.goldLines=false; sB.goldProduct=false; sB.showScript=false; sB.useBand=false; sB.preset = sB.preset==='band'?'A':sB.preset; }
+    await say('B', `B案：${prev?'選ばれた案の骨格はそのまま、細部を整えます。':''}「${NAMES[sB.nameId].ja}」。${NAMES[sB.nameId].theme}の物語で、県外の売り場でも高知が一発で伝わるように。${sB.preset==='mincho'?'明朝体で土佐の気骨を出します。':'丸ゴシックで読みやすく、ロゴを'+LOGO_LABEL[sB.logo]+'にして海を感じさせます。'}`, 900);
+    // C：親しみ・現行活かし
+    const nameC = b.sea ? 'umisora' : (b.friendly ? 'shiokaze' : 'aki');
+    const sC = prev ? Object.assign({}, prev.settings, {preset:'brand', goldLines:false, goldProduct:false, useBand:false, showScript:false}) : { nameId:nameC, preset: (b.keepArt||!b.luxury) ? 'brand' : 'A', logo: NAMES[nameC].logo, goldLines:false, goldProduct:false, useBand:false };
+    await say('C', `C案：${prev?'同じ名前で、いちばん安く作れる形に。':''}「${NAMES[sC.nameId].ja}」。${sC.preset==='brand'?'現行の料理道具の図版は捨てずに少し小さく下げ、上に団体名とロゴを足すだけ。白1色のままで一番安く、いまの袋の雰囲気も残ります。':'親しみのある名前で直売所でも手に取りやすく。金は使わず白だけ。'}`, 900);
+
+    const props=[
+        {id:'A', member:'イラストA', title:NAMES[sA.nameId].ja, concept:`${PRESET_LABEL[sA.preset]}。${NAMES[sA.nameId].theme}を品よく。`, settings:sA},
+        {id:'B', member:'イラストB', title:NAMES[sB.nameId].ja, concept:`${NAMES[sB.nameId].theme}の物語。${PRESET_LABEL[sB.preset]}。`, settings:sB},
+        {id:'C', member:'イラストC', title:NAMES[sC.nameId].ja, concept:`${sC.preset==='brand'?'現行図版＋団体名、白1色。':'親しみ路線、白1色。'}`, settings:sC},
+    ];
+    // 印刷チェック
+    const pcs = props.map(p=>({id:p.id, pc:printCheck(toFilmSettings(p.settings))}));
+    await say('P', pcs.map(x=>`案${x.id}：版数${x.pc.plates}。${x.pc.notes.filter(n=>!n.ok).map(n=>n.t).join('。')||'問題なし'}`).join('\n'), 800);
+    // 統括の講評
+    let rec = b.cheap||b.noGold ? 'C' : (b.luxury ? 'A' : (b.sea||b.ryoma ? 'B' : 'C'));
+    if(prev) rec=b.pick;
+    const cheapest = pcs.slice().sort((x,y)=>x.pc.plates-y.pc.plates)[0].id;
+    const q = b.decide ? '' : (b.cheap||b.noGold ? '版は1つで揃えました。団体名はこの中でよいですか？' : `金を使うと版が1つ増えます（案${cheapest}が一番安い）。コストより高級感を優先でよいですか？`);
+    await say('dir', `講評。A は${b.luxury?'売り場の狙いに一番合う':'品はあるが版が増える'}。B は${b.sea||b.ryoma?'指示の連想がいちばん強い':'名前の説明が要る'}。C は${b.cheap||b.noGold?'要望どおり1版で収まり':'いまの袋から変えすぎず'}安全。\n推しは案${rec}。${q?'オーナーに確認：'+q:'このまま決定版として仕上げます。'}`, 900);
+    return {proposals:props, recommendation:rec, question:q};
+}
+
+// ── Claude API で本当に考える ───────────────────────────────────────────
+const SCHEMA = {
+    type:'object', additionalProperties:false,
+    required:['brief','proposals','print_notes','critique','recommendation','question_for_owner'],
+    properties:{
+        brief:{type:'string', description:'統括がオーナーの指示を方針に言い直したもの（2文以内）'},
+        proposals:{type:'array', minItems:3, maxItems:3, items:{
+            type:'object', additionalProperties:false,
+            required:['id','member','title','concept','pitch','settings'],
+            properties:{
+                id:{type:'string', enum:['A','B','C']},
+                member:{type:'string', enum:['イラストA','イラストB','イラストC']},
+                title:{type:'string', description:'団体名（日本語）'},
+                concept:{type:'string', description:'案の狙い（1〜2文）'},
+                pitch:{type:'string', description:'本人が会議で話す口調の説明（2〜3文）'},
+                settings:{type:'object', additionalProperties:false,
+                    required:['nameId','preset','logo','fontJa','goldLines','goldProduct','useBand','showFrame','artOn','showScript'],
+                    properties:{
+                        nameId:{type:'string', enum:Object.keys(NAMES)},
+                        farmJa:{type:'string', description:'nameId の名前を変えたいときだけ（任意）'},
+                        farmEn:{type:'string'}, product:{type:'string'}, script:{type:'string'},
+                        preset:{type:'string', enum:Object.keys(PRESETS)},
+                        logo:{type:'string', enum:['sun','wave','mount','whale','none']},
+                        fontJa:{type:'string', enum:['maru','gothic','mincho']},
+                        goldLines:{type:'boolean'}, goldProduct:{type:'boolean'}, useBand:{type:'boolean'}, showFrame:{type:'boolean'},
+                        artOn:{type:'boolean', description:'現行の料理道具の図版を残すか'}, showScript:{type:'boolean', description:'金の筆記体を使うか'}
+                    }}
+            }}},
+        print_notes:{type:'string', description:'印刷チェック担当の発言（版数、白1色で収まるか、注意点）'},
+        critique:{type:'string', description:'統括の講評（3案の比較、3〜4文）'},
+        recommendation:{type:'string', enum:['A','B','C']},
+        question_for_owner:{type:'string', description:'オーナーに確認したいこと。無ければ空文字'}
+    }
+};
+function systemPrompt(){
+    return `あなたは高知県安芸市のなす生産者グループの「デザイン部」を一人で演じます。部員は、統括（ディレクター）、イラストA（王道・高級路線）、イラストB（海と土佐の物語路線：太平洋・黒潮・龍馬・鯨）、イラストC（親しみ・直売所路線、現行の図版も活かす）、印刷チェック担当の5人です。
+作るのは、なすの防曇袋（平袋11号 200×300mm、3本入）のフィルム印刷デザインです。前提：
+- 集荷販売なので単独の農園名は使わない。団体名は組合・グループ・会など。商品名は「安芸ナス」系。
+- 現行は白インク1色で「どんなメニューもなすがまま／高知県産ナス」の料理道具イラスト。ゴールドは特色で版が1つ増える。濃紺の帯でさらに1つ増える。
+- 外周10mmは印刷逃がし、空気穴がある。細い線は0.3mm未満でつぶれる。
+- 目指す方向は「高級・ブランド感」（デザインA：白と金、シンプルなロゴ、なすが引き立つ透明袋）だが、オーナーの指示を最優先。
+使える部品（設定）：団体名 nameId は ${Object.entries(NAMES).map(([k,v])=>`${k}=${v.ja}(${v.theme})`).join('、')}。型 preset は ${Object.entries(PRESET_LABEL).map(([k,v])=>`${k}=${v}`).join('、')}。ロゴ logo は sun=朝日と畑、wave=朝日と波、mount=山並みと朝日、whale=鯨と波、none。書体 fontJa は maru/gothic/mincho。
+会議の進め方：統括が指示を方針に直す → A・B・C がそれぞれ違う路線で1案 → 印刷チェックが版数と注意点 → 統括が講評して推し案を1つ決め、必要ならオーナーに1つだけ確認する。前回の案が渡されたら、それを踏まえて改良する。日本語で、売り場の人に話すように平易に。`;
+}
+async function meetClaude(text){
+    const key=S.settings.apiKey; if(!key) throw new Error('APIキーが入っていません');
+    const history = S.proposals.length ? `\n\n前回（第${S.round-1}回）の案：${JSON.stringify(S.proposals.map(p=>({id:p.id,title:p.title,concept:p.concept,settings:p.settings})))}\n統括の前回の推し：${S.rec}` : '';
+    await say('dir', '指示を受けました。部内で検討します…', 300);
+    renderMembers('dir'); setStatus('<b>部員が考えています…</b>（Claude API）');
+    const body = {
+        model: S.settings.model, max_tokens: 8000,
+        output_config: { effort: S.settings.effort, format: { type:'json_schema', schema: SCHEMA } },
+        fallbacks: 'default',
+        system: systemPrompt(),
+        messages: [{ role:'user', content: `オーナーの指示：「${text}」${history}` }]
+    };
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST',
+        headers:{ 'content-type':'application/json', 'x-api-key':key, 'anthropic-version':'2023-06-01',
+                  'anthropic-beta':'server-side-fallback-2026-07-01', 'anthropic-dangerous-direct-browser-access':'true' },
+        body: JSON.stringify(body)
+    });
+    if(!res.ok){ let msg=res.status+' '+res.statusText; try{ const j=await res.json(); msg=j.error?.message||msg; }catch(e){} throw new Error('API エラー：'+msg); }
+    const data = await res.json();
+    if(data.stop_reason==='refusal') throw new Error('モデルが回答を控えました'+(data.stop_details?.explanation?('：'+data.stop_details.explanation):''));
+    if(data.stop_reason==='max_tokens') throw new Error('回答が長すぎて途中で切れました。もう一度試してください');
+    const textBlock = (data.content||[]).find(b=>b.type==='text'); if(!textBlock) throw new Error('回答が空でした');
+    let out; try{ out=JSON.parse(textBlock.text); }catch(e){ throw new Error('回答の形式が読めませんでした'); }
+    await say('dir', out.brief, 400);
+    for(const p of out.proposals){ await say(p.id, `${p.id}案「${p.title}」：${p.pitch}`, 700); }
+    await say('P', out.print_notes, 600);
+    await say('dir', out.critique + `\n推しは案${out.recommendation}。` + (out.question_for_owner?('オーナーに確認：'+out.question_for_owner):''), 700);
+    return { proposals: out.proposals.map(p=>({id:p.id, member:p.member, title:p.title, concept:p.concept, settings:p.settings})), recommendation: out.recommendation, question: out.question_for_owner||'' };
+}
+
+// ── おまかせ（3回まわす） ─────────────────────────────────────────────
+async function autoRun(){
+    const seed = $('instr').value.trim() || S.lastBrief || '安芸ナスの袋を、高級感のある産地ブランドに。団体名は海や高知を連想させるもの。';
+    await runInstruction(seed);
+    if(stopFlag) return;
+    await wait(1200);
+    await runInstruction(`統括の推し案で進める。他の2人はその案の弱点を直す方向で調整案を出して`);
+    if(stopFlag) return;
+    await wait(1200);
+    await runInstruction(`決定版をまとめて。版数と印刷の注意点も最終確認`);
+    notify('デザイン部', 'おまかせ3回が終わりました。緑の枠の案を「なすデザインフィルムで開く」で確認してください');
+}
+
+// ── 結線 ─────────────────────────────────────────────────────────────
+function bindSettings(){
+    $('engine').value=S.settings.engine; $('model').value=S.settings.model; $('effort').value=S.settings.effort; $('apiKey').value=S.settings.apiKey||'';
+    $('apiBox').style.display = S.settings.engine==='claude'?'block':'none';
+    $('btnSpeak').classList.toggle('active', !!S.settings.speak);
+    $('btnNotif').classList.toggle('active', !!S.settings.notif);
+    $('engine').addEventListener('change',()=>{ S.settings.engine=$('engine').value; $('apiBox').style.display=S.settings.engine==='claude'?'block':'none'; save(); });
+    $('model').addEventListener('change',()=>{ S.settings.model=$('model').value; save(); });
+    $('effort').addEventListener('change',()=>{ S.settings.effort=$('effort').value; save(); });
+    $('apiKey').addEventListener('input',()=>{ S.settings.apiKey=$('apiKey').value.trim(); save(); });
+}
+$('btnSend').addEventListener('click',()=>runInstruction($('instr').value.trim()));
+$('btnAuto').addEventListener('click',autoRun);
+$('btnStop').addEventListener('click',()=>{ stopFlag=true; });
+$('btnSpeak').addEventListener('click',()=>{ S.settings.speak=!S.settings.speak; save(); $('btnSpeak').classList.toggle('active',S.settings.speak); if(S.settings.speak) speak('声で報告します'); });
+$('btnNotif').addEventListener('click',async()=>{
+    if(!('Notification' in window)){ toast('このブラウザは通知に対応していません'); return; }
+    if(S.settings.notif){ S.settings.notif=false; save(); $('btnNotif').classList.remove('active'); toast('通知を止めました'); return; }
+    const p = await Notification.requestPermission();
+    if(p==='granted'){ S.settings.notif=true; save(); $('btnNotif').classList.add('active'); notify('デザイン部','通知をオンにしました。進捗があったらお知らせします'); }
+    else toast('通知が許可されませんでした');
+});
+$('btnClear').addEventListener('click',()=>{ if(!confirm('会議の記録と案を消します。よろしいですか？')) return; const st=S.settings; S={log:[],proposals:[],round:0,rec:null,settings:st,lastBrief:''}; save(); renderLog(); renderProps(); toast('消しました'); });
+$('instr').addEventListener('keydown',e=>{ if((e.metaKey||e.ctrlKey)&&e.key==='Enter') runInstruction($('instr').value.trim()); });
+
+bindSettings(); setupMic(); renderMembers(null); renderLog(); renderProps();
+if(!S.log.length) addLog('sys','デザイン部が立ち上がりました。マイクを押して指示を話すか、文字で指示してください。');
+})();
+</script>
+</body>
+</html>
