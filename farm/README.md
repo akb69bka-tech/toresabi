@@ -13,9 +13,10 @@
 
 ## 毎日の流れ
 1. ミーティング音声を文字起こしして `farm/meetings/raw/YYYY-MM-DD.txt` に置く（またはチャットに貼る）
-2. 「議事録担当で今日の議事録を作って」と依頼 → `farm/meetings/YYYY-MM-DD.md`
+2. 「議事録担当で今日の議事録を作って」と依頼 → `farm/meetings/YYYY-MM-DD.html` と `.pdf`（状況の分析つき）と `.md`
 3. 各データは `farm/records/{cultivation,sales,house-env,agriherb}/` に置き、部署長に「今日の分をまとめて」と依頼
 
 ## 注意
 - サブエージェント同士は直接呼び合えないため、部署長は「誰に何を渡すか」を示し、実際の呼び出しはメインのClaudeが行う。
 - 音声ファイルそのものはClaudeが直接聞けないため、文字起こし（スマホの録音文字起こし、Whisper等）が先に必要。
+- PDFは `node farm/tools/html_to_pdf.js farm/meetings/YYYY-MM-DD.html` で作る（Playwright使用）。
