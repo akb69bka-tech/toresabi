@@ -22,3 +22,4 @@
 - サブエージェント同士は直接呼び合えないため、部署長は「誰に何を渡すか」を示し、実際の呼び出しはメインのClaudeが行う。
 - 音声ファイルそのものはClaudeが直接聞けないため、文字起こし（スマホの録音文字起こし、Whisper等）が先に必要。
 - PDFは `node farm/tools/html_to_pdf.js farm/meetings/YYYY-MM-DD.html` で作る（Playwright使用）。
+- チーム構成図は `farm/diagram/team-chart.html`（PNG・PDFも同じ場所）。作り直しは `node farm/tools/html_to_png.js farm/diagram/team-chart.html`。
