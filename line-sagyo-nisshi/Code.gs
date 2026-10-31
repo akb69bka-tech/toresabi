@@ -464,7 +464,14 @@ function buildPlan(targetDn, ctx) {
       covered[c.task] = true;
     });
 
-  // --- 5. 昨年の今ごろやっていて、まだ出ていない作業 ---
+  // --- 5. 昨年の今ごろやっていて、まだ出ていない作業（今作で「完了」済みの作業は出さない） ---
+  var lastDone = {}, lastOpen = {};
+  rec.forEach(function (e) {
+    if (!e.task || e.dn >= targetDn || e.dn < targetDn - 14) return;
+    if (isDoneEntry(e)) lastDone[e.task] = Math.max(lastDone[e.task] || 0, e.dn);
+    else lastOpen[e.task] = Math.max(lastOpen[e.task] || 0, e.dn);
+  });
+  Object.keys(lastDone).forEach(function (t) { if (!(lastOpen[t] > lastDone[t])) covered[t] = true; });
   winGroups
     .filter(function (g) { return !covered[g.task] && (g.days >= 2 || g.hours >= 2); })
     .sort(function (a, b) { return b.hours - a.hours; })
