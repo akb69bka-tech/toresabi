@@ -334,14 +334,22 @@ function renderProps(){
             <div class="kv">${esc(kv)}</div>
             ${pc.notes.map(n=>`<div class="chk ${n.ok?'ok':'ng'}">${n.ok?'✓':'⚠'} ${esc(n.t)}</div>`).join('')}
             <div class="acts">
-                <button class="btn sm primary" data-open="${p.id}">🍆 なすデザインフィルムで開く</button>
+                <button class="btn sm primary" data-board="${p.id}">📸 提案ボード（写真風）</button>
+                <button class="btn sm" data-open="${p.id}">🍆 なすデザインフィルムで開く</button>
                 <button class="btn sm" data-json="${p.id}">⬇ 設計データ</button>
                 <button class="btn sm" data-pick="${p.id}">👍 これで進める</button>
             </div></div>`;
     }).join('');
     box.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>openInFilm(b.dataset.open)));
     box.querySelectorAll('[data-json]').forEach(b=>b.addEventListener('click',()=>downloadJson(b.dataset.json)));
+    box.querySelectorAll('[data-board]').forEach(b=>b.addEventListener('click',()=>openBoard(b.dataset.board)));
     box.querySelectorAll('[data-pick]').forEach(b=>b.addEventListener('click',()=>runInstruction(`案${b.dataset.pick}で進める。この案をもとに細部を詰めて`)));
+}
+function openBoard(id){
+    // 添付のデザインA画像と同じ形の提案ボードを、なすデザインフィルム側で描く
+    const p=S.proposals.find(x=>x.id===id); if(!p) return;
+    const d={ letter:p.id, settings:toFilmSettings(p.settings), headline:p.headline||'', sub:p.sub||'', points:p.points||[], forWhom:p.forWhom||'' };
+    window.open(FILM_APP+'#board='+encodeURIComponent(JSON.stringify(d)), '_blank');
 }
 function openInFilm(id){
     const p=S.proposals.find(x=>x.id===id); if(!p) return;
@@ -459,15 +467,19 @@ const SCHEMA = {
     required:['brief','proposals','print_notes','critique','recommendation','question_for_owner'],
     properties:{
         brief:{type:'string', description:'統括がオーナーの指示を方針に言い直したもの（2文以内）'},
-        proposals:{type:'array', minItems:3, maxItems:3, items:{
+        proposals:{type:'array', description:'A・B・Cの3案ちょうど', items:{
             type:'object', additionalProperties:false,
-            required:['id','member','title','concept','pitch','settings'],
+            required:['id','member','title','concept','pitch','headline','sub','points','for_whom','settings'],
             properties:{
                 id:{type:'string', enum:['A','B','C']},
                 member:{type:'string', enum:['イラストA','イラストB','イラストC']},
                 title:{type:'string', description:'団体名（日本語）'},
                 concept:{type:'string', description:'案の狙い（1〜2文）'},
                 pitch:{type:'string', description:'本人が会議で話す口調の説明（2〜3文）'},
+                headline:{type:'string', description:'提案ボードの見出し（10字前後。例：高級・ブランド感）'},
+                sub:{type:'string', description:'見出しの下のひとこと（25字前後。例：上質で洗練された、こだわりの逸品に。）'},
+                points:{type:'array', items:{type:'string'}, description:'デザインのポイント。4つ、各20字以内'},
+                for_whom:{type:'string', description:'こんな方におすすめ（2行、改行で区切る。例：高級スーパー・直売所・ギフト用など、\nブランド価値を高めたい売り場に。）'},
                 settings:{type:'object', additionalProperties:false,
                     required:['nameId','preset','logo','fontJa','goldLines','goldProduct','useBand','showFrame','artOn','showScript'],
                     properties:{
@@ -521,11 +533,13 @@ async function meetClaude(text){
     if(data.stop_reason==='max_tokens') throw new Error('回答が長すぎて途中で切れました。もう一度試してください');
     const textBlock = (data.content||[]).find(b=>b.type==='text'); if(!textBlock) throw new Error('回答が空でした');
     let out; try{ out=JSON.parse(textBlock.text); }catch(e){ throw new Error('回答の形式が読めませんでした'); }
+    const ids=(out.proposals||[]).map(p=>p.id).sort().join('');
+    if(ids!=='ABC') throw new Error('案がA・B・Cの3つそろっていませんでした。もう一度試してください');
     await say('dir', out.brief, 400);
     for(const p of out.proposals){ await say(p.id, `${p.id}案「${p.title}」：${p.pitch}`, 700); }
     await say('P', out.print_notes, 600);
     await say('dir', out.critique + `\n推しは案${out.recommendation}。` + (out.question_for_owner?('オーナーに確認：'+out.question_for_owner):''), 700);
-    return { proposals: out.proposals.map(p=>({id:p.id, member:p.member, title:p.title, concept:p.concept, settings:p.settings})), recommendation: out.recommendation, question: out.question_for_owner||'' };
+    return { proposals: out.proposals.map(p=>({id:p.id, member:p.member, title:p.title, concept:p.concept, settings:p.settings, headline:p.headline, sub:p.sub, points:(p.points||[]).slice(0,4), forWhom:p.for_whom})), recommendation: out.recommendation, question: out.question_for_owner||'' };
 }
 
 // ── おまかせ（3回まわす） ─────────────────────────────────────────────

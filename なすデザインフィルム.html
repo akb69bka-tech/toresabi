@@ -110,6 +110,12 @@
     }
     .toast.show{opacity:1}
     details summary{cursor:pointer;font-size:.85rem;font-weight:600;margin-bottom:.5rem}
+    .board-ov{position:fixed;inset:0;background:rgba(5,8,16,.88);z-index:60;overflow:auto;padding:1rem}
+    .board-ov[hidden]{display:none}
+    .board-wrap{display:grid;grid-template-columns:minmax(280px,360px) 1fr;gap:1rem;max-width:1200px;margin:0 auto;align-items:start}
+    @media (max-width:860px){.board-wrap{grid-template-columns:1fr}}
+    .board-view{display:flex;justify-content:center}
+    #boardCv{width:auto;max-width:100%;max-height:92vh;border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.6);background:#1a2145}
 </style>
 </head>
 <body>
@@ -127,6 +133,7 @@
         <button class="btn" id="btnExportJson">⬇ 設計データ(JSON)</button>
         <label class="btn" for="fileJson">⬆ 設計データを読む</label>
         <input type="file" id="fileJson" accept="application/json" hidden>
+        <button class="btn" id="btnBoard">📸 提案ボード（写真風）</button>
         <button class="btn primary" id="btnPng">🖼 PNG書き出し（表示中の面）</button>
     </div>
 </header>
@@ -336,6 +343,42 @@
     </div>
 </div>
 </div>
+</div>
+<div class="board-ov" id="boardOv" hidden>
+    <div class="board-wrap">
+        <div class="board-side card">
+            <h2>📸 提案ボード（写真風）</h2>
+            <p class="muted" style="margin:0 0 .6rem">添付のデザインA画像と同じ形（見出し・写真・ポイント・おすすめ）で、いまの設計を1枚にまとめます。袋の文字は実際の版下そのままです。</p>
+            <div class="row">
+                <div class="field" style="max-width:90px"><label>記号</label><input type="text" id="bLetter" maxlength="2"></div>
+                <div class="field"><label>見出し</label><input type="text" id="bHead"></div>
+            </div>
+            <div class="row"><div class="field"><label>ひとこと</label><input type="text" id="bSub"></div></div>
+            <div class="row"><div class="field"><label>デザインのポイント（1行に1つ、4つまで）</label><textarea id="bPoints" rows="4"></textarea></div></div>
+            <div class="row"><div class="field"><label>こんな方におすすめ（2行まで）</label><textarea id="bFor" rows="2"></textarea></div></div>
+            <div class="row">
+                <button class="btn sm" id="bAuto">文言を自動で作り直す</button>
+                <button class="btn sm" id="bReseed">🎲 別の写真にする</button>
+            </div>
+            <div class="row">
+                <label class="btn sm" for="bPhoto">📷 自分の写真を背景に</label><input type="file" id="bPhoto" accept="image/*" hidden>
+                <button class="btn sm" id="bNoPhoto">描いた写真に戻す</button>
+            </div>
+            <div id="bPhotoCtl" hidden>
+                <div class="row">
+                    <div class="field"><label>版の左右 (%)</label><input type="range" id="bPx" min="10" max="90" value="50"></div>
+                    <div class="field"><label>版の上下 (%)</label><input type="range" id="bPy" min="10" max="90" value="46"></div>
+                </div>
+                <div class="row"><div class="field"><label>版の大きさ (%)</label><input type="range" id="bPs" min="20" max="100" value="62"></div></div>
+                <p class="muted">なすを透明袋に入れて撮った写真を使うと、いちばん本物に近くなります。袋の輪郭に版の四角を合わせてください。</p>
+            </div>
+            <div class="row" style="margin-top:.6rem">
+                <button class="btn primary" id="bSave">⬇ PNGで保存</button>
+                <button class="btn" id="bClose">閉じる</button>
+            </div>
+        </div>
+        <div class="board-view"><canvas id="boardCv"></canvas></div>
+    </div>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -819,7 +862,7 @@ function render(ctx, pxPerMm, opts){
     const inkOnly=opts.inkOnly;
     if(inkOnly){
         if(!opts.transparent){ ctx.fillStyle='#8a8f99'; ctx.fillRect(0,0,W,H); }
-        ctx.strokeStyle='rgba(0,0,0,.4)'; ctx.lineWidth=.3; bagPath(ctx,W,H); ctx.stroke();
+        if(!opts.printOnly){ ctx.strokeStyle='rgba(0,0,0,.4)'; ctx.lineWidth=.3; bagPath(ctx,W,H); ctx.stroke(); }
         if(!opts.transparent) drawTemplate(ctx,W,H,true);
     }else{
         drawBackground(ctx,W,H);
@@ -866,6 +909,270 @@ function exportPng(){
         drawPreview();
     },'image/png');
 }
+
+// ── 提案ボード（写真風モックアップ。添付のデザインA画像と同じ形） ──────────
+const BOARD = { W:1080, H:1960, seed:7, photo:null, px:50, py:46, ps:62, letter:'A', headline:'', sub:'', points:'', forWhom:'' };
+const BOARD_HEAD = {
+    now:['現行デザイン','いまの袋をそのまま活かす、親しみの一枚。'],
+    brand:['現行＋産地ブランド','見慣れた図版に、団体名の信頼をひとさじ。'],
+    A:['高級・ブランド感','上質で洗練された、こだわりの逸品に。'],
+    gold:['高級・ブランド感','上質で洗練された、こだわりの逸品に。'],
+    band:['ギフト・贈答向け','濃紺の帯で、贈り物にふさわしい格調を。'],
+    mincho:['和の上質','土佐の気骨を、明朝体の品格で。'],
+};
+const BOARD_FOR = {
+    now:'量販店・直売所など、\n手に取りやすさを大切にしたい売り場に。',
+    brand:'直売所・地元スーパーなど、\n産地の名前で選んでほしい売り場に。',
+    A:'高級スーパー・直売所・ギフト用など、\nブランド価値を高めたい売り場に。',
+    gold:'高級スーパー・直売所・ギフト用など、\nブランド価値を高めたい売り場に。',
+    band:'百貨店・贈答・ふるさと納税など、\n特別な一品として届けたい場面に。',
+    mincho:'料亭・贈答・高級スーパーなど、\n和の上質を求める売り場に。',
+};
+const LOGO_NAME = { sun:'朝日と畑', wave:'朝日と波', mount:'山並みと朝日', whale:'鯨と波' };
+function autoPoints(){
+    const pts=[];
+    if(P.labelOn && P.showLogo && P.logo!=='none') pts.push(`シンプルで上質なロゴ（${LOGO_NAME[P.logo]||'朝日と畑'}）`);
+    const gold = P.labelOn && (P.goldLines||P.goldProduct||P.showScript);
+    if(P.labelOn && P.useBand) pts.push('濃紺の帯で、贈り物らしい格調');
+    else if(gold) pts.push('白とゴールドの高級感ある配色');
+    else pts.push('白インク1色で、なすの紫が映える');
+    if(P.labelOn && P.showIllust) pts.push('イラストで高級感とこだわりを演出');
+    else if(P.artOn) pts.push('料理道具のイラストで「なすがまま」');
+    const nm = NAMES.find(n=>n.id===P.nameId);
+    if(P.labelOn && nm) pts.push(`団体名で「${nm.theme}」を連想させる`);
+    pts.push('中身のナスが引き立つクリアな袋');
+    return pts.slice(0,4).join('\n');
+}
+function mk(w,h){ const c=document.createElement('canvas'); c.width=Math.max(1,Math.round(w)); c.height=Math.max(1,Math.round(h)); return c; }
+function rng(seed){ let s=(seed>>>0)||1; return ()=>{ s^=s<<13; s>>>=0; s^=s>>>17; s^=s<<5; s>>>=0; return s/4294967296; }; }
+function blurCanvas(src, f){
+    // 縮小して戻すぼかし（どのブラウザでも動く）
+    const a=mk(src.width/f, src.height/f), ax=a.getContext('2d'); ax.imageSmoothingQuality='high'; ax.drawImage(src,0,0,a.width,a.height);
+    const b=mk(src.width, src.height), bx=b.getContext('2d'); bx.imageSmoothingQuality='high'; bx.drawImage(a,0,0,b.width,b.height); return b;
+}
+function sceneFoliage(x,w,h,r){
+    const c=mk(w,h), g=c.getContext('2d');
+    const lg=g.createLinearGradient(0,0,0,h); lg.addColorStop(0,'#3b5a28'); lg.addColorStop(.55,'#5a8238'); lg.addColorStop(1,'#2a4220');
+    g.fillStyle=lg; g.fillRect(0,0,w,h);
+    const cols=['#1c3014','#2d4a1e','#47702d','#6c9842','#98bf62','#c4da88','#24391a'];
+    for(let i=0;i<320;i++){ g.globalAlpha=.25+r()*.6; g.fillStyle=cols[Math.floor(r()*cols.length)]; const rad=10+r()*70;
+        g.beginPath(); g.ellipse(r()*w, r()*h, rad, rad*(.45+r()*.6), r()*Math.PI, 0, Math.PI*2); g.fill(); }
+    g.globalAlpha=1;
+    for(let i=0;i<46;i++){ const cx=r()*w, cy=r()*h*.85, rad=6+r()*26, rg=g.createRadialGradient(cx,cy,0,cx,cy,rad);
+        rg.addColorStop(0,'rgba(244,250,214,.75)'); rg.addColorStop(1,'rgba(244,250,214,0)'); g.fillStyle=rg; g.beginPath(); g.arc(cx,cy,rad,0,Math.PI*2); g.fill(); }
+    x.drawImage(blurCanvas(blurCanvas(c,9),3),0,0);
+}
+function sceneTable(x,w,h,top,r){
+    const th=h-top, c=mk(w,th), g=c.getContext('2d');
+    const lg=g.createLinearGradient(0,0,0,th); lg.addColorStop(0,'#8c5f3b'); lg.addColorStop(1,'#573620'); g.fillStyle=lg; g.fillRect(0,0,w,th);
+    let y=0;
+    while(y<th){
+        const ph=26+(y/th)*96, tone=(r()-.5)*2;
+        g.fillStyle = tone>0 ? `rgba(255,214,170,${tone*.10})` : `rgba(0,0,0,${-tone*.14})`; g.fillRect(0,y,w,ph);
+        for(let j=0;j<ph/2.6;j++){
+            const gy=y+r()*ph, amp=1+r()*3.5, fr=.003+r()*.01, p0=r()*6;
+            g.strokeStyle=`rgba(45,22,8,${.05+r()*.16})`; g.lineWidth=.8+r()*1.2; g.beginPath();
+            for(let gx=0;gx<=w;gx+=8){ const yy=gy+Math.sin(gx*fr+p0)*amp; gx?g.lineTo(gx,yy):g.moveTo(gx,yy); } g.stroke();
+        }
+        if(r()<.45){ const kx=r()*w, ky=y+ph*(.3+r()*.4); g.strokeStyle='rgba(55,26,10,.28)'; g.lineWidth=1.2;
+            for(let q=1;q<5;q++){ g.beginPath(); g.ellipse(kx,ky,q*8,q*2.4,0,0,Math.PI*2); g.stroke(); } }
+        g.fillStyle='rgba(24,11,4,.6)'; g.fillRect(0,y+ph-2,w,2+(y/th)*2.5); g.fillRect(r()*w,y,2.5,ph);
+        y+=ph;
+    }
+    x.drawImage(c,0,top);
+    // 奥はぼかす
+    const far=blurCanvas(c,4), m=mk(w,th), mx=m.getContext('2d'); mx.drawImage(far,0,0);
+    mx.globalCompositeOperation='destination-in'; const mg=mx.createLinearGradient(0,0,0,th*.5); mg.addColorStop(0,'#000'); mg.addColorStop(1,'rgba(0,0,0,0)'); mx.fillStyle=mg; mx.fillRect(0,0,w,th);
+    x.drawImage(m,0,top);
+}
+function sceneEggplant(x,cx,top,len,wid,r,tilt){
+    x.save(); x.translate(cx,top); x.rotate(tilt||0);
+    const body=new Path2D();
+    body.moveTo(0,len*.06);
+    body.bezierCurveTo(wid*.30,len*.07, wid*.5,len*.45, wid*.5,len*.74);
+    body.bezierCurveTo(wid*.5,len*.97, -wid*.5,len*.97, -wid*.5,len*.74);
+    body.bezierCurveTo(-wid*.5,len*.45, -wid*.30,len*.07, 0,len*.06);
+    const g=x.createLinearGradient(-wid*.5,0,wid*.5,0);
+    g.addColorStop(0,'#0a0310'); g.addColorStop(.26,'#2a0f35'); g.addColorStop(.46,'#1b0824'); g.addColorStop(.82,'#0b0410'); g.addColorStop(1,'#030104');
+    x.fillStyle=g; x.fill(body);
+    x.save(); x.clip(body);
+    const v=x.createLinearGradient(0,0,0,len); v.addColorStop(0,'rgba(0,0,0,.4)'); v.addColorStop(.3,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.3)'); x.fillStyle=v; x.fillRect(-wid,0,wid*2,len);
+    const s=x.createRadialGradient(-wid*.12,len*.58,0,-wid*.12,len*.58,wid*.62); s.addColorStop(0,'rgba(110,52,140,.26)'); s.addColorStop(1,'rgba(125,62,155,0)'); x.fillStyle=s; x.fillRect(-wid,0,wid*2,len);
+    const hl=x.createLinearGradient(-wid*.33,0,-wid*.11,0); hl.addColorStop(0,'rgba(255,255,255,0)'); hl.addColorStop(.5,'rgba(255,255,255,.58)'); hl.addColorStop(1,'rgba(255,255,255,0)');
+    x.fillStyle=hl; x.beginPath(); x.ellipse(-wid*.22,len*.52,wid*.075,len*.3,-.03,0,Math.PI*2); x.fill();
+    x.fillStyle='rgba(255,255,255,.75)'; x.beginPath(); x.ellipse(-wid*.2,len*.31,wid*.022,len*.05,-.05,0,Math.PI*2); x.fill();
+    x.strokeStyle='rgba(175,125,205,.28)'; x.lineWidth=wid*.045; x.beginPath(); x.moveTo(wid*.42,len*.38); x.quadraticCurveTo(wid*.52,len*.74,wid*.3,len*.93); x.stroke();
+    for(let i=0;i<160;i++){ x.fillStyle=`rgba(255,255,255,${r()*.05})`; x.fillRect((r()-.5)*wid, r()*len, 1.6, 1.6); }
+    x.restore();
+    // へた（とげのあるがく）
+    const n=7, cw=wid*.5, ch=len*.15, base=len*.035, tips=[];
+    for(let i=0;i<=n;i++) tips.push([-cw/2+i/n*cw, base+ch*(.75+.25*r())]);
+    const cg=x.createLinearGradient(0,0,0,base+ch); cg.addColorStop(0,'#3f4a25'); cg.addColorStop(1,'#161d0e');
+    x.fillStyle=cg; x.beginPath(); x.moveTo(-cw/2,base); x.quadraticCurveTo(0,len*.004,cw/2,base);
+    for(let i=n;i>=0;i--){ x.lineTo(tips[i][0],tips[i][1]); if(i>0) x.lineTo((tips[i][0]+tips[i-1][0])/2, base+ch*.32); }
+    x.closePath(); x.fill();
+    x.strokeStyle='rgba(205,215,150,.1)'; x.lineWidth=1.2; tips.forEach(([tx,ty])=>{ x.beginPath(); x.moveTo(tx*.3,base); x.lineTo(tx,ty-2); x.stroke(); });
+    x.strokeStyle='#3a4626'; x.lineWidth=wid*.09; x.lineCap='round'; x.beginPath(); x.moveTo(0,len*.02); x.quadraticCurveTo(wid*.03,-len*.03,wid*.07,-len*.065); x.stroke();
+    x.restore();
+}
+function sceneFilm(x,bx,by,bw,bh,r){
+    // 透明フィルムのつや・しわ・シール
+    const c=mk(x.canvas.width,x.canvas.height), g=c.getContext('2d');
+    g.save(); g.beginPath(); g.rect(bx,by,bw,bh); g.clip();
+    g.fillStyle='rgba(255,255,255,.05)'; g.fillRect(bx,by,bw,bh);
+    const sh=g.createLinearGradient(bx,by,bx+bw,by+bh);
+    sh.addColorStop(0,'rgba(255,255,255,0)'); sh.addColorStop(.30,'rgba(255,255,255,.16)'); sh.addColorStop(.36,'rgba(255,255,255,.02)');
+    sh.addColorStop(.62,'rgba(255,255,255,0)'); sh.addColorStop(.7,'rgba(255,255,255,.10)'); sh.addColorStop(1,'rgba(255,255,255,0)');
+    g.fillStyle=sh; g.fillRect(bx,by,bw,bh);
+    for(let i=0;i<16;i++){
+        const x0=bx+r()*bw, y0=by+r()*bh, len=60+r()*bh*.35, ang=Math.PI/2+(r()<.5?-1:1)*(.35+r()*.6);
+        g.strokeStyle=`rgba(255,255,255,${.04+r()*.1})`; g.lineWidth=3+r()*9; g.lineCap='round'; g.beginPath(); g.moveTo(x0,y0);
+        g.bezierCurveTo(x0+Math.cos(ang)*len*.3+(r()-.5)*30, y0+Math.sin(ang)*len*.3, x0+Math.cos(ang)*len*.7+(r()-.5)*30, y0+Math.sin(ang)*len*.7, x0+Math.cos(ang)*len, y0+Math.sin(ang)*len); g.stroke();
+    }
+    const seal=bh*.065; g.fillStyle='rgba(255,255,255,.12)'; g.fillRect(bx,by,bw,seal);
+    for(let i=0;i<55;i++){ const sx=bx+r()*bw; g.strokeStyle=`rgba(255,255,255,${.06+r()*.18})`; g.lineWidth=1+r()*2; g.beginPath(); g.moveTo(sx,by+3); g.lineTo(sx+(r()-.5)*8,by+seal*(.3+r()*.5)); g.stroke(); }
+    g.fillStyle='rgba(255,255,255,.18)'; g.fillRect(bx,by+seal,bw,2);
+    g.restore();
+    x.drawImage(blurCanvas(c,2.6),0,0);
+    x.save(); x.strokeStyle='rgba(255,255,255,.55)'; x.lineWidth=3; x.strokeRect(bx+1.5,by+1.5,bw-3,bh-3);
+    x.strokeStyle='rgba(255,255,255,.16)'; x.lineWidth=2; x.strokeRect(bx+9,by+9,bw-18,bh-18); x.restore();
+    for(let i=0;i<7;i++){ const gx=bx+r()*bw, gy=by+r()*bh, rg=x.createRadialGradient(gx,gy,0,gx,gy,10+r()*18);
+        rg.addColorStop(0,'rgba(255,255,255,.55)'); rg.addColorStop(1,'rgba(255,255,255,0)'); x.fillStyle=rg; x.beginPath(); x.arc(gx,gy,30,0,Math.PI*2); x.fill(); }
+}
+function renderPrintLayer(pxPerMm){
+    const c=mk(P.bagW*pxPerMm, P.bagH*pxPerMm), side=P.side; P.side='front';
+    render(c.getContext('2d'), pxPerMm, {inkOnly:true, transparent:true, printOnly:true});
+    const bx=boxes.map(b=>Object.assign({},b)); P.side=side;
+    return {canvas:c, boxes:bx};
+}
+function drawPrintWarped(x, pc, bx, by, bw, bh){
+    // フィルムがなすの丸みに沿う分だけ、版を少したわませる
+    const sw=3, w=pc.width;
+    x.save(); x.globalAlpha=.96;
+    for(let sx=0; sx<w; sx+=sw){ const t=sx/w, dy=Math.sin(t*Math.PI)*bh*.007; x.drawImage(pc, sx,0,Math.min(sw,w-sx),pc.height, bx+sx*bw/w, by+dy, Math.min(sw,w-sx)*bw/w+.5, bh); }
+    x.restore();
+}
+function renderScene(pw, ph){
+    const c=mk(pw,ph), x=c.getContext('2d'), r=rng(BOARD.seed);
+    const ratio=P.bagH/P.bagW;
+    let bx,by,bw,bh;
+    if(BOARD.photo){
+        const im=BOARD.photo, s=Math.max(pw/im.width, ph/im.height);
+        x.drawImage(im, (pw-im.width*s)/2, (ph-im.height*s)/2, im.width*s, im.height*s);
+        bw=pw*BOARD.ps/100; bh=bw*ratio; bx=pw*BOARD.px/100-bw/2; by=ph*BOARD.py/100-bh/2;
+    }else{
+        sceneFoliage(x,pw,ph,r);
+        const top=ph*.63; sceneTable(x,pw,ph,top,r);
+        bw=Math.min(pw*.6, ph*.83/ratio); bh=bw*ratio; bx=(pw-bw)/2; by=ph*.955-bh;
+        const sh=mk(pw,ph), sx=sh.getContext('2d'); sx.fillStyle='rgba(0,0,0,.6)'; sx.beginPath(); sx.ellipse(bx+bw/2, by+bh*.99, bw*.56, bh*.03, 0, 0, Math.PI*2); sx.fill();
+        x.drawImage(blurCanvas(sh,10),0,0);
+        const n=Math.max(1,Math.min(5,P.eggplants||3)), ew=bw*Math.min(.42, 1.15/n), el=bh*.88;
+        const order=[...Array(n).keys()].sort((a,b)=>Math.abs(b-(n-1)/2)-Math.abs(a-(n-1)/2));
+        order.forEach(i=>{ const off=(i-(n-1)/2); sceneEggplant(x, bx+bw/2+off*ew*.78, by+bh*.075+Math.abs(off)*bh*.012, el, ew, r, off*.035); });
+        sceneFilm(x,bx,by,bw,bh,r);
+    }
+    const pl=renderPrintLayer(bw/P.bagW);
+    drawPrintWarped(x, pl.canvas, bx, by, bw, bh);
+    if(!BOARD.photo){
+        // 版の上にもフィルムの反射を少し重ねる
+        x.save(); x.globalCompositeOperation='screen'; const sh=x.createLinearGradient(bx,by,bx+bw,by+bh*.6);
+        sh.addColorStop(0,'rgba(255,255,255,0)'); sh.addColorStop(.42,'rgba(255,255,255,.10)'); sh.addColorStop(.5,'rgba(255,255,255,0)'); x.fillStyle=sh; x.fillRect(bx,by,bw,bh); x.restore();
+        const vg=x.createRadialGradient(pw/2,ph*.45,ph*.3,pw/2,ph*.5,ph*.85); vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,.35)'); x.fillStyle=vg; x.fillRect(0,0,pw,ph);
+    }
+    return {canvas:c, bx,by,bw,bh, boxes:pl.boxes};
+}
+function boardText(x, text, cx, y, maxW, size, weight, color, align, family){
+    let s=size; const fam=family||"'Noto Sans JP','Hiragino Kaku Gothic ProN',sans-serif";
+    do{ x.font=`${weight} ${s}px ${fam}`; if(x.measureText(text).width<=maxW) break; s-=2; }while(s>14);
+    x.fillStyle=color; x.textAlign=align||'left'; x.textBaseline='middle'; x.fillText(text, cx, y);
+}
+function rr(x,X,Y,W,H,R){ x.beginPath(); x.moveTo(X+R,Y); x.arcTo(X+W,Y,X+W,Y+H,R); x.arcTo(X+W,Y+H,X,Y+H,R); x.arcTo(X,Y+H,X,Y,R); x.arcTo(X,Y,X+W,Y,R); x.closePath(); }
+function drawBoard(){
+    const cv=document.getElementById('boardCv'), W=BOARD.W, H=BOARD.H; cv.width=W; cv.height=H;
+    const x=cv.getContext('2d'), NAVY='#232c58', INK='#22263a';
+    x.fillStyle='#1a2145'; x.fillRect(0,0,W,H);
+    x.fillStyle='#f4f2ed'; rr(x,24,24,W-48,H-48,22); x.fill();
+    // 見出し帯
+    x.save(); rr(x,24,24,W-48,222,22); x.clip(); x.fillStyle=NAVY; x.fillRect(24,24,W-48,222); x.restore();
+    x.fillStyle='#fff'; x.beginPath(); x.arc(112,112,54,0,Math.PI*2); x.fill();
+    boardText(x, BOARD.letter||'A', 112, 114, 80, 70, 900, NAVY, 'center', "'Inter','Noto Sans JP',sans-serif");
+    boardText(x, BOARD.headline, 190, 98, W-250, 62, 900, '#fff');
+    boardText(x, BOARD.sub, 190, 186, W-250, 34, 500, '#e7e9f5');
+    // 写真
+    const PX=56, PY=272, PW=W-112, PH=1060;
+    const sc=renderScene(PW, PH);
+    x.save(); rr(x,PX,PY,PW,PH,10); x.clip(); x.drawImage(sc.canvas,PX,PY); x.restore();
+    // 寄りの写真（ラベル部分の拡大）
+    const TX=56, TY=1366, TW=360, TH=330;
+    const lb = sc.boxes.find(b=>b.name==='ブランドのラベル') || sc.boxes.find(b=>b.name==='現行の図版') || sc.boxes[0];
+    const mmx=sc.bw/P.bagW, mmy=sc.bh/P.bagH;
+    let cs = sc.bw*.42, ccx = sc.bx+sc.bw/2, cty = sc.by+sc.bh*.25;
+    if(lb){ cs=Math.min((lb.x1-lb.x0)*mmx*.62, sc.bw*.5); ccx=sc.bx+(lb.x0+lb.x1)/2*mmx - cs*.25; cty=sc.by+lb.y0*mmy - cs*.04; }
+    x.save(); rr(x,TX,TY,TW,TH,10); x.clip();
+    x.drawImage(sc.canvas, ccx-cs/2, cty, cs, cs*TH/TW, TX, TY, TW, TH);
+    const tv=x.createLinearGradient(TX,TY,TX+TW,TY+TH); tv.addColorStop(0,'rgba(0,0,0,0)'); tv.addColorStop(1,'rgba(0,0,0,.35)'); x.fillStyle=tv; x.fillRect(TX,TY,TW,TH); x.restore();
+    // デザインのポイント
+    const RX=444;
+    x.fillStyle=NAVY; rr(x,RX,TY+6,400,58,10); x.fill();
+    boardText(x,'デザインのポイント',RX+200,TY+36,370,32,700,'#fff','center');
+    const pts=(BOARD.points||'').split('\n').map(s=>s.trim()).filter(Boolean).slice(0,5);
+    pts.forEach((t,i)=>boardText(x,'・'+t.replace(/^[・\-\s]+/,''),RX,TY+120+i*(pts.length>4?48:56),W-RX-60,32,500,INK));
+    // こんな方におすすめ
+    const BY=1728, BH=180;
+    x.fillStyle='#e4e3f1'; rr(x,56,BY,W-112,BH,16); x.fill();
+    boardText(x,'こんな方におすすめ',W/2,BY+46,W-160,38,800,NAVY,'center');
+    (BOARD.forWhom||'').split('\n').slice(0,2).forEach((t,i)=>boardText(x,t,W/2,BY+102+i*44,W-160,30,500,INK,'center'));
+    drawPreview();
+}
+function boardDefaults(d){
+    d=d||{};
+    const head=BOARD_HEAD[P.preset]||BOARD_HEAD.A;
+    BOARD.letter=d.letter||BOARD.letter||'A';
+    BOARD.headline=d.headline||head[0]; BOARD.sub=d.sub||head[1];
+    BOARD.points=(Array.isArray(d.points)&&d.points.length)?d.points.join('\n'):autoPoints();
+    BOARD.forWhom=d.forWhom||BOARD_FOR[P.preset]||BOARD_FOR.A;
+    ['bLetter','bHead','bSub','bPoints','bFor'].forEach((id,i)=>{ document.getElementById(id).value=[BOARD.letter,BOARD.headline,BOARD.sub,BOARD.points,BOARD.forWhom][i]; });
+}
+async function whenReady(){
+    const imgs=[IMG_ART,IMG_PP_F,IMG_PP_B].map(im=>im.complete&&im.naturalWidth?null:new Promise(res=>{ im.addEventListener('load',res,{once:true}); im.addEventListener('error',res,{once:true}); }));
+    await Promise.all(imgs.filter(Boolean));
+    if(document.fonts && document.fonts.ready) await document.fonts.ready;
+}
+async function openBoard(d){
+    document.getElementById('boardOv').hidden=false;
+    boardDefaults(d);
+    await whenReady();
+    drawBoard();
+}
+let boardTimer=null;
+function boardChanged(){ clearTimeout(boardTimer); boardTimer=setTimeout(drawBoard,150); }
+[['bLetter','letter'],['bHead','headline'],['bSub','sub'],['bPoints','points'],['bFor','forWhom']].forEach(([id,k])=>{
+    document.getElementById(id).addEventListener('input',e=>{ BOARD[k]=e.target.value; boardChanged(); });
+});
+[['bPx','px'],['bPy','py'],['bPs','ps']].forEach(([id,k])=>{ document.getElementById(id).addEventListener('input',e=>{ BOARD[k]=Number(e.target.value); boardChanged(); }); });
+document.getElementById('btnBoard').addEventListener('click',()=>openBoard({}));
+document.getElementById('bClose').addEventListener('click',()=>{ document.getElementById('boardOv').hidden=true; if(location.hash.startsWith('#board=')) history.replaceState(null,'',location.pathname+location.search); });
+document.getElementById('bReseed').addEventListener('click',()=>{ BOARD.seed=(BOARD.seed*7+13)%9973||3; drawBoard(); });
+document.getElementById('bAuto').addEventListener('click',()=>{ boardDefaults({letter:BOARD.letter}); drawBoard(); });
+document.getElementById('bPhoto').addEventListener('change',e=>{
+    const f=e.target.files[0]; if(!f) return; const im=new Image();
+    im.onload=()=>{ BOARD.photo=im; document.getElementById('bPhotoCtl').hidden=false; drawBoard(); toast('写真を背景にしました。スライダーで版の位置を合わせてください'); };
+    im.src=URL.createObjectURL(f); e.target.value='';
+});
+document.getElementById('bNoPhoto').addEventListener('click',()=>{ BOARD.photo=null; document.getElementById('bPhotoCtl').hidden=true; drawBoard(); });
+document.getElementById('bSave').addEventListener('click',()=>{
+    document.getElementById('boardCv').toBlob(b=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(b);
+        a.download=`提案ボード_${BOARD.letter}_${P.farmJa}.png`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); toast('提案ボードを保存しました'); },'image/png');
+});
+function readBoardHash(){
+    const m=location.hash.match(/^#board=(.+)$/); if(!m) return;
+    try{
+        const d=JSON.parse(decodeURIComponent(m[1]));
+        if(d.settings){ P=Object.assign({},DEFAULT,d.settings); syncInputs(); buildPresets(); buildNames(); drawPreview(); saveState(true); }
+        openBoard(d);
+    }catch(e){ toast('提案ボードの情報を読めませんでした'); }
+}
+window.addEventListener('hashchange',readBoardHash);
 
 // ── UI ─────────────────────────────────────────────────────────────────
 function bindInputs(){
@@ -945,7 +1252,7 @@ document.getElementById('btnReset').addEventListener('click',()=>{
 });
 window.addEventListener('resize',drawPreview);
 
-bindInputs(); buildPresets(); buildNames(); drawPreview();
+bindInputs(); buildPresets(); buildNames(); drawPreview(); readBoardHash();
 if(document.fonts && document.fonts.ready){ document.fonts.ready.then(drawPreview); }
 setTimeout(drawPreview,1500); setTimeout(drawPreview,4000);
 })();
