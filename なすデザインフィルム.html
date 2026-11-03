@@ -201,6 +201,12 @@
                     <option value="wave">太平洋の朝日と波</option>
                     <option value="mount">土佐の山並みと朝日</option>
                     <option value="whale">鯨と波</option>
+                    <option value="vg_nasu1">ベジワン：「1」になす</option>
+                    <option value="vg_crown">ベジワン：ヘタの王冠</option>
+                    <option value="vg_badge">ベジワン：丸いエンブレム</option>
+                    <option value="vg_sunwave">ベジワン：海から昇るなす</option>
+                    <option value="vg_mono">ベジワン：Vと1の組み文字</option>
+                    <option value="vg_trio">ベジワン：3本でワンチーム</option>
                     <option value="none">ロゴなし</option>
                 </select>
             </div>
@@ -442,6 +448,7 @@ const PRESETS = [
 
 // ── 団体名の案（安芸・高知・太平洋・海・龍馬を連想させる） ─────────────
 const NAMES = [
+    { id:'vege', theme:'出荷組合', ja:'ベジワン', en:'VEGE ONE', product:'こだわりの安芸ナス', script:'Fresh & delicious', logo:'vg_nasu1', desc:'出荷組合ベジワン。ロゴは「ベジワン」の6案（④のロゴの種類）から選べる' },
     { id:'t1', theme:'チーム案・光', ja:'安芸のひかり', en:'AKI NO HIKARI', product:'こだわりの安芸ナス', script:'Light of Aki', logo:'sun', desc:'「安芸」と「秋」の掛け言葉に、太陽の光を重ねた' },
     { id:'t2', theme:'チーム案・太陽・海', ja:'陽と海のなす', en:'HI TO UMI', product:'安芸ナス', script:'Sun & sea', logo:'wave', desc:'太陽と太平洋。安芸の景色がそのまま名前になる' },
     { id:'t3', theme:'チーム案・音・海', ja:'潮騒なす', en:'SHIOSAI NASU', product:'安芸ナス', script:'Sound of the sea', logo:'wave', desc:'潮騒＝波の音。海辺の畑で育つ物語を一言で' },
@@ -679,6 +686,8 @@ function drawLogo(ctx,cx,cy,s,color){
         ctx.moveTo(cx-s*1.1, cy+s*.3); ctx.lineTo(cx-s*.6, cy-s*.35); ctx.lineTo(cx-s*.3, cy-s*.05);
         ctx.lineTo(cx-s*.05, cy-s*.5); ctx.lineTo(cx+s*.35, cy-s*.02); ctx.lineTo(cx+s*.6, cy-s*.25); ctx.lineTo(cx+s*1.1, cy+s*.3); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(cx-s*.9, cy+s*.5); ctx.lineTo(cx+s*.9, cy+s*.5); ctx.stroke();
+    }else if(kind.startsWith('vg_')){
+        drawVegeLogo(ctx,cx,cy,s,color,kind);
     }else if(kind==='whale'){
         ctx.beginPath();
         ctx.moveTo(cx-s*1.0, cy+s*.02);
@@ -694,6 +703,87 @@ function drawLogo(ctx,cx,cy,s,color){
     }
     ctx.restore();
 }
+// ── ベジワン（出荷組合）のロゴ6案。どれも白1色で刷れる形 ─────────────────
+function vgEgg(ctx, x, top, w, h, ang){
+    // 立てたなすのシルエット。ヘタと実の間にすき間を空けて、1色でも形が分かるようにする
+    ctx.save(); ctx.translate(x, top+h/2); ctx.rotate(ang||0); ctx.translate(0,-h/2);
+    ctx.beginPath(); ctx.moveTo(0,h*.22);
+    ctx.bezierCurveTo(w*.26,h*.23, w*.44,h*.42, w*.5,h*.66);
+    ctx.bezierCurveTo(w*.58,h*.98, -w*.42,h*1.03, -w*.5,h*.74);
+    ctx.bezierCurveTo(-w*.55,h*.5, -w*.24,h*.23, 0,h*.22); ctx.closePath(); ctx.fill();
+    const cw=w*.64;
+    ctx.beginPath(); ctx.moveTo(-cw/2,h*.1); ctx.lineTo(-cw*.44,h*.3); ctx.lineTo(-cw*.22,h*.16); ctx.lineTo(0,h*.19);
+    ctx.lineTo(cw*.22,h*.16); ctx.lineTo(cw*.44,h*.3); ctx.lineTo(cw/2,h*.1); ctx.quadraticCurveTo(0,h*.03,-cw/2,h*.1); ctx.closePath(); ctx.fill();
+    ctx.lineWidth=w*.11; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(0,h*.08); ctx.quadraticCurveTo(w*.04,-h*.01,w*.14,-h*.05); ctx.stroke();
+    ctx.restore();
+}
+function vgLeaf(ctx, x, y, len, ang){
+    ctx.save(); ctx.translate(x,y); ctx.rotate(ang);
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.quadraticCurveTo(len*.5,-len*.38,len,0); ctx.quadraticCurveTo(len*.5,len*.38,0,0); ctx.closePath(); ctx.fill();
+    ctx.restore();
+}
+function vgArcText(ctx, text, cx, cy, r, a0, a1, size, bottom){
+    withFont(ctx, size, FONT_EN, 800); ctx.textAlign='center'; ctx.textBaseline='middle';
+    const ch=[...text], step=(a1-a0)/Math.max(1,ch.length-1);
+    ch.forEach((c,i)=>{ const a=a0+step*i; ctx.save(); ctx.translate(cx+Math.cos(a)*r, cy+Math.sin(a)*r); ctx.rotate(a+(bottom?-Math.PI/2:Math.PI/2)); ctx.fillText(c,0,0); ctx.restore(); });
+}
+function drawVegeLogo(ctx,cx,cy,s,color,kind){
+    // 高さは cy-0.75s 〜 cy+0.48s に収める（団体名に重ならない範囲）
+    ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineCap='round'; ctx.lineJoin='round';
+    if(kind==='vg_nasu1'){
+        // 「1」になす：なすを数字の1に見立て、葉を1のはね、下の線を1の台に
+        vgEgg(ctx, cx, cy-.62*s, .34*s, 1.04*s, 0);
+        vgLeaf(ctx, cx-.08*s, cy-.56*s, .42*s, Math.PI*1.18);
+        ctx.lineWidth=.07*s; ctx.beginPath(); ctx.moveTo(cx-.42*s, cy+.46*s); ctx.lineTo(cx+.42*s, cy+.46*s); ctx.stroke();
+    }else if(kind==='vg_crown'){
+        // ヘタの王冠：なすのヘタを王冠にして「ナンバーワン」
+        ctx.beginPath(); ctx.moveTo(cx,cy-.18*s);
+        ctx.bezierCurveTo(cx+.12*s,cy-.17*s, cx+.2*s,cy+.02*s, cx+.21*s,cy+.2*s);
+        ctx.bezierCurveTo(cx+.23*s,cy+.52*s, cx-.19*s,cy+.54*s, cx-.21*s,cy+.24*s);
+        ctx.bezierCurveTo(cx-.23*s,cy+.02*s, cx-.12*s,cy-.17*s, cx,cy-.18*s); ctx.closePath(); ctx.fill();
+        const cw=.5*s, by=cy-.25*s, ty=cy-.66*s;
+        ctx.beginPath(); ctx.moveTo(cx-cw/2,by); ctx.lineTo(cx-cw/2,ty+.12*s); ctx.lineTo(cx-cw/4,by-.17*s); ctx.lineTo(cx,ty);
+        ctx.lineTo(cx+cw/4,by-.17*s); ctx.lineTo(cx+cw/2,ty+.12*s); ctx.lineTo(cx+cw/2,by); ctx.closePath(); ctx.fill();
+        [[-cw/2,ty+.08*s],[0,ty-.04*s],[cw/2,ty+.08*s]].forEach(([dx,yy])=>{ ctx.beginPath(); ctx.arc(cx+dx,yy,.055*s,0,Math.PI*2); ctx.fill(); });
+        ctx.lineWidth=.045*s;
+        [-1,1].forEach(sd=>{ for(let i=0;i<3;i++){ const a=(-.35+i*.35)*sd; const x0=cx+sd*.48*s, y0=cy-.42*s;
+            ctx.beginPath(); ctx.moveTo(x0+sd*Math.cos(a)*.08*s, y0+Math.sin(a)*.08*s); ctx.lineTo(x0+sd*Math.cos(a)*.24*s, y0+Math.sin(a)*.24*s); ctx.stroke(); } });
+    }else if(kind==='vg_badge'){
+        // 丸いエンブレム：VEGE ONE と AKI・KOCHI を円に沿わせ、真ん中に「1」のなす
+        const oy=cy-.13*s, R=.61*s;
+        ctx.lineWidth=.05*s; ctx.beginPath(); ctx.arc(cx,oy,R,0,Math.PI*2); ctx.stroke();
+        ctx.lineWidth=.022*s; ctx.beginPath(); ctx.arc(cx,oy,R*.66,0,Math.PI*2); ctx.stroke();
+        vgArcText(ctx,'VEGE ONE',cx,oy,R*.83,-Math.PI*.8,-Math.PI*.2,.15*s,false);
+        vgArcText(ctx,'AKI KOCHI',cx,oy,R*.83,Math.PI*.78,Math.PI*.22,.12*s,true);
+        [-1,1].forEach(sd=>{ ctx.beginPath(); ctx.arc(cx+sd*R*.83,oy,.03*s,0,Math.PI*2); ctx.fill(); });
+        vgEgg(ctx, cx+.02*s, oy-.32*s, .17*s, .62*s, 0);
+        vgLeaf(ctx, cx-.02*s, oy-.27*s, .2*s, Math.PI*1.18);
+    }else if(kind==='vg_sunwave'){
+        // 海から昇るなす：太陽の代わりになすが海から昇る
+        const oy=cy+.12*s;
+        ctx.lineWidth=.06*s;
+        for(let i=0;i<9;i++){ const a=Math.PI+Math.PI*(i+1)/10; ctx.beginPath();
+            ctx.moveTo(cx+Math.cos(a)*.5*s, oy+Math.sin(a)*.5*s); ctx.lineTo(cx+Math.cos(a)*.72*s, oy+Math.sin(a)*.72*s); ctx.stroke(); }
+        ctx.save(); ctx.beginPath(); ctx.rect(cx-s, cy-s, 2*s, (oy-.02*s)-(cy-s)); ctx.clip();
+        vgEgg(ctx, cx, cy-.56*s, .27*s, .9*s, 0); ctx.restore();
+        ctx.lineWidth=.06*s; ctx.beginPath(); ctx.moveTo(cx-.95*s,oy); ctx.lineTo(cx+.95*s,oy); ctx.stroke();
+        logoWaves(ctx,cx,oy+.17*s,s*.9,2,.2);
+    }else if(kind==='vg_mono'){
+        // V と 1 の組み文字：左の腕に葉、右の腕が「1」、谷になす
+        ctx.lineWidth=.13*s;
+        ctx.beginPath(); ctx.moveTo(cx-.6*s,cy-.55*s); ctx.lineTo(cx-.08*s,cy+.42*s); ctx.lineTo(cx+.38*s,cy-.62*s); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx+.38*s,cy-.62*s); ctx.lineTo(cx+.18*s,cy-.47*s); ctx.stroke();
+        vgLeaf(ctx, cx-.6*s, cy-.55*s, .36*s, -Math.PI*.62);
+        vgEgg(ctx, cx-.1*s, cy-.34*s, .15*s, .5*s, -.12);
+        withFont(ctx, .16*s, FONT_EN, 800); ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.fillText('VEGE', cx+.5*s, cy-.18*s); ctx.fillText('ONE', cx+.5*s, cy+.04*s);
+    }else if(kind==='vg_trio'){
+        // 3本でワンチーム：袋の3本入りを、肩を寄せ合うチームに
+        [[-.33,-.36],[0,0],[.33,.36]].forEach(([dx,a])=>vgEgg(ctx, cx+dx*s, cy-.72*s+Math.abs(dx)*.22*s, .23*s, .9*s, a));
+        ctx.lineWidth=.06*s; ctx.beginPath(); ctx.moveTo(cx-.62*s,cy+.24*s); ctx.quadraticCurveTo(cx,cy+.62*s,cx+.62*s,cy+.24*s); ctx.stroke();
+    }
+}
+// ロゴ一覧を作るときなど、外から1つのロゴだけ描くための入口
+window.NasuFilm = { drawLogo:(ctx,cx,cy,s,color,kind)=>{ const k=P.logo; P.logo=kind; try{ drawLogo(ctx,cx,cy,s,color); } finally { P.logo=k; } } };
 function drawStamp(ctx,cx,cy,r,color){
     ctx.save(); ctx.strokeStyle=color; ctx.fillStyle=color; ctx.textAlign='center'; ctx.textBaseline='middle';
     ctx.lineWidth=r*.06; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
@@ -987,7 +1077,7 @@ const BOARD_FOR = {
     mincho:'料亭・贈答・高級スーパーなど、\n和の上質を求める売り場に。',
     first:'高級スーパー・直売所・ギフト用など、\nブランド価値を高めたい売り場に。',
 };
-const LOGO_NAME = { sun:'朝日と畑', wave:'朝日と波', mount:'山並みと朝日', whale:'鯨と波' };
+const LOGO_NAME = { sun:'朝日と畑', wave:'朝日と波', mount:'山並みと朝日', whale:'鯨と波', vg_nasu1:'「1」になす', vg_crown:'ヘタの王冠', vg_badge:'丸いエンブレム', vg_sunwave:'海から昇るなす', vg_mono:'Vと1の組み文字', vg_trio:'3本でワンチーム' };
 function autoPoints(){
     const pts=[];
     if(P.labelOn && P.showLogo && P.logo!=='none') pts.push(`シンプルで上質なロゴ（${LOGO_NAME[P.logo]||'朝日と畑'}）`);

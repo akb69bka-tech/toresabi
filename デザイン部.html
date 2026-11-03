@@ -207,6 +207,7 @@ const MEMBERS = [
 
 // ── なすデザインフィルム側の語彙（同じ ID を使う） ────────────────────
 const NAMES = {
+    vege:{ja:'ベジワン',en:'VEGE ONE',product:'こだわりの安芸ナス',script:'Fresh & delicious',logo:'vg_nasu1',theme:'出荷組合（オーナーの第一候補）'},
     t1:{ja:'安芸のひかり',en:'AKI NO HIKARI',product:'こだわりの安芸ナス',script:'Light of Aki',logo:'sun',theme:'チーム案・光'},
     t2:{ja:'陽と海のなす',en:'HI TO UMI',product:'安芸ナス',script:'Sun & sea',logo:'wave',theme:'チーム案・太陽・海'},
     t3:{ja:'潮騒なす',en:'SHIOSAI NASU',product:'安芸ナス',script:'Sound of the sea',logo:'wave',theme:'チーム案・音・海'},
@@ -249,7 +250,7 @@ const PRESETS = {
 };
 const PRESET_LABEL = { first:'最初のデザイン（A）', now:'現行3本入', brand:'現行＋団体名', A:'デザインA風', gold:'金を効かせる', band:'濃紺の帯', mincho:'明朝で和' };
 const FONT_LABEL = { maru:'丸ゴシック', gothic:'ゴシック', mincho:'明朝' };
-const LOGO_LABEL = { sun:'朝日と畑', wave:'朝日と波', mount:'山並みと朝日', whale:'鯨と波', none:'ロゴなし' };
+const LOGO_LABEL = { sun:'朝日と畑', wave:'朝日と波', mount:'山並みと朝日', whale:'鯨と波', vg_nasu1:'ベジワン「1」になす', vg_crown:'ベジワン ヘタの王冠', vg_badge:'ベジワン 丸いエンブレム', vg_sunwave:'ベジワン 海から昇るなす', vg_mono:'ベジワン Vと1', vg_trio:'ベジワン 3本でワンチーム', none:'ロゴなし' };
 
 // 案の設定（部員の出力）→ なすデザインフィルムの設計データ
 function toFilmSettings(s){
@@ -508,7 +509,7 @@ const SCHEMA = {
                         farmJa:{type:'string', description:'nameId の名前を変えたいときだけ（任意）'},
                         farmEn:{type:'string'}, product:{type:'string'}, script:{type:'string'},
                         preset:{type:'string', enum:Object.keys(PRESETS)},
-                        logo:{type:'string', enum:['sun','wave','mount','whale','none']},
+                        logo:{type:'string', enum:['sun','wave','mount','whale','vg_nasu1','vg_crown','vg_badge','vg_sunwave','vg_mono','vg_trio','none']},
                         fontJa:{type:'string', enum:['maru','gothic','mincho']},
                         goldLines:{type:'boolean'}, goldProduct:{type:'boolean'}, useBand:{type:'boolean'}, showFrame:{type:'boolean'},
                         artOn:{type:'boolean', description:'現行の料理道具の図版を残すか'}, showScript:{type:'boolean', description:'金の筆記体を使うか'}
@@ -527,7 +528,7 @@ function systemPrompt(){
 - 現行は白インク1色で「どんなメニューもなすがまま／高知県産ナス」の料理道具イラスト。ゴールドは特色で版が1つ増える。濃紺の帯でさらに1つ増える。
 - 外周10mmは印刷逃がし、空気穴がある。細い線は0.3mm未満でつぶれる。
 - 目指す方向は「高級・ブランド感」（デザインA：白と金、シンプルなロゴ、なすが引き立つ透明袋）だが、オーナーの指示を最優先。
-使える部品（設定）：団体名 nameId は ${Object.entries(NAMES).map(([k,v])=>`${k}=${v.ja}(${v.theme})`).join('、')}。型 preset は ${Object.entries(PRESET_LABEL).map(([k,v])=>`${k}=${v}`).join('、')}。ロゴ logo は sun=朝日と畑、wave=朝日と波、mount=山並みと朝日、whale=鯨と波、none。書体 fontJa は maru/gothic/mincho。
+使える部品（設定）：団体名 nameId は ${Object.entries(NAMES).map(([k,v])=>`${k}=${v.ja}(${v.theme})`).join('、')}。型 preset は ${Object.entries(PRESET_LABEL).map(([k,v])=>`${k}=${v}`).join('、')}。ロゴ logo は sun=朝日と畑、wave=朝日と波、mount=山並みと朝日、whale=鯨と波、vg_nasu1/vg_crown/vg_badge/vg_sunwave/vg_mono/vg_trio=ベジワン用（「1」になす／ヘタの王冠／丸いエンブレム／海から昇るなす／Vと1の組み文字／3本でワンチーム）、none。オーナーの第一候補の団体名は出荷組合「ベジワン」(nameId=vege) で、ベジワン用ロゴと組み合わせる。書体 fontJa は maru/gothic/mincho。
 会議の進め方：統括が指示を方針に直す → A・B・C がそれぞれ違う路線で1案 → 印刷チェックが版数と注意点 → 統括が講評して推し案を1つ決め、必要ならオーナーに1つだけ確認する。前回の案が渡されたら、それを踏まえて改良する。日本語で、売り場の人に話すように平易に。`;
 }
 async function meetClaude(text){
