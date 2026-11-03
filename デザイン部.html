@@ -207,6 +207,16 @@ const MEMBERS = [
 
 // ── なすデザインフィルム側の語彙（同じ ID を使う） ────────────────────
 const NAMES = {
+    k1:{ja:'安芸なす生産組合',en:'AKI NASU PRODUCERS',product:'こだわりの安芸ナス',script:'Fresh & delicious',logo:'sun',theme:'組合案・安芸'},
+    k2:{ja:'安芸太平洋なす組合',en:'AKI PACIFIC NASU',product:'太平洋の安芸ナス',script:'Pacific & fresh',logo:'wave',theme:'組合案・太平洋'},
+    k3:{ja:'黒潮安芸なす組合',en:'KUROSHIO AKI NASU',product:'黒潮育ちの安芸ナス',script:'Warm & sunny',logo:'wave',theme:'組合案・黒潮'},
+    k4:{ja:'土佐湾なす組合',en:'TOSA BAY NASU',product:'土佐湾の安芸ナス',script:'Sea & sun',logo:'wave',theme:'組合案・土佐湾'},
+    k5:{ja:'安芸浜なす組合',en:'AKI HAMA NASU',product:'浜育ちの安芸ナス',script:'By the sea',logo:'wave',theme:'組合案・浜'},
+    k6:{ja:'安芸朝日なす組合',en:'AKI ASAHI NASU',product:'朝日を浴びた安芸ナス',script:'Sunrise harvest',logo:'sun',theme:'組合案・朝日'},
+    k7:{ja:'安芸潮風なす組合',en:'AKI SHIOKAZE NASU',product:'潮風育ちの安芸ナス',script:'Sea breeze',logo:'wave',theme:'組合案・潮風'},
+    k8:{ja:'土佐安芸なす組合',en:'TOSA AKI NASU',product:'土佐・安芸ナス',script:'Spirit of Tosa',logo:'mount',theme:'組合案・土佐'},
+    k9:{ja:'龍馬の国なす組合',en:'RYOMA NO KUNI NASU',product:'龍馬の国の安芸ナス',script:'Born in Tosa',logo:'mount',theme:'組合案・龍馬'},
+    k10:{ja:'弥太郎の郷なす組合',en:'YATARO NO SATO NASU',product:'弥太郎の郷・安芸ナス',script:'Made in Aki',logo:'sun',theme:'組合案・弥太郎（安芸市出身の偉人）'},
     aki:{ja:'安芸なす組合',en:'AKI NASU ASSOCIATION',product:'こだわりの安芸ナス',script:'Fresh & delicious',logo:'sun',theme:'安芸'},
     pacific:{ja:'太平洋なす倶楽部',en:'PACIFIC NASU CLUB',product:'安芸ナス',script:'From the Pacific coast',logo:'wave',theme:'太平洋'},
     kuroshio:{ja:'黒潮なす組合',en:'KUROSHIO NASU',product:'土佐・安芸ナス',script:'Kuroshio blue',logo:'wave',theme:'海・黒潮'},
@@ -219,14 +229,15 @@ const NAMES = {
     akiblue:{ja:'安芸ブルーなす組合',en:'AKI BLUE',product:'こだわりの安芸ナス',script:'Blue sea, purple nasu',logo:'wave',theme:'安芸・海'},
 };
 const PRESETS = {
-    now:   { artOn:true, artScale:100, artX:0, artY:0, labelOn:false, useBand:false, goldLines:false, goldProduct:false },
-    brand: { artOn:true, artScale:82, artX:0, artY:12, labelOn:true, fontJa:'maru', showLogo:true, showRegion:true, showProduct:false, showStamp:false, showScript:false, showIllust:false, showFrame:false, labelScale:95, labelY:55, labelX:0, logoScale:95, gap:100, useBand:false, goldLines:false, goldProduct:false },
-    A:     { artOn:false, labelOn:true, fontJa:'maru', showLogo:true, showRegion:true, showProduct:true, showStamp:true, showScript:true, showIllust:true, showFrame:false, labelScale:100, labelY:95, labelX:0, logoScale:100, gap:100, farmSize:100, useBand:false, goldLines:false, goldProduct:false },
-    gold:  { artOn:false, labelOn:true, fontJa:'maru', showLogo:true, showRegion:true, showProduct:true, showStamp:true, showScript:true, showIllust:true, showFrame:true, labelScale:96, labelY:92, labelX:0, logoScale:88, gap:116, farmSize:104, useBand:false, goldLines:true, goldProduct:false },
-    band:  { artOn:false, labelOn:true, fontJa:'maru', showLogo:true, showRegion:true, showProduct:true, showStamp:true, showScript:true, showIllust:true, showFrame:false, labelScale:100, labelY:88, labelX:0, logoScale:100, gap:104, farmSize:100, useBand:true, goldLines:true, goldProduct:true },
-    mincho:{ artOn:false, labelOn:true, fontJa:'mincho', showLogo:true, showRegion:true, showProduct:true, showStamp:true, showScript:true, showIllust:true, showFrame:true, labelScale:98, labelY:94, labelX:0, logoScale:92, gap:112, farmSize:108, useBand:false, goldLines:true, goldProduct:false },
+    now:   { firstStyle:false, artOn:true, artScale:100, artX:0, artY:0, labelOn:false, useBand:false, goldLines:false, goldProduct:false },
+    brand: { firstStyle:false, artOn:true, artScale:82, artX:0, artY:12, labelOn:true, fontJa:'maru', showLogo:true, showRegion:true, showProduct:false, showStamp:false, showScript:false, showIllust:false, showFrame:false, labelScale:95, labelY:55, labelX:0, logoScale:95, gap:100, useBand:false, goldLines:false, goldProduct:false },
+    A:     { firstStyle:false, artOn:false, labelOn:true, fontJa:'maru', showLogo:true, showRegion:true, showProduct:true, showStamp:true, showScript:true, showIllust:true, showFrame:false, labelScale:100, labelY:95, labelX:0, logoScale:100, gap:100, farmSize:100, useBand:false, goldLines:false, goldProduct:false },
+    gold:  { firstStyle:false, artOn:false, labelOn:true, fontJa:'maru', showLogo:true, showRegion:true, showProduct:true, showStamp:true, showScript:true, showIllust:true, showFrame:true, labelScale:96, labelY:92, labelX:0, logoScale:88, gap:116, farmSize:104, useBand:false, goldLines:true, goldProduct:false },
+    band:  { firstStyle:false, artOn:false, labelOn:true, fontJa:'maru', showLogo:true, showRegion:true, showProduct:true, showStamp:true, showScript:true, showIllust:true, showFrame:false, labelScale:100, labelY:88, labelX:0, logoScale:100, gap:104, farmSize:100, useBand:true, goldLines:true, goldProduct:true },
+    mincho:{ firstStyle:false, artOn:false, labelOn:true, fontJa:'mincho', showLogo:true, showRegion:true, showProduct:true, showStamp:true, showScript:true, showIllust:true, showFrame:true, labelScale:98, labelY:94, labelX:0, logoScale:92, gap:112, farmSize:108, useBand:false, goldLines:true, goldProduct:false },
+    first: { firstStyle:true, artOn:false, labelOn:true, fontJa:'maru', showLogo:true, showRegion:true, showProduct:true, showStamp:true, showScript:true, showIllust:true, showFrame:false, labelScale:100, labelY:92, labelX:0, logoScale:100, gap:100, farmSize:100, useBand:false, goldLines:false, goldProduct:false },
 };
-const PRESET_LABEL = { now:'現行3本入', brand:'現行＋団体名', A:'デザインA風', gold:'金を効かせる', band:'濃紺の帯', mincho:'明朝で和' };
+const PRESET_LABEL = { first:'最初のデザイン（A）', now:'現行3本入', brand:'現行＋団体名', A:'デザインA風', gold:'金を効かせる', band:'濃紺の帯', mincho:'明朝で和' };
 const FONT_LABEL = { maru:'丸ゴシック', gothic:'ゴシック', mincho:'明朝' };
 const LOGO_LABEL = { sun:'朝日と畑', wave:'朝日と波', mount:'山並みと朝日', whale:'鯨と波', none:'ロゴなし' };
 
@@ -429,8 +440,8 @@ async function meetOffline(text){
 
     const pickName=(cands)=>cands.find(id=>NAMES[id])||'aki';
     // A：王道・高級
-    const nameA = b.ryoma ? 'ryoma' : b.sea ? 'akiblue' : b.sunrise ? 'hinode' : 'aki';
-    const presetA = (b.cheap||b.noGold) ? 'A' : b.band ? 'band' : (b.mincho ? 'mincho' : 'gold');
+    const nameA = b.ryoma ? 'k9' : kw(text,['黒潮']) ? 'k3' : b.sea ? 'k2' : b.sunrise ? 'k6' : 'k1';
+    const presetA = (b.cheap||b.noGold) ? 'A' : b.band ? 'band' : (b.mincho ? 'mincho' : (b.gold ? 'gold' : 'first'));
     const sA = prev ? Object.assign({}, prev.settings, {preset: (b.cheap||b.noGold)?'A':(b.band?'band':b.mincho?'mincho':'gold')}) : { nameId:nameA, preset:presetA, logo: b.sea?'wave':'sun' };
     if(b.cheap||b.noGold){ sA.goldLines=false; sA.goldProduct=false; sA.showScript=false; sA.useBand=false; }
     await say('A', `A案：${prev?'選ばれた案を高級寄りに。':''}「${NAMES[sA.nameId].ja}」を主役に、${PRESET_LABEL[sA.preset]}の型。${(b.cheap||b.noGold)?'筆記体の金はやめて白だけで品を出します。':'罫線と英字だけ金にして、余白で高級感を作ります。'}ロゴは${LOGO_LABEL[sA.logo||NAMES[sA.nameId].logo]}。`, 900);

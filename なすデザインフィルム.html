@@ -402,7 +402,7 @@ const DEFAULT = {
     preset:'now', side:'front',
     artOn:true, artScale:100, artX:0, artY:0,
     labelOn:false,
-    nameId:'aki', logo:'sun',
+    nameId:'aki', logo:'sun', firstStyle:false,
     farmJa:'安芸なす組合', farmEn:'AKI NASU ASSOCIATION', region:'高知県安芸市', product:'こだわりの安芸ナス',
     script:'Fresh & delicious', stamp1:'KOCHI', stamp2:'AKI CITY',
     fontJa:'maru', farmSize:100,
@@ -419,26 +419,39 @@ const DEFAULT = {
 
 const PRESETS = [
     { id:'now', name:'現行3本入（2024.06）', desc:'いまの版下そのまま。料理道具の円と「なすがまま」。白1色。',
-      set:{ artOn:true, artScale:100, artX:0, artY:0, labelOn:false, useBand:false, goldLines:false, goldProduct:false } },
+      set:{ firstStyle:false, artOn:true, artScale:100, artX:0, artY:0, labelOn:false, useBand:false, goldLines:false, goldProduct:false } },
     { id:'brand', name:'案1 現行＋団体名', desc:'現行の図版を少し小さく下げ、上にロゴと団体名を足す。白1色のまま。',
-      set:{ artOn:true, artScale:82, artX:0, artY:12, labelOn:true, fontJa:'maru', showLogo:true, showRegion:true, showProduct:false, showStamp:false, showScript:false, showIllust:false, showFrame:false,
+      set:{ firstStyle:false, artOn:true, artScale:82, artX:0, artY:12, labelOn:true, fontJa:'maru', showLogo:true, showRegion:true, showProduct:false, showStamp:false, showScript:false, showIllust:false, showFrame:false,
             labelScale:95, labelY:55, labelX:0, logoScale:95, gap:100, useBand:false, goldLines:false, goldProduct:false } },
     { id:'A', name:'案2 デザインA風', desc:'図版をやめ、ロゴ・団体名・産地・商品名・スタンプ・筆記体・線画で高級感。',
-      set:{ artOn:false, labelOn:true, fontJa:'maru', showLogo:true, showRegion:true, showProduct:true, showStamp:true, showScript:true, showIllust:true, showFrame:false,
+      set:{ firstStyle:false, artOn:false, labelOn:true, fontJa:'maru', showLogo:true, showRegion:true, showProduct:true, showStamp:true, showScript:true, showIllust:true, showFrame:false,
             labelScale:100, labelY:95, labelX:0, logoScale:100, gap:100, farmSize:100, useBand:false, goldLines:false, goldProduct:false } },
     { id:'gold', name:'案3 金を効かせる', desc:'案2に細い飾り枠、罫線と英字をゴールド。余白を広めに品よく。',
-      set:{ artOn:false, labelOn:true, fontJa:'maru', showLogo:true, showRegion:true, showProduct:true, showStamp:true, showScript:true, showIllust:true, showFrame:true,
+      set:{ firstStyle:false, artOn:false, labelOn:true, fontJa:'maru', showLogo:true, showRegion:true, showProduct:true, showStamp:true, showScript:true, showIllust:true, showFrame:true,
             labelScale:96, labelY:92, labelX:0, logoScale:88, gap:116, farmSize:104, useBand:false, goldLines:true, goldProduct:false } },
     { id:'band', name:'案4 帯でぐっと高級に', desc:'上部に濃紺の帯を敷いて白抜き。ギフト・百貨店向け。',
-      set:{ artOn:false, labelOn:true, fontJa:'maru', showLogo:true, showRegion:true, showProduct:true, showStamp:true, showScript:true, showIllust:true, showFrame:false,
+      set:{ firstStyle:false, artOn:false, labelOn:true, fontJa:'maru', showLogo:true, showRegion:true, showProduct:true, showStamp:true, showScript:true, showIllust:true, showFrame:false,
             labelScale:100, labelY:88, labelX:0, logoScale:100, gap:104, farmSize:100, useBand:true, goldLines:true, goldProduct:true } },
     { id:'mincho', name:'案5 明朝で和の上質', desc:'明朝体に変え、ロゴと罫線を細く。料亭・贈答の雰囲気。',
-      set:{ artOn:false, labelOn:true, fontJa:'mincho', showLogo:true, showRegion:true, showProduct:true, showStamp:true, showScript:true, showIllust:true, showFrame:true,
+      set:{ firstStyle:false, artOn:false, labelOn:true, fontJa:'mincho', showLogo:true, showRegion:true, showProduct:true, showStamp:true, showScript:true, showIllust:true, showFrame:true,
             labelScale:98, labelY:94, labelX:0, logoScale:92, gap:112, farmSize:108, useBand:false, goldLines:true, goldProduct:false } },
+    { id:'first', name:'最初のデザイン（A）', desc:'添付のデザインAの形を再現。商品名は明朝、高知の形のスタンプ、2行の筆記体。',
+      set:{ firstStyle:true, artOn:false, labelOn:true, fontJa:'maru', showLogo:true, showRegion:true, showProduct:true, showStamp:true, showScript:true, showIllust:true, showFrame:false,
+            labelScale:100, labelY:92, labelX:0, logoScale:100, gap:100, farmSize:100, useBand:false, goldLines:false, goldProduct:false } },
 ];
 
 // ── 団体名の案（安芸・高知・太平洋・海・龍馬を連想させる） ─────────────
 const NAMES = [
+    { id:'k1',  theme:'組合案・安芸',       ja:'安芸なす生産組合',   en:'AKI NASU PRODUCERS',  product:'こだわりの安芸ナス',   script:'Fresh & delicious', logo:'sun',   desc:'産地名＋生産組合。いちばん正統派で、市場や取引先にも通りがよい' },
+    { id:'k2',  theme:'組合案・太平洋',     ja:'安芸太平洋なす組合', en:'AKI PACIFIC NASU',    product:'太平洋の安芸ナス',     script:'Pacific & fresh',   logo:'wave',  desc:'太平洋に面した安芸の立地を名前に。ロゴは朝日と波' },
+    { id:'k3',  theme:'組合案・黒潮',       ja:'黒潮安芸なす組合',   en:'KUROSHIO AKI NASU',   product:'黒潮育ちの安芸ナス',   script:'Warm & sunny',      logo:'wave',  desc:'黒潮が運ぶ温暖な冬。冬春なすがおいしい理由まで伝わる' },
+    { id:'k4',  theme:'組合案・土佐湾',     ja:'土佐湾なす組合',     en:'TOSA BAY NASU',       product:'土佐湾の安芸ナス',     script:'Sea & sun',         logo:'wave',  desc:'安芸の目の前の海の名前。県外でも「土佐＝高知」が伝わる' },
+    { id:'k5',  theme:'組合案・浜',         ja:'安芸浜なす組合',     en:'AKI HAMA NASU',       product:'浜育ちの安芸ナス',     script:'By the sea',        logo:'wave',  desc:'浜辺の町らしい短い名前。覚えやすく、袋でも大きく書ける' },
+    { id:'k6',  theme:'組合案・朝日',       ja:'安芸朝日なす組合',   en:'AKI ASAHI NASU',      product:'朝日を浴びた安芸ナス', script:'Sunrise harvest',   logo:'sun',   desc:'太平洋から昇る朝日。いまのロゴ（朝日と畑）とそのまま合う' },
+    { id:'k7',  theme:'組合案・潮風',       ja:'安芸潮風なす組合',   en:'AKI SHIOKAZE NASU',   product:'潮風育ちの安芸ナス',   script:'Sea breeze',        logo:'wave',  desc:'潮風の中で育つ、という栽培の物語をそのまま名前に' },
+    { id:'k8',  theme:'組合案・土佐',       ja:'土佐安芸なす組合',   en:'TOSA AKI NASU',       product:'土佐・安芸ナス',       script:'Spirit of Tosa',    logo:'mount', desc:'旧国名「土佐」で格を出す。明朝体の型とも合う' },
+    { id:'k9',  theme:'組合案・龍馬',       ja:'龍馬の国なす組合',   en:'RYOMA NO KUNI NASU',  product:'龍馬の国の安芸ナス',   script:'Born in Tosa',      logo:'mount', desc:'「龍馬の国＝高知」を一言で。県外・観光客向け（商標の確認が必要）' },
+    { id:'k10', theme:'組合案・弥太郎',     ja:'弥太郎の郷なす組合', en:'YATARO NO SATO NASU', product:'弥太郎の郷・安芸ナス', script:'Made in Aki',       logo:'sun',   desc:'安芸市は岩崎弥太郎の生まれ故郷。龍馬と並ぶ土佐の偉人で、安芸ならではの物語' },
     { id:'aki',      theme:'安芸',        ja:'安芸なす組合',       en:'AKI NASU ASSOCIATION', product:'こだわりの安芸ナス', script:'Fresh & delicious',       logo:'sun',   desc:'産地名そのまま。いちばん分かりやすく、売り場で説明がいらない' },
     { id:'pacific',  theme:'太平洋',      ja:'太平洋なす倶楽部',   en:'PACIFIC NASU CLUB',    product:'安芸ナス',           script:'From the Pacific coast',  logo:'wave',  desc:'海に面した安芸の立地をそのまま名前に。倶楽部で親しみやすく' },
     { id:'kuroshio', theme:'海・黒潮',    ja:'黒潮なす組合',       en:'KUROSHIO NASU',        product:'土佐・安芸ナス',     script:'Kuroshio blue',           logo:'wave',  desc:'高知沖を流れる黒潮。温暖な気候で育つ理由も伝わる' },
@@ -686,6 +699,21 @@ function drawStamp(ctx,cx,cy,r,color){
     withFont(ctx, r*.24, FONT_EN, 600); ctx.fillText(P.stamp2, cx, cy+r*.6);
     ctx.restore();
 }
+function drawStampMap(ctx,x,y,s,color){
+    // 最初のデザインAと同じ、高知県の形＋KOCHI / AKI CITY（x,y は形の左上、s は形の幅 mm）
+    // 北は四国山地の県境、南は土佐湾。東の先が室戸岬、西の先が足摺岬
+    const pts=[[-1,.15],[-.95,-.15],[-.8,-.35],[-.6,-.45],[-.35,-.5],[-.1,-.62],[.15,-.6],[.4,-.68],[.62,-.6],[.8,-.5],[.95,-.35],[1,-.15],
+               [.93,.15],[.86,.45],[.8,.75],[.7,.5],[.55,.3],[.38,.18],[.15,.15],[-.05,.2],[-.25,.3],[-.45,.45],[-.6,.62],[-.72,.85],[-.8,1],[-.88,.75],[-.95,.45]];
+    const hx=s/2, hy=s*.36, ox=x+hx, oy=y+hy*.68;
+    ctx.save(); ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineJoin='round'; ctx.lineWidth=Math.max(.5, s*.03);
+    ctx.beginPath(); pts.forEach(([px,py],i)=>{ const X=ox+px*hx, Y=oy+py*hy; i?ctx.lineTo(X,Y):ctx.moveTo(X,Y); }); ctx.closePath(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(ox+.45*hx, oy+.08*hy, Math.max(.6,s*.035), 0, Math.PI*2); ctx.fill();  // 安芸市
+    ctx.textAlign='left'; ctx.textBaseline='top';
+    withFont(ctx, s*.19, FONT_EN, 800); ctx.fillText(P.stamp1, x, oy+hy*1.12);
+    withFont(ctx, s*.16, FONT_EN, 600); ctx.fillText(P.stamp2, x, oy+hy*1.12+s*.22);
+    ctx.restore();
+    return {x0:x, y0:y, x1:x+s, y1:oy+hy*1.12+s*.42};
+}
 function drawEggplantLine(ctx,x,y,s,color){
     ctx.save(); ctx.translate(x,y); ctx.rotate(-0.42);
     ctx.strokeStyle=color; ctx.lineWidth=s*.03; ctx.lineCap='round'; ctx.lineJoin='round';
@@ -755,7 +783,7 @@ function drawLabel(ctx,W,H){
 
     withFont(ctx, 4.5*ls, FONT_EN, 600); ctx.fillStyle=lineCol;
     ctx.save(); ctx.letterSpacing=(1.2*u)+'px'; ctx.fillText(P.farmEn, cx, y); ctx.restore();
-    {
+    if(!P.firstStyle){
         const tw=ctx.measureText(P.farmEn).width + 3*u;
         ctx.strokeStyle=lineCol; ctx.lineWidth=.35*u;
         ctx.beginPath(); ctx.moveTo(cx-tw/2-18*u, y); ctx.lineTo(cx-tw/2-4*u, y); ctx.moveTo(cx+tw/2+4*u, y); ctx.lineTo(cx+tw/2+18*u, y); ctx.stroke();
@@ -765,18 +793,37 @@ function drawLabel(ctx,W,H){
 
     if(P.showRegion){
         withFont(ctx, 6*ls, FONT_JA[P.fontJa], 700); ctx.fillStyle=ink;
-        const t='— '+P.region+' —'; ctx.fillText(t, cx, y); span(ctx.measureText(t).width);
+        if(P.firstStyle){
+            ctx.fillText(P.region, cx, y); const tw=ctx.measureText(P.region).width;
+            ctx.strokeStyle=ink; ctx.lineWidth=.35*u; ctx.beginPath();
+            ctx.moveTo(cx-tw/2-26*u, y); ctx.lineTo(cx-tw/2-4*u, y); ctx.moveTo(cx+tw/2+4*u, y); ctx.lineTo(cx+tw/2+26*u, y); ctx.stroke();
+            span(tw+60*u);
+        }else{ const t='— '+P.region+' —'; ctx.fillText(t, cx, y); span(ctx.measureText(t).width); }
         y += 11*ls*gap;
     }
     if(P.showProduct){
-        withFont(ctx, 11*ls, FONT_JA[P.fontJa], 900); ctx.fillStyle = P.goldProduct ? gold : ink;
+        withFont(ctx, (P.firstStyle?12.5:11)*ls, FONT_JA[P.firstStyle?'mincho':P.fontJa], P.firstStyle?700:900); ctx.fillStyle = P.goldProduct ? gold : ink;
         ctx.fillText(P.product, cx, y); span(ctx.measureText(P.product).width);
         y += 12*ls*gap;
     }
     if(hasBottom){
         const by=y+14*ls;
-        if(P.showStamp){ const sx=cx-54*ls, sr=13*ls; drawStamp(ctx, sx, by+2*u, sr, ink); addBox('産地スタンプ', sx-sr, by+2*u-sr, sx+sr, by+2*u+sr); }
-        if(P.showScript){
+        if(P.showStamp){
+            if(P.firstStyle){ const b=drawStampMap(ctx, cx-69*ls, by-10*u, 34*ls, ink); addBox('産地スタンプ', b.x0, b.y0, b.x1, b.y1); }
+            else { const sx=cx-54*ls, sr=13*ls; drawStamp(ctx, sx, by+2*u, sr, ink); addBox('産地スタンプ', sx-sr, by+2*u-sr, sx+sr, by+2*u+sr); }
+        }
+        if(P.showScript && P.firstStyle){
+            // 2行の筆記体（例：Fresh & / delicious）
+            const s=P.script.trim(); let l1=s, l2='';
+            const amp=s.indexOf(' & '); if(amp>0){ l1=s.slice(0,amp+2); l2=s.slice(amp+3); }
+            else { const sp=s.lastIndexOf(' ', Math.ceil(s.length/2)+3); if(sp>0){ l1=s.slice(0,sp); l2=s.slice(sp+1); } }
+            ctx.save(); ctx.translate(cx+2*u, by-12*u); ctx.rotate(-0.16);
+            withFont(ctx, 10*ls, FONT_SCRIPT, 700); ctx.fillStyle=gold; ctx.textAlign='left';
+            let w=Math.max(ctx.measureText(l1).width, ctx.measureText(l2).width), f=10*ls;
+            if(w>50*ls){ f=10*ls*50*ls/w; withFont(ctx, f, FONT_SCRIPT, 700); w=50*ls; }
+            ctx.fillText(l1, -w/2, 0); if(l2) ctx.fillText(l2, -w/2+5*ls, f*1.05); ctx.restore();
+            addBox('筆記体', cx+2*u-w/2, by-12*u-8*ls, cx+2*u+w/2+5*ls, by-12*u+f*1.6);
+        }else if(P.showScript){
             ctx.save(); ctx.translate(cx+3*u, by-7*u); ctx.rotate(-0.12);
             withFont(ctx, 9*ls, FONT_SCRIPT, 700);
             let sw=ctx.measureText(P.script).width;
@@ -784,7 +831,7 @@ function drawLabel(ctx,W,H){
             ctx.fillStyle=gold; ctx.fillText(P.script, 0, 0); ctx.restore();
             addBox('筆記体', cx+3*u-sw/2, by-7*u-6*ls, cx+3*u+sw/2, by-7*u+6*ls);
         }
-        if(P.showIllust){ const ix=cx+50*ls, is=46*ls; drawEggplantLine(ctx, ix, by+10*u, is, ink); addBox('なすの線画', ix-is*.42, by+10*u-is*.55, ix+is*.3, by+10*u+is*.6); }
+        if(P.showIllust){ const ix=cx+(P.firstStyle?47:50)*ls, is=(P.firstStyle?64:46)*ls; const iy=by+(P.firstStyle?19:10)*u; drawEggplantLine(ctx, ix, iy, is, ink); addBox('なすの線画', ix-is*.42, iy-is*.55, ix+is*.3, iy+is*.6); }
         y = by+28*ls;
     }
     addBox('ブランドのラベル', minX, top-padTop, maxX, y);
@@ -919,6 +966,7 @@ const BOARD_HEAD = {
     gold:['高級・ブランド感','上質で洗練された、こだわりの逸品に。'],
     band:['ギフト・贈答向け','濃紺の帯で、贈り物にふさわしい格調を。'],
     mincho:['和の上質','土佐の気骨を、明朝体の品格で。'],
+    first:['高級・ブランド感','上質で洗練された、こだわりの逸品に。'],
 };
 const BOARD_FOR = {
     now:'量販店・直売所など、\n手に取りやすさを大切にしたい売り場に。',
@@ -927,6 +975,7 @@ const BOARD_FOR = {
     gold:'高級スーパー・直売所・ギフト用など、\nブランド価値を高めたい売り場に。',
     band:'百貨店・贈答・ふるさと納税など、\n特別な一品として届けたい場面に。',
     mincho:'料亭・贈答・高級スーパーなど、\n和の上質を求める売り場に。',
+    first:'高級スーパー・直売所・ギフト用など、\nブランド価値を高めたい売り場に。',
 };
 const LOGO_NAME = { sun:'朝日と畑', wave:'朝日と波', mount:'山並みと朝日', whale:'鯨と波' };
 function autoPoints(){
