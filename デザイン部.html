@@ -207,6 +207,16 @@ const MEMBERS = [
 
 // ── なすデザインフィルム側の語彙（同じ ID を使う） ────────────────────
 const NAMES = {
+    t1:{ja:'安芸のひかり',en:'AKI NO HIKARI',product:'こだわりの安芸ナス',script:'Light of Aki',logo:'sun',theme:'チーム案・光'},
+    t2:{ja:'陽と海のなす',en:'HI TO UMI',product:'安芸ナス',script:'Sun & sea',logo:'wave',theme:'チーム案・太陽・海'},
+    t3:{ja:'潮騒なす',en:'SHIOSAI NASU',product:'安芸ナス',script:'Sound of the sea',logo:'wave',theme:'チーム案・音・海'},
+    t4:{ja:'ひがしの陽',en:'HIGASHI NO HI',product:'安芸ナス',script:'Eastern sun',logo:'sun',theme:'チーム案・東の国・朝日'},
+    t5:{ja:'清流きよら',en:'KIYORA',product:'みずみずしい安芸ナス',script:'Pure water',logo:'mount',theme:'チーム案・水・自然'},
+    t6:{ja:'太陽のめぐみ',en:'TAIYO NO MEGUMI',product:'安芸ナス',script:'Gift of the sun',logo:'sun',theme:'チーム案・太陽の恵み'},
+    t7:{ja:'光と水のなす',en:'HIKARI TO MIZU',product:'安芸ナス',script:'Light & water',logo:'wave',theme:'チーム案・光・水・自然'},
+    t8:{ja:'あきいろ',en:'AKIIRO',product:'安芸ナス',script:'Colors of Aki',logo:'sun',theme:'チーム案・安芸＝秋'},
+    t9:{ja:'ひむかし',en:'HIMUKASHI',product:'安芸ナス',script:'From the east',logo:'mount',theme:'チーム案・東の国'},
+    t10:{ja:'あきうま',en:'AKI UMA',product:'うまい安芸ナス',script:'So delicious',logo:'sun',theme:'チーム案・美味しい'},
     k1:{ja:'安芸なす生産組合',en:'AKI NASU PRODUCERS',product:'こだわりの安芸ナス',script:'Fresh & delicious',logo:'sun',theme:'組合案・安芸'},
     k2:{ja:'安芸太平洋なす組合',en:'AKI PACIFIC NASU',product:'太平洋の安芸ナス',script:'Pacific & fresh',logo:'wave',theme:'組合案・太平洋'},
     k3:{ja:'黒潮安芸なす組合',en:'KUROSHIO AKI NASU',product:'黒潮育ちの安芸ナス',script:'Warm & sunny',logo:'wave',theme:'組合案・黒潮'},
@@ -440,7 +450,7 @@ async function meetOffline(text){
 
     const pickName=(cands)=>cands.find(id=>NAMES[id])||'aki';
     // A：王道・高級
-    const nameA = b.ryoma ? 'k9' : kw(text,['黒潮']) ? 'k3' : b.sea ? 'k2' : b.sunrise ? 'k6' : 'k1';
+    const nameA = b.ryoma ? 'k9' : kw(text,['水','清流','川']) ? 't5' : kw(text,['音','潮騒']) ? 't3' : b.sea ? 't2' : b.sunrise ? 't4' : kw(text,['光']) ? 't1' : kw(text,['東']) ? 't9' : kw(text,['美味','うま','おいし']) ? 't10' : 't6';
     const presetA = (b.cheap||b.noGold) ? 'A' : b.band ? 'band' : (b.mincho ? 'mincho' : (b.gold ? 'gold' : 'first'));
     const sA = prev ? Object.assign({}, prev.settings, {preset: (b.cheap||b.noGold)?'A':(b.band?'band':b.mincho?'mincho':'gold')}) : { nameId:nameA, preset:presetA, logo: b.sea?'wave':'sun' };
     if(b.cheap||b.noGold){ sA.goldLines=false; sA.goldProduct=false; sA.showScript=false; sA.useBand=false; }
