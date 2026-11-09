@@ -71,7 +71,7 @@ textarea{font-size:14px;min-height:64px;resize:vertical}
 .story b{color:var(--nasu);font-weight:800}
 .bar{display:flex;height:40px;border:1px solid var(--ink);margin:12px 0 4px;overflow:hidden;border-radius:3px}
 .bar div{display:flex;align-items:center;justify-content:center;font-size:12px;white-space:nowrap;overflow:hidden;color:#fff;min-width:0}
-.s1{background:var(--c1)}.s2{background:var(--c2)}.s3{background:var(--c3)}
+.s1{background:var(--c1)}.s2{background:var(--c2)}.s3{background:var(--c3)}.s4{background:var(--mute)}
 .tw{overflow-x:auto;margin:8px 0 6px}
 table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:13.5px}
 th,td{padding:6px 9px;text-align:right;border-bottom:1px solid var(--rule);white-space:nowrap}
@@ -150,17 +150,79 @@ ul.tp li b{color:var(--nasu)}
     </div>
   </div>
   <nav role="tablist" id="nav">
-    <button role="tab" data-p="rev" aria-selected="true">① 棚価から逆算</button>
-    <button role="tab" data-p="cost">② 原価と下限価格</button>
-    <button role="tab" data-p="mkt">③ 市場・流通比較</button>
-    <button role="tab" data-p="sup">④ 年間供給計画</button>
-    <button role="tab" data-p="nego">⑤ 交渉シミュレーター</button>
-    <button role="tab" data-p="doc">⑥ 提案書</button>
+    <button role="tab" data-p="board" aria-selected="true">① 商談ボード</button>
+    <button role="tab" data-p="rev">② 棚価から逆算</button>
+    <button role="tab" data-p="cost">③ 原価と下限価格</button>
+    <button role="tab" data-p="mkt">④ 市場・流通比較</button>
+    <button role="tab" data-p="sup">⑤ 年間供給計画</button>
+    <button role="tab" data-p="nego">⑥ 交渉シミュレーター</button>
+    <button role="tab" data-p="doc">⑦ 提案書</button>
     <button role="tab" data-p="set">設定</button>
   </nav>
 </div></div>
 
 <main>
+
+<!-- ① 商談ボード -->
+<section class="pane" id="pane-board">
+  <h2>うちは1Pいくらで渡したい。お宅はいくらで売りたい。</h2>
+  <p class="lead">4つの数字を入れるだけです。農家の希望手取り、間に入る業者の取り分、配送費を誰が持つか、スーパーの売りたい価格。売価との差額がどう配分され、各ポジションに本当に利益が残るかをその場で判定します。</p>
+  <div class="card sub" style="margin-bottom:16px">
+    <div class="row" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+      <div><b>手順 1</b>　③で原価を入れ、自分の希望手取り（1P）を決める。右の「目標価格を使う」でも入ります。</div>
+      <div><b>手順 2</b>　相手に「いくらで売りたいか」を聞き、スーパー売価に入れる。業者が間に入るなら取り分％も。</div>
+      <div><b>手順 3</b>　下の配分表で、誰がいくら取るか・全員に利益が残るかを確認。足りない側があれば提案文をそのまま使う。</div>
+    </div>
+  </div>
+  <div class="grid g3">
+    <div class="card">
+      <h3>農家（うち）</h3>
+      <label for="bd_farm">希望手取り 1P（税抜・円）</label><input id="bd_farm" data-k="board.farmP" type="number" step="1" min="0" inputmode="decimal">
+      <div class="hint" id="bd_farm_h">—</div>
+      <div class="tools"><button class="btn o sm" id="b_usetgt">目標価格を使う</button><button class="btn o sm" id="b_usefloor">下限価格を使う</button></div>
+    </div>
+    <div class="card">
+      <h3>中間業者・配送</h3>
+      <label for="bd_mid">業者の取り分（対 スーパー納め価格・%）</label><input id="bd_mid" data-k="board.midPct" type="number" step="0.5" min="0" max="50" inputmode="decimal">
+      <div class="hint">直接取引なら 0。</div>
+      <div class="row" style="margin-top:10px">
+        <div><label for="bd_deliv">配送費 1箱（円）</label><input id="bd_deliv" data-k="board.delivBox" type="number" step="10" min="0" inputmode="decimal"></div>
+        <div><label for="bd_by">配送費を持つのは</label><select id="bd_by" data-k="board.delivBy"><option value="farm">農家（価格に込み）</option><option value="mid">業者</option><option value="store">スーパー（別途）</option></select></div>
+      </div>
+      <div class="hint" id="bd_deliv_h">—</div>
+    </div>
+    <div class="card">
+      <h3>スーパー（お宅）</h3>
+      <label for="bd_retail">売りたい価格 1P（税込・円）</label><input id="bd_retail" data-k="board.retail" type="number" step="1" min="0" inputmode="decimal">
+      <div class="hint" id="bd_retail_h">—</div>
+      <label for="bd_st" style="margin-top:10px">スーパーが欲しい値入率（%）</label><input id="bd_st" data-k="board.storeTarget" type="number" step="0.5" min="0" max="60" inputmode="decimal">
+      <div class="hint">青果部門は28〜32%が目安。相手に聞けるなら聞く。</div>
+    </div>
+  </div>
+
+  <div class="story" id="bd_story">—</div>
+  <div class="bar" id="bd_bar" aria-label="売価の配分"></div>
+  <div class="hint" style="margin-bottom:10px">左から：農家の手取り → 配送費 → 業者の取り分 → スーパーの値入れ ＝ 売価（税抜）。</div>
+
+  <div class="card">
+    <h3>各ポジションの取り分と利益（税抜）</h3>
+    <div class="tw"><table>
+      <thead><tr><th>ポジション</th><th>買う値段 1P</th><th>売る値段 1P</th><th>取り分 1P</th><th>売価比</th><th>1箱</th><th>年間</th><th>判定</th></tr></thead>
+      <tbody id="bd_tb"></tbody>
+    </table></div>
+    <div class="hint" id="bd_kg">—</div>
+  </div>
+
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card" id="bd_v_farm"></div>
+    <div class="card" id="bd_v_store"></div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>相手に言う言葉（数字入り）</h3>
+    <ul class="tp" id="bd_talk"></ul>
+    <div class="tools"><button class="btn o sm" id="b_copyboard">この文章をコピー</button></div>
+  </div>
+</section>
 
 <!-- ① 逆算 -->
 <section class="pane" id="pane-rev">
@@ -462,6 +524,7 @@ const $=id=>document.getElementById(id);
 const MON=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 const DEF=()=>({
+  board:{farmP:null,midPct:10,delivBox:250,delivBy:'farm',retail:398,storeTarget:30},
   farm:{name:'せんとうふぁーむ',rep:'',tel:'',addr:'',variety:'千両二号',cult:'施設（ハウス）',feature:'朝どり当日出荷。選果・箱詰め・配送を自園で行い、市場を経由しないため鮮度と価格の両方でメリットを出せます。'},
   buyer:{name:'',person:'',date:today()},
   pk:{retail:398,pcs:5,gpc:100,ppb:25,boxes:8,rs:30,rb:10,tax:8},
@@ -581,6 +644,70 @@ function verdictOf(kg,r){
   return {cls:'bad',t:'断る（原価割れ）',d:'売るほど損をする価格。数量を増やしても解決しない。'};
 }
 
+// ===== 商談ボード =====
+function boardCalc(r){
+  const B=S.board,p=S.pk;
+  const farmP=B.farmP==null||B.farmP===''?r.tgtKg*r.kgPack:(+B.farmP||0);
+  const delivP=(+B.delivBox||0)/Math.max(1,p.ppb);
+  const delivBy=B.delivBy||'farm';
+  const midPct=Math.min(0.95,(+B.midPct||0)/100);
+  const midCost=farmP+(delivBy==='mid'?delivP:0);
+  const storeBuy=midCost/(1-midPct);
+  const mid=storeBuy-midCost;
+  const landed=storeBuy+(delivBy==='store'?delivP:0);
+  const retail=+B.retail||0, rex=retail/r.T;
+  const store=rex-landed, storeRate=rex>0?store/rex:0;
+  const gap=rex-farmP;
+  const costExFrtP=(r.costKg-r.frtKg)*r.kgPack;
+  const farmCostP=costExFrtP+(delivBy==='farm'?delivP:0);
+  const farmNet=farmP-(delivBy==='farm'?delivP:0);
+  const farmProfit=farmP-farmCostP, farmMargin=farmCostP>0?farmProfit/farmCostP*100:0;
+  const packsY=r.supKg/r.kgPack;
+  const target=Math.min(0.95,(+B.storeTarget||0)/100);
+  const needRex=landed/(1-target), needRetail=needRex*r.T;
+  const landedMax=rex*(1-target), farmMax=(landedMax-(delivBy==='store'?delivP:0))*(1-midPct)-(delivBy==='mid'?delivP:0);
+  const farmMaxMargin=farmCostP>0?(farmMax-farmCostP)/farmCostP*100:0;
+  return {farmP,delivP,delivBy,midPct,midCost,storeBuy,mid,landed,retail,rex,store,storeRate,gap,costExFrtP,farmCostP,farmNet,farmProfit,farmMargin,packsY,target,needRetail,farmMax,farmMaxMargin};
+}
+function renderBoard(r){
+  const b=boardCalc(r),p=S.pk,c=S.cost,B=S.board;
+  const byName={farm:'農家',mid:'業者',store:'スーパー'}[b.delivBy];
+  if(document.activeElement!==$('bd_farm'))$('bd_farm').value=Math.round(b.farmP*10)/10;
+  $('bd_farm_h').textContent=`= ${f1(b.farmP/r.kgPack)}円/kg（1P ${f0(r.kgPack*1000)}g）　1箱 ${yen(b.farmP*p.ppb)}　税込 ${f1(b.farmP*r.T)}円/P　原価 ${f1(b.farmCostP)}円/P → 利益率 ${pct(b.farmMargin)}`;
+  $('bd_deliv_h').textContent=`1Pあたり ${f1(b.delivP)}円。${b.delivBy==='farm'?'うちの価格に含める（原価に上乗せして判定）。':b.delivBy==='mid'?'業者の仕入原価に上乗せ。':'スーパーの仕入に上乗せ（納め価格＋配送費で値入率を計算）。'}`;
+  $('bd_retail_h').textContent=`税抜 ${f1(b.rex)}円/P　＝ ${f0(b.retail/r.kgPack)}円/kg（税込）　うちの手取りとの差額 ${f1(b.gap)}円/P`;
+  const fv=b.farmMargin>=c.tgtM-0.05?{cls:'ok',t:'目標利益率を確保'}:b.farmMargin>=c.minM-0.05?{cls:'warn',t:'下限は超えるが目標未満'}:b.farmProfit>0?{cls:'bad',t:'最低利益率を割る'}:{cls:'bad',t:'原価割れ'};
+  const sv=b.store<=0?{cls:'bad',t:'逆ざや（仕入が売価を超える）'}:b.storeRate>=b.target?{cls:'ok',t:'希望値入率を確保'}:b.storeRate>=b.target-0.05?{cls:'warn',t:'希望に5ポイント以内'}:{cls:'bad',t:'希望値入率に届かない'};
+  $('bd_story').innerHTML=`うちは <b>1P ${f1(b.farmP)}円</b>（${f1(b.farmP/r.kgPack)}円/kg）で渡したい。お宅が <b>${yen(b.retail)}</b> で売るなら、税抜 ${f1(b.rex)}円との差額 <b>${f1(b.gap)}円</b> の内訳は、${b.delivBy!=='farm'?`配送 ${f1(b.delivP)}円、`:''}${b.mid>0?`業者 ${f1(b.mid)}円、`:''}スーパー <b>${f1(b.store)}円（値入率 ${pct(b.storeRate*100)}）</b>。うちの利益率は <b>${pct(b.farmMargin)}</b>。`;
+  const segs=[['s1','農家',b.farmP],['s4','配送',b.delivBy==='farm'?0:b.delivP],['s3','業者',b.mid],['s2','スーパー',Math.max(0,b.store)]];
+  const bar=$('bd_bar');bar.innerHTML='';
+  segs.forEach(([cl,n,v])=>{if(v<=0)return;const w=b.rex>0?v/b.rex*100:0;const d=document.createElement('div');d.className=cl;d.style.width=w+'%';d.textContent=w>=9?`${n} ${f1(v)}円`:'';d.title=`${n} ${f1(v)}円/P（${pct(w)}）`;bar.appendChild(d);});
+  const rows=[
+    {n:'農家（'+S.farm.name+'）',buy:'原価 '+f1(b.farmCostP),sell:b.farmP,take:b.farmProfit,label:'利益',v:fv},
+    ...(b.delivBy!=='farm'?[{n:'配送費（'+byName+'負担）',buy:'—',sell:'—',take:b.delivP,label:'',v:null}]:[]),
+    ...(b.midPct>0?[{n:'中間業者（'+B.midPct+'%）',buy:b.midCost,sell:b.storeBuy,take:b.mid,label:'',v:{cls:'n',t:'取り分 '+pct(b.midPct*100)}}]:[]),
+    {n:'スーパー',buy:b.landed,sell:b.rex,take:b.store,label:'値入れ',v:sv}
+  ];
+  const tb=$('bd_tb');tb.innerHTML='';
+  rows.forEach(x=>{const tr=document.createElement('tr');if(x.n.startsWith('農家'))tr.className='hi';
+    tr.innerHTML=`<td>${esc(x.n)}</td><td>${typeof x.buy==='number'?f1(x.buy):x.buy}</td><td>${typeof x.sell==='number'?f1(x.sell):x.sell}</td><td>${x.label?x.label+' ':''}${f1(x.take)}</td><td>${pct(b.rex>0?x.take/b.rex*100:0)}</td><td>${f0(x.take*p.ppb)}</td><td>${man(x.take*b.packsY)}</td><td>${x.v?`<span class="pill ${x.v.cls}">${x.v.t}</span>`:''}</td>`;tb.appendChild(tr);});
+  const tt=document.createElement('tr');tt.className='tot';tt.innerHTML=`<td>売価（税抜）</td><td></td><td>${f1(b.rex)}</td><td></td><td>100%</td><td>${f0(b.rex*p.ppb)}</td><td>${man(b.rex*b.packsY)}</td><td>税込 ${yen(b.retail)}</td>`;tb.appendChild(tt);
+  $('bd_kg').textContent=`kg換算（1P=${f0(r.kgPack*1000)}g）：農家 ${f1(b.farmP/r.kgPack)}円/kg ／ スーパー仕入 ${f1(b.landed/r.kgPack)}円/kg ／ 売価 ${f1(b.rex/r.kgPack)}円/kg（税込 ${f0(b.retail/r.kgPack)}円/kg）。年間は供給計画 ${f0(r.supKg)}kg＝${f0(b.packsY)}P で計算。`;
+  $('bd_v_farm').innerHTML=`<h3>うちの利益</h3><div class="verdict ${fv.cls}" style="margin-top:0"><p class="t">${fv.t}</p>手取り ${f1(b.farmP)}円/P − 原価 ${f1(b.farmCostP)}円/P${b.delivBy==='farm'?`（配送 ${f1(b.delivP)}円 込み）`:''} ＝ 利益 <b>${f1(b.farmProfit)}円/P</b>（${pct(b.farmMargin)}）。年間 <b>${man(b.farmProfit*b.packsY)}</b>。下限 ${c.minM}%・目標 ${c.tgtM}%。</div>
+    <div class="hint">売価を ${yen(b.retail)} のままにして、スーパーに値入率 ${B.storeTarget}% を渡すなら、うちの手取りは最大 <b>${f1(b.farmMax)}円/P</b>（利益率 ${pct(b.farmMaxMargin)}）。</div>`;
+  $('bd_v_store').innerHTML=`<h3>スーパーの利益</h3><div class="verdict ${sv.cls}" style="margin-top:0"><p class="t">${sv.t}</p>売価 ${f1(b.rex)}円（税抜） − 仕入 ${f1(b.landed)}円${b.delivBy==='store'?`（配送 ${f1(b.delivP)}円 込み）`:''} ＝ 値入れ <b>${f1(b.store)}円/P</b>（${pct(b.storeRate*100)}）。希望 ${B.storeTarget}%。年間 <b>${man(b.store*b.packsY)}</b>。</div>
+    <div class="hint">うちの手取り ${f1(b.farmP)}円 のまま値入率 ${B.storeTarget}% を確保するなら、売価は <b>${yen(b.needRetail)}</b>（候補 ${yen(shelf(b.needRetail))}）。</div>`;
+  const talk=[
+    `うちは 1P ${f1(b.farmP)}円（税抜）で渡したい。1P ${f0(r.kgPack*1000)}g なので kg にすると ${f1(b.farmP/r.kgPack)}円。お宅の棚 ${yen(b.retail)} は kg にすると ${f0(b.retail/r.kgPack)}円です。`,
+    `お宅が ${yen(b.retail)} で売るなら、税抜 ${f1(b.rex)}円 のうち、うちが ${f1(b.farmP)}円${b.mid>0?`、業者が ${f1(b.mid)}円`:''}${b.delivBy!=='farm'?`、配送費 ${f1(b.delivP)}円`:''}、お宅の値入れが ${f1(b.store)}円で値入率 ${pct(b.storeRate*100)}。`,
+    sv.cls==='ok'?`値入率 ${B.storeTarget}% は確保できています。この価格で年間 ${f0(r.supKg)}kg（${f0(b.packsY)}P）をお願いしたい。`:`値入率 ${B.storeTarget}% を確保するなら、売価を ${yen(shelf(b.needRetail))} にするか、うちの手取りを ${f1(b.farmMax)}円/P まで下げるかの二択。後者だとうちの利益率は ${pct(b.farmMaxMargin)}（下限 ${c.minM}%）${b.farmMaxMargin<c.minM?'で、受けられません':'で、条件次第で受けられます'}。`,
+    `配送費は1箱 ${yen(B.delivBox)}（1P ${f1(b.delivP)}円）。${b.delivBy==='farm'?'うちが持ち、価格に含めています。':b.delivBy==='mid'?'業者負担の前提です。':'お宅の負担で、仕入 '+f1(b.landed)+'円/P に含めて計算しています。'}`,
+    `うちの原価は 1P ${f1(b.farmCostP)}円。${f1(b.farmP)}円で渡すと利益率 ${pct(b.farmMargin)}。これより下は ${f1(b.farmCostP*(1+c.minM/100))}円/P（最低利益率 ${c.minM}%）が限度です。`
+  ];
+  $('bd_talk').innerHTML=talk.map(x=>`<li>${x}</li>`).join('');
+  $('bd_talk').dataset.txt=talk.map(x=>'・'+x).join('\n');
+}
+
 function render(){
   const r=calc(),p=S.pk,c=S.cost;
   // KPI
@@ -589,7 +716,9 @@ function render(){
   const shelfKgIn=p.retail/r.kgPack, shelfKgEx=r.rex/r.kgPack;
   $('k_cost').textContent=f1(r.costKg*r.kgPack);$('k_floor').textContent=f1(r.floorKg*r.kgPack);$('k_tgt').textContent=f1(r.tgtKg*r.kgPack);$('k_rev').textContent=f1(r.farmPack);
   $('k_unit').textContent=`1P=${f0(r.kgPack*1000)}g　棚価 ${yen(p.retail)}/P ＝ ${f0(shelfKgIn)}円/kg（税込）`;
-  // ① 逆算
+  // ① 商談ボード
+  renderBoard(r);
+  // ② 逆算
   $('o_rs').textContent=p.rs+'%';$('o_rb').textContent=p.rb+'%';
   $('h_rex').textContent='税抜 '+f1(r.rex)+'円';
   $('h_pw').textContent='1P '+f0(r.kgPack*1000)+'g';
@@ -754,8 +883,16 @@ ${c.items.map(it=>`<tr><td>${esc(it[0])}</td><td>${yen(+it[1]||0)}</td><td>${f1(
 </tbody></table></div>
 <h3>2-3. 市場価格との比較</h3>
 <p>出荷月で重み付けした市場卸売価格の平均は ${f1(r.mAvg)}円/kg${S.mkt.src?'（'+esc(S.mkt.src)+'）':'（当園調べ）'}。当園が自分で市場出荷した場合の手取りは、市場手数料 ${S.mkt.fee}% と市場向け運賃の差を引いて概算 ${f1(r.mSelf)}円/kg です。提案価格 ${f1(r.tgtKg)}円/kg は${r.tgtKg>=r.mSelf?'これを '+f1(r.tgtKg-r.mSelf)+'円/kg 上回りますが、貴社にとっては仲卸経由の仕入れより有利で、かつ相場変動に左右されない固定価格です。':'これより '+f1(r.mSelf-r.tgtKg)+'円/kg 低く、当園としては安定した取引先を確保することを優先した価格です。'}</p>
-<h3>2-4. 店頭価格からの逆算</h3>
-<p>想定売価 ${yen(shelf(shelfTgt))}（税込・税抜 ${f1(shelf(shelfTgt)/r.T)}円）に対し、貴社の値入率 ${p.rs}%${p.rb>0?'、中間業者 '+p.rb+'%':''} を差し引いた農家渡し価格が本提案の水準です。逆に現在の棚価 ${yen(p.retail)} から逆算すると農家渡しは ${f1(r.farmPack)}円/P となり、提案価格との差は ${f1(r.tgtKg*r.kgPack-r.farmPack)}円/P です。</p>
+<h3>2-4. 店頭価格との差額の配分</h3>
+${(()=>{const b=boardCalc(r);return `<p>当園の希望手取り ${f1(b.farmP)}円/P に対し、貴社の想定売価 ${yen(b.retail)}（税抜 ${f1(b.rex)}円）との差額は ${f1(b.gap)}円/P です。その内訳は次のとおりで、貴社の値入率は ${pct(b.storeRate*100)} となります。</p>
+<div class="tw"><table><thead><tr><th>ポジション</th><th>1P</th><th>売価比</th><th>年間（${f0(r.supKg)}kg）</th></tr></thead><tbody>
+<tr class="hi"><td>農家渡し（${b.delivBy==='farm'?'配送費込み':'配送費別'}）</td><td>${f1(b.farmP)}</td><td>${pct(b.farmP/b.rex*100)}</td><td>${yen(b.farmP*b.packsY)}</td></tr>
+${b.delivBy!=='farm'?`<tr><td>配送費（${b.delivBy==='mid'?'業者':'貴社'}負担）</td><td>${f1(b.delivP)}</td><td>${pct(b.delivP/b.rex*100)}</td><td>${yen(b.delivP*b.packsY)}</td></tr>`:''}
+${b.mid>0?`<tr><td>中間業者（${S.board.midPct}%）</td><td>${f1(b.mid)}</td><td>${pct(b.mid/b.rex*100)}</td><td>${yen(b.mid*b.packsY)}</td></tr>`:''}
+<tr><td>貴社の値入れ</td><td>${f1(b.store)}</td><td>${pct(b.storeRate*100)}</td><td>${yen(b.store*b.packsY)}</td></tr>
+<tr class="tot"><td>売価（税抜）</td><td>${f1(b.rex)}</td><td>100%</td><td>${yen(b.rex*b.packsY)}</td></tr>
+</tbody></table></div>`;})()}
+<p>値入率 ${S.board.storeTarget}% を確保される場合の売価は ${yen(shelf(boardCalc(r).needRetail))} 前後です。逆に現在の棚価 ${yen(p.retail)} から逆算すると農家渡しは ${f1(r.farmPack)}円/P となり、提案価格との差は ${f1(r.tgtKg*r.kgPack-r.farmPack)}円/P です。</p>
 <p>本書の kg 単価はすべて 1P＝${f0(r.kgPack*1000)}g で換算した参考値です。同じ基準で棚価 ${yen(p.retail)}/P は ${f0(p.retail/r.kgPack)}円/kg（税込）、農家渡し ${f1(r.tgtKg*r.kgPack)}円/P は ${f1(r.tgtKg)}円/kg に相当します。</p>
 
 <h2>3. 供給計画</h2>
@@ -817,13 +954,15 @@ function copy(txt,msg){
 let tt;function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),1800);}
 
 // ===== イベント =====
-document.addEventListener('input',e=>{
+document.addEventListener('input',onInput);
+document.addEventListener('change',e=>{if(e.target.tagName==='SELECT')onInput(e);});
+function onInput(e){
   const el=e.target;if(!el.dataset||!el.dataset.k)return;
-  let v=el.value;if(el.type==='number'||el.type==='range')v=v===''?0:+v;
+  let v=el.value;if(el.type==='number'||el.type==='range')v=v===''?(el.dataset.k==='board.farmP'?null:0):+v;
   set(el.dataset.k,v);
   if(el.dataset.k==='pk.pcs'&&v>10){set('pk.pcs',10);el.value=10;}
   render();
-});
+}
 $('n_offerkg').addEventListener('input',e=>{const r=calc();const v=+e.target.value||0;S.nego.offerPack=Math.round(v*r.kgPack*10)/10;$('n_offer').value=S.nego.offerPack;render();});
 document.addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
@@ -833,6 +972,9 @@ document.addEventListener('click',e=>{
   switch(b.id){
     case 'b_additem':S.cost.items.push(['新しい費目',0]);renderCostTable();render();break;
     case 'b_copytalk':copy($('n_talk').dataset.txt||'');break;
+    case 'b_copyboard':copy($('bd_talk').dataset.txt||'');break;
+    case 'b_usetgt':{const r=calc();S.board.farmP=Math.round(r.tgtKg*r.kgPack*10)/10;render();break;}
+    case 'b_usefloor':{const r=calc();S.board.farmP=Math.round(r.floorKg*r.kgPack*10)/10;render();break;}
     case 'b_copydoc':copy(docText(),'提案書をコピーしました');break;
     case 'b_print':window.print();break;
     case 'b_export':copy(JSON.stringify(S),'設定JSONをコピーしました');break;
@@ -849,7 +991,7 @@ function showTab(p){
 function rebuild(){bindInputs();renderCostTable();renderMonthRows();buildPlansTable();render();}
 rebuild();
 if(window.self===window.top)$('b_print').hidden=false;
-let tab='rev';try{tab=localStorage.getItem('nasu-nego-tab')||'rev';}catch(e){}
+let tab='board';try{tab=localStorage.getItem('nasu-nego-tab')||'board';}catch(e){}
 if(location.hash&&document.getElementById('pane-'+location.hash.slice(1)))tab=location.hash.slice(1);
 showTab(tab);
 })();
