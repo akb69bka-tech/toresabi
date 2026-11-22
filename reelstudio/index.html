@@ -296,6 +296,8 @@ kbd{background:#222831;border:1px solid #3a4350;border-radius:3px;padding:0 4px;
 
 <div class="modal" id="modal"><div class="box" id="modalBox"></div></div>
 
+<script src="vendor/mp4box.all.min.js"></script>
+<script src="vendor/mp4-muxer.js"></script>
 <script>
 'use strict';
 /* =========================================================
@@ -303,7 +305,9 @@ kbd{background:#222831;border:1px solid #3a4350;border-radius:3px;padding:0 4px;
    ========================================================= */
 const FPS = 30;
 const view = document.getElementById('view');
-let ctx = view.getContext('2d', {willReadFrequently:true});
+let GL = initGL();                                   // 本物のGPUがあれば色処理をGPUで
+const CTX_OPTS = GL ? {} : {willReadFrequently:true};  // GPUが無いときはCPUで読み書きしやすい設定に
+let ctx = view.getContext('2d', CTX_OPTS);
 let W = 540, H = 960;
 const $ = id => document.getElementById(id);
 const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
@@ -469,6 +473,7 @@ async function importFiles(files){
       m.img = new Image(); m.img.src = url; await m.img.decode().catch(()=>{}); m.duration = Infinity;
     } else {
       if (kind==='video'){
+        m.file = f;
         m.el = document.createElement('video'); m.el.muted = true; m.el.playsInline = true; m.el.preload = 'auto'; m.el.src = url;
         await new Promise(r => { m.el.onloadedmetadata = r; m.el.onerror = r; });
         m.duration = m.el.duration || 0;
@@ -565,6 +570,7 @@ function drawVideoLayer(trackId, t){
     if (z){ ctx.translate(W/2,H/2); ctx.scale(1+z,1+z); ctx.translate(-W/2,-H/2); }
     PROC[m.proc](ctx, lt, W, H, m);
   } else if (m.kind==='image'){ drawCover(ctx, m.img, W, H, m.img.naturalWidth, m.img.naturalHeight, z); }
+  else if (m.kind==='video' && exportSrc){ const f = exportSrc.get(m); if (f){ const fw = f.displayWidth || f.videoWidth, fh = f.displayHeight || f.videoHeight; drawCover(ctx, f, W, H, fw, fh, z); } }
   else if (m.kind==='video' && m.el.readyState >= 2){ drawCover(ctx, m.el, W, H, m.el.videoWidth, m.el.videoHeight, z); }
   ctx.restore();
 }
@@ -633,23 +639,145 @@ function buildLUT(g){
   }
   lutCacheKey = key; lutCache = out; return out;
 }
-function applyGrade(g){
-  if (!isNeutral(g)){
-    const [lr,lg,lb] = buildLUT(g), sat = g.sat;
-    const img = ctx.getImageData(0,0,W,H), d = img.data;
-    for (let i=0;i<d.length;i+=4){
-      let r = lr[d[i]], gg = lg[d[i+1]], b = lb[d[i+2]];
-      if (sat !== 1){ const l = 0.2126*r + 0.7152*gg + 0.0722*b; r = l+(r-l)*sat; gg = l+(gg-l)*sat; b = l+(b-l)*sat; }
-      d[i]=r; d[i+1]=gg; d[i+2]=b;
+/* GPU（WebGL）でのカラー処理：CPUより大幅に速い。使えない環境では下のCPU処理に切り替え */
+function initGL(){
+  try {
+    const c = document.createElement('canvas');
+    const gl = c.getContext('webgl', {premultipliedAlpha:false, antialias:false, depth:false, preserveDrawingBuffer:false});
+    if (!gl) return null;
+    const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+    const rend = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '';
+    if (/swiftshader|llvmpipe|software|basic render/i.test(rend) && !/[?&]gl=force/.test(location.search)) return null;   // ソフトウェア描画ならCPUの方が速い
+    const sh = (type, src) => { const x = gl.createShader(type); gl.shaderSource(x, src); gl.compileShader(x); if (!gl.getShaderParameter(x, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(x)); return x; };
+    const prog = gl.createProgram();
+    gl.attachShader(prog, sh(gl.VERTEX_SHADER, 'attribute vec2 p;varying vec2 uv;void main(){uv=vec2(p.x*.5+.5,.5-p.y*.5);gl_Position=vec4(p,0.,1.);}'));
+    gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, `precision highp float;varying vec2 uv;
+      uniform sampler2D src,lut;uniform float sat,vig,grain,seed,useLut;uniform vec2 res;
+      float hash(vec2 q){return fract(sin(dot(q,vec2(12.9898,78.233))+seed)*43758.5453);}
+      float L(float v,int ch){vec4 t=texture2D(lut,vec2((v*255.+.5)/256.,.5));return ch==0?t.r:ch==1?t.g:t.b;}
+      void main(){vec4 c=texture2D(src,uv);vec3 o=c.rgb;
+        if(useLut>.5){o=vec3(L(o.r,0),L(o.g,1),L(o.b,2));float l=dot(o,vec3(.2126,.7152,.0722));o=clamp(l+(o-l)*sat,0.,1.);}
+        if(vig>0.){vec2 d=(uv-.5)*res;float r0=min(res.x,res.y)*.3,r1=length(res)*.55;float t=clamp((length(d)-r0)/(r1-r0),0.,1.);o*=1.-t*vig*.85;}
+        if(grain>0.){float n=hash(floor(uv*res));o=clamp(o+(n-.5)*grain*.12,0.,1.);}
+        gl_FragColor=vec4(o,1.);}`));
+    gl.linkProgram(prog); if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return null;
+    gl.useProgram(prog);
+    const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    const tex = unit => { const t = gl.createTexture(); gl.activeTexture(gl.TEXTURE0+unit); gl.bindTexture(gl.TEXTURE_2D, t);
+      for (const [k,v] of [[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D,k,v); return t; };
+    tex(0); tex(1);
+    const u = n => gl.getUniformLocation(prog, n);
+    gl.uniform1i(u('src'), 0); gl.uniform1i(u('lut'), 1);
+    return {c, gl, u:{sat:u('sat'),vig:u('vig'),grain:u('grain'),seed:u('seed'),useLut:u('useLut'),res:u('res')}, lutKey:''};
+  } catch(e){ console.warn('WebGL not available', e); return null; }
+}
+function applyGradeGL(g){
+  if (!GL) return false;
+  const {c, gl, u} = GL;
+  if (c.width !== W || c.height !== H){ c.width = W; c.height = H; }
+  gl.viewport(0, 0, W, H);
+  const neutral = isNeutral(g);
+  if (!neutral){
+    const key = JSON.stringify(g);
+    if (GL.lutKey !== key){
+      const [lr,lg,lb] = buildLUT(g), data = new Uint8Array(256*4);
+      for (let i=0;i<256;i++){ data[i*4]=lr[i]; data[i*4+1]=lg[i]; data[i*4+2]=lb[i]; data[i*4+3]=255; }
+      gl.activeTexture(gl.TEXTURE1); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+      GL.lutKey = key;
     }
-    ctx.putImageData(img,0,0);
   }
-  if (g.vig > 0){
-    const rg = ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.3,W/2,H/2,Math.hypot(W,H)*0.55);
-    rg.addColorStop(0,'rgba(0,0,0,0)'); rg.addColorStop(1,`rgba(0,0,0,${g.vig*0.85})`);
-    ctx.fillStyle = rg; ctx.fillRect(0,0,W,H);
+  gl.activeTexture(gl.TEXTURE0); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, view);
+  gl.uniform1f(u.sat, g.sat); gl.uniform1f(u.vig, Math.max(0, g.vig)); gl.uniform1f(u.grain, Math.max(0, g.grain));
+  gl.uniform1f(u.seed, Math.random()*100); gl.uniform1f(u.useLut, neutral ? 0 : 1); gl.uniform2f(u.res, W, H);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  ctx.save(); ctx.globalCompositeOperation = 'copy'; ctx.drawImage(c, 0, 0); ctx.restore();
+  return true;
+}
+function applyGrade(g){
+  if (isNeutral(g) && !(g.vig > 0) && !(g.grain > 0)) return;
+  if (applyGradeGL(g)) return;
+  applyGradeCPU(g);
+}
+const EMPTY_MASK = new Uint16Array(1), EMPTY_NOISE = new Int8Array(65536);
+const CLAMP = new Uint8Array(2048); for (let i=0;i<2048;i++) CLAMP[i] = Math.max(0, Math.min(255, i-768));
+function gradeLoop(px, W, H, lr, lg, lb, doSat, K, KR, KG, KB, mask, useMask, noise, GA, ox, oy){
+  let i = 0;
+  for (let y=0; y<H; y++){
+    const ny = ((y+oy)&255)<<8;
+    for (let x=0; x<W; x++, i++){
+      const v = px[i]; let R = lr[v&255]|0, G = lg[(v>>>8)&255]|0, B = lb[(v>>>16)&255]|0;
+      if (doSat === 1){ const l = (R*KR + G*KG + B*KB)>>10; R = l + ((R*K)>>10); G = l + ((G*K)>>10); B = l + ((B*K)>>10); }
+      if (useMask === 1){ const m = mask[i]|0; R = (R*m)>>8; G = (G*m)>>8; B = (B*m)>>8; }
+      if (GA !== 0){ const n = (noise[ny | ((x+ox)&255)]*GA)>>8; R += n; G += n; B += n; }
+      px[i] = 0xff000000 | (CLAMP[B+768]<<16) | (CLAMP[G+768]<<8) | CLAMP[R+768];
+    }
   }
-  if (g.grain > 0) drawGrain(g.grain);
+}
+/* CPU版：LUT・彩度・ビネット・グレインを1回の走査でまとめて処理 */
+let vigCache = {key:'', m:null}, noiseTile = null;
+function gradePrep(g){
+  const [lr,lg,lb] = buildLUT(g), k = g.sat, kr = 0.2126*(1-k), kg = 0.7152*(1-k), kb = 0.0722*(1-k);
+  const vig = Math.max(0, g.vig), grain = Math.max(0, g.grain);
+  let mask = null, maskKey = '';
+  if (vig > 0){
+    maskKey = W+'x'+H+':'+vig;
+    if (vigCache.key !== maskKey){
+      const m = new Uint16Array(W*H), r0 = Math.min(W,H)*0.3, r1 = Math.hypot(W,H)*0.55;
+      for (let y=0;y<H;y++) for (let x=0;x<W;x++){ const t = clamp((Math.hypot(x-W/2, y-H/2)-r0)/(r1-r0), 0, 1); m[y*W+x] = Math.round((1 - t*vig*0.85)*256); }
+      vigCache = {key:maskKey, m};
+    }
+    mask = vigCache.m;
+  }
+  if (grain > 0 && !noiseTile){ noiseTile = new Int8Array(65536); for (let i=0;i<65536;i++) noiseTile[i] = Math.round((Math.random()-0.5)*255); }
+  // 整数だけで計算（小数を混ぜるとJavaScriptの最適化が効かず遅くなる）
+  return {lr, lg, lb, doSat: k !== 1 ? 1 : 0, K:Math.round(k*1024), KR:Math.round(kr*1024), KG:Math.round(kg*1024), KB:Math.round(kb*1024),
+    mask, maskKey, GA:Math.round(grain*0.12*256), noise: grain > 0 ? noiseTile : null, ox:(Math.random()*256)|0, oy:(Math.random()*256)|0};
+}
+function applyGradeCPU(g){
+  const q = gradePrep(g);
+  const img = ctx.getImageData(0,0,W,H), px = new Uint32Array(img.data.buffer);
+  gradeLoop(px, W, H, q.lr, q.lg, q.lb, q.doSat, q.K, q.KR, q.KG, q.KB, q.mask || EMPTY_MASK, q.mask ? 1 : 0, q.noise || EMPTY_NOISE, q.GA, q.ox, q.oy);
+  ctx.putImageData(img,0,0);
+}
+/* 書き出し用：CPUの複数コアで分担して色処理（GPUが使えないパソコン向け） */
+let gradeWorkers = null, useParallelGrade = true;
+function getGradeWorkers(){
+  if (gradeWorkers) return gradeWorkers;
+  gradeWorkers = [];
+  const n = Math.min(6, (navigator.hardwareConcurrency || 2) - 1);
+  if (n < 2 || !window.Worker) return gradeWorkers;
+  try {
+    const code = `const EMPTY_MASK = new Uint16Array(1), EMPTY_NOISE = new Int8Array(65536);
+const CLAMP = new Uint8Array(2048); for (let i=0;i<2048;i++) CLAMP[i] = Math.max(0, Math.min(255, i-768));
+${gradeLoop.toString()}
+let mask = null;
+onmessage = e => { const d = e.data; if (d.mask) mask = d.mask;
+  const px = new Uint32Array(d.buf);
+  gradeLoop(px, d.W, d.rows, d.lr, d.lg, d.lb, d.doSat, d.K, d.KR, d.KG, d.KB, d.useMask ? mask : EMPTY_MASK, d.useMask, d.noise || EMPTY_NOISE, d.GA, d.ox, d.oy);
+  postMessage(d.buf, [d.buf]); };`;
+    const url = URL.createObjectURL(new Blob([code], {type:'text/javascript'}));
+    for (let i=0;i<n;i++){ const w = new Worker(url); w.maskKey = ''; gradeWorkers.push(w); }
+  } catch(e){ gradeWorkers = []; }
+  return gradeWorkers;
+}
+async function applyGradeParallel(g){
+  if (isNeutral(g) && !(g.vig > 0) && !(g.grain > 0)) return;
+  if (applyGradeGL(g)) return;
+  const ws = useParallelGrade ? getGradeWorkers() : [];
+  if (!ws.length){ applyGradeCPU(g); return; }
+  const q = gradePrep(g);
+  const img = ctx.getImageData(0,0,W,H), px = new Uint32Array(img.data.buffer), per = Math.ceil(H/ws.length);
+  await Promise.all(ws.map((w, j) => new Promise((res, rej) => {
+    const y0 = j*per, rows = Math.min(per, H-y0); if (rows <= 0) return res();
+    const slice = px.slice(y0*W, (y0+rows)*W);
+    const msg = {buf:slice.buffer, W, rows, lr:q.lr, lg:q.lg, lb:q.lb, doSat:q.doSat, K:q.K, KR:q.KR, KG:q.KG, KB:q.KB, useMask: q.mask ? 1 : 0, noise:q.noise, GA:q.GA, ox:q.ox, oy:(q.oy+y0)&255};
+    if (q.mask && w.maskKey !== q.maskKey+':'+j){ msg.mask = q.mask.slice(y0*W, (y0+rows)*W); w.maskKey = q.maskKey+':'+j; }
+    w.onmessage = e => { px.set(new Uint32Array(e.data), y0*W); res(); };
+    w.onerror = rej;
+    w.postMessage(msg, [slice.buffer]);
+  })));
+  ctx.putImageData(img,0,0);
 }
 let grainCv = null;
 function drawGrain(a){
@@ -722,6 +850,13 @@ function drawTelop(c, t){
   ctx.restore();
 }
 
+async function renderFrameAsync(t){
+  ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
+  drawVideoLayer('main', t);
+  drawVideoLayer('broll', t);
+  await applyGradeParallel(effectiveGrade(t));
+  const tl = T('telop'); if (!tl.mute) for (const c of activeClips(tl, t)) drawTelop(c, t);
+}
 function renderFrame(t){
   ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
   drawVideoLayer('main', t);
@@ -771,6 +906,7 @@ function updatePlayBtn(){ $('tPlay').textContent = playing ? '❚❚ 停止' : '
 
 let frameN = 0;
 function loop(){
+  if (fastExporting){ requestAnimationFrame(loop); return; }
   if (playing){
     curT = playStartT + Math.max(0, AC.currentTime - playStartCtx);
     const end = projectEnd();
@@ -1318,50 +1454,276 @@ async function runAll(){
    書き出し
    ========================================================= */
 let recorder = null, recChunks = [];
-function setRes(w){ W = w; H = Math.round(w*16/9); view.width = W; view.height = H; ctx = view.getContext('2d', {willReadFrequently:true}); lutCacheKey = ''; }
+function setRes(w){ W = w; H = Math.round(w*16/9); view.width = W; view.height = H; ctx = view.getContext('2d', CTX_OPTS); lutCacheKey = ''; }
 function pickMime(){
   const list = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4;codecs=avc1,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
   return list.find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || '';
 }
 function showModal(html){ $('modalBox').innerHTML = html; $('modal').classList.add('show'); }
 function hideModal(){ $('modal').classList.remove('show'); }
+/* ---- 書き出し完了後の表示（共通） ---- */
+function showExportResult(blob, ext, secs, mode){
+  const url = URL.createObjectURL(blob), fname = `${$('projName').textContent}.${ext}`;
+  const end = projectEnd();
+  log('書き出し', `${mode}で書き出しました（${(blob.size/1e6).toFixed(1)}MB / ${ext.toUpperCase()} / ${secs.toFixed(1)}秒、動画の長さの ${(end/Math.max(0.1,secs)).toFixed(1)} 倍速）`, '#7dff6b');
+  const h = $('modalBox').querySelector('h3'); if (h) h.textContent = '書き出し完了';
+  const st = $('exStat'); if (st) st.textContent = `かかった時間 ${secs.toFixed(1)} 秒（${mode}）`;
+  const p = $('exProg'); if (p) p.style.width = '100%';
+  const box = document.createElement('div');
+  box.innerHTML = `<video controls playsinline style="width:100%;max-height:50vh;background:#000;border-radius:6px;margin-top:8px"></video>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:8px"><button class="primary" id="exSave">動画を保存</button><span id="exSaveMsg" style="color:var(--dim);font-size:11px"></span></div>`;
+  box.querySelector('video').src = url;
+  $('exProg').parentElement.after(box);
+  $('exSave').onclick = async () => { $('exSaveMsg').textContent = await saveFile(fname, blob); };
+}
+
+/* ---- 高速書き出し（WebCodecs）：再生を待たずに1コマずつ作ってMP4にまとめる ---- */
+const VIDEO_CODECS = [
+  ['avc1.640028','avc'], ['avc1.4d0028','avc'], ['avc1.42e028','avc'], ['avc1.640033','avc'],
+  ['vp09.00.40.08','vp9'],
+];
+async function pickVideoCodec(w, h){
+  if (!window.VideoEncoder) return null;
+  for (const [codec, mux] of VIDEO_CODECS){
+    const cfg = {codec, width:w, height:h, bitrate: w>=1080 ? 10_000_000 : 5_000_000, framerate:FPS, latencyMode:'quality'};
+    if (mux==='avc') cfg.avc = {format:'avc'};
+    try { const r = await VideoEncoder.isConfigSupported(cfg); if (r.supported) return {cfg, mux}; } catch(e){}
+  }
+  return null;
+}
+async function pickAudioCodec(sr){
+  if (!window.AudioEncoder) return null;
+  for (const [codec, mux] of [['mp4a.40.2','aac'],['opus','opus']]){
+    const cfg = {codec, sampleRate:sr, numberOfChannels:2, bitrate:192_000};
+    try { const r = await AudioEncoder.isConfigSupported(cfg); if (r.supported) return {cfg, mux}; } catch(e){}
+  }
+  return null;
+}
+function fastExportAvailable(){ return !!(window.VideoEncoder && window.VideoFrame && window.Mp4Muxer && window.OfflineAudioContext); }
+
+// 音声：全トラックを一度にミックス（再生しないので一瞬で終わる）
+async function renderMixOffline(end, sr){
+  const oc = new OfflineAudioContext(2, Math.ceil(end*sr), sr);
+  for (const tr of tracks){
+    if (tr.mute) continue;
+    if (!(tr.type==='audio' || tr.id==='main' || tr.id==='broll')) continue;
+    for (const c of tr.clips){
+      const m = M(c.media); if (!m || !m.buffer) continue;
+      if (tr.id==='broll' && !c.props.audio) continue;
+      if (c.in >= m.buffer.duration) continue;
+      const s = oc.createBufferSource(); s.buffer = m.buffer;
+      const g = oc.createGain(); g.gain.value = tr.vol * (c.props.vol ?? 1);
+      s.connect(g); g.connect(oc.destination);
+      s.start(c.start, c.in, Math.min(c.dur, m.buffer.duration - c.in));
+    }
+  }
+  return oc.startRendering();
+}
+
+// 映像の素材：MP4/MOV は中身を直接デコード（速い）。それ以外はシークで1コマずつ取り出す
+async function demuxMp4(file){
+  if (!window.MP4Box || !window.VideoDecoder) return null;
+  const ab = await file.arrayBuffer();
+  return new Promise((resolve) => {
+    const mp4 = MP4Box.createFile(); let track = null; const samples = [];
+    mp4.onError = () => resolve(null);
+    mp4.onReady = info => {
+      track = info.videoTracks[0]; if (!track) return;
+      mp4.setExtractionOptions(track.id, null, {nbSamples: 1e9}); mp4.start();
+    };
+    mp4.onSamples = (id, user, list) => { for (const x of list) samples.push({data:x.data, ts:x.cts*1e6/x.timescale, dur:x.duration*1e6/x.timescale, key:x.is_sync}); };
+    ab.fileStart = 0;
+    try { mp4.appendBuffer(ab); mp4.flush(); } catch(e){ return resolve(null); }
+    if (!track || !samples.length) return resolve(null);
+    let desc;
+    for (const e of mp4.getTrackById(track.id).mdia.minf.stbl.stsd.entries){
+      const box = e.avcC || e.hvcC || e.vpcC || e.av1C;
+      if (box){ const ds = new DataStream(undefined, 0, DataStream.BIG_ENDIAN); box.write(ds); desc = new Uint8Array(ds.buffer, 8); break; }
+    }
+    const t0 = Math.min(...samples.slice(0, 32).map(s => s.ts));
+    for (const s of samples) s.ts -= t0;
+    resolve({config:{codec:track.codec, codedWidth:track.video.width, codedHeight:track.video.height, description:desc}, samples});
+  });
+}
+class DecodedSource {
+  constructor(d){ this.d = d; this.queue = []; this.cur = null; this.wake = null; this.open(0); }
+  open(idx){
+    if (this.dec && this.dec.state !== 'closed') this.dec.close();
+    for (const f of this.queue) f.close(); this.queue = [];
+    if (this.cur){ this.cur.close(); this.cur = null; }
+    this.dec = new VideoDecoder({output: f => { this.queue.push(f); this.queue.sort((a,b)=>a.timestamp-b.timestamp); if (this.wake){ const w = this.wake; this.wake = null; w(); } }, error: e => { this.err = e; if (this.wake){ const w = this.wake; this.wake = null; w(); } }});
+    this.dec.configure(this.d.config); this.next = idx; this.flushed = false;
+  }
+  keyBefore(us){ const s = this.d.samples; let k = 0; for (let i=0;i<s.length;i++) if (s[i].key && s[i].ts <= us) k = i; return k; }
+  async frameAt(t){
+    const us = t*1e6 + 500, s = this.d.samples;
+    const curTs = this.cur ? this.cur.timestamp : (this.queue[0] ? this.queue[0].timestamp : -1);
+    if ((this.cur && this.cur.timestamp > us + 1000) || (curTs >= 0 && us - curTs > 3e6) ){
+      const k = this.keyBefore(us); if (k > this.next || us < curTs) this.open(k);
+    }
+    for (let guard=0; guard<100000; guard++){
+      if (this.err) throw this.err;
+      while (this.queue.length && this.queue[0].timestamp <= us){ if (this.cur) this.cur.close(); this.cur = this.queue.shift(); }
+      if (this.queue.length) return this.cur || this.queue[0];
+      if (this.next < s.length){
+        const n = Math.min(s.length, this.next + 4);
+        for (; this.next < n; this.next++){ const x = s[this.next]; this.dec.decode(new EncodedVideoChunk({type:x.key?'key':'delta', timestamp:x.ts, duration:x.dur, data:x.data})); }
+        if (this.dec.decodeQueueSize > 8 || this.queue.length === 0) await new Promise(r => { this.wake = r; setTimeout(r, 30); });
+      } else if (!this.flushed){ this.flushed = true; await this.dec.flush(); }
+      else return this.cur;
+    }
+    return this.cur;
+  }
+  close(){ try{ this.dec.close(); }catch(e){} for (const f of this.queue) f.close(); if (this.cur) this.cur.close(); }
+}
+class SeekSource {
+  constructor(m){ this.m = m; }
+  async frameAt(t){
+    const el = this.m.el; if (Math.abs(el.currentTime - t) < 0.001 && el.readyState >= 2) return el;
+    await new Promise(r => { const to = setTimeout(r, 1500); el.addEventListener('seeked', () => { clearTimeout(to); r(); }, {once:true}); el.currentTime = t; });
+    return el;
+  }
+  close(){}
+}
+let exportSrc = null;   // 書き出し中だけ：素材 → 今のコマ
+let fastExporting = false, exportAbort = false;
+
+async function fastExport(res, allowFallback = true){
+  const end = projectEnd(), started = performance.now();
+  const vcodec = await pickVideoCodec(res, Math.round(res*16/9));
+  if (!vcodec) throw new Error('映像エンコーダーが使えません');
+  const sr = 48000, acodec = await pickAudioCodec(sr);
+  pause(); fastExporting = true; exportAbort = false; setRes(res);
+  const stat = t => { const s = $('exStat'); if (s) s.textContent = t; };
+  const sources = new Map();
+  try {
+    stat('音声をミックス中…');
+    const mix = acodec ? await renderMixOffline(end, sr) : null;
+    stat('素材を準備中…');
+    for (const tr of [T('main'), T('broll')]) for (const c of tr.clips){
+      const m = M(c.media); if (!m || m.kind !== 'video' || sources.has(m)) continue;
+      const d = m.file && /\.(mp4|m4v|mov)$/i.test(m.name) ? await demuxMp4(m.file).catch(() => null) : null;
+      let src = null;
+      if (d){ try { const r = await VideoDecoder.isConfigSupported(d.config); if (r.supported) src = new DecodedSource(d); } catch(e){} }
+      sources.set(m, src || new SeekSource(m));
+    }
+    const muxer = new Mp4Muxer.Muxer({
+      target: new Mp4Muxer.ArrayBufferTarget(),
+      video: {codec: vcodec.mux, width: W, height: H, frameRate: FPS},
+      audio: acodec ? {codec: acodec.mux, sampleRate: sr, numberOfChannels: 2} : undefined,
+      fastStart: 'in-memory', firstTimestampBehavior: 'offset',
+    });
+    let encErr = null;
+    const venc = new VideoEncoder({output: (ch, meta) => muxer.addVideoChunk(ch, meta), error: e => encErr = e});
+    venc.configure({...vcodec.cfg, width: W, height: H});
+    let aenc = null;
+    if (acodec){
+      aenc = new AudioEncoder({output: (ch, meta) => muxer.addAudioChunk(ch, meta), error: e => encErr = e});
+      aenc.configure(acodec.cfg);
+      const L = mix.getChannelData(0), R = mix.getChannelData(1), N = 4096;
+      for (let i=0; i<L.length; i+=N){
+        const n = Math.min(N, L.length - i), buf = new Float32Array(n*2);
+        buf.set(L.subarray(i, i+n), 0); buf.set(R.subarray(i, i+n), n);
+        const ad = new AudioData({format:'f32-planar', sampleRate:sr, numberOfFrames:n, numberOfChannels:2, timestamp:Math.round(i/sr*1e6), data:buf});
+        aenc.encode(ad); ad.close();
+      }
+    }
+    const total = Math.ceil(end*FPS);
+    exportSrc = new Map();
+    // GPUが無いときは「複数コアで分担」と「1コアで処理」を最初の数コマで測り、速い方を使う
+    const tryBoth = !GL && getGradeWorkers().length > 0 && total > 40;
+    let tA = 0, tB = 0; useParallelGrade = true; const loopStart = performance.now();
+    for (let i=0; i<total; i++){
+      if (tryBoth && i === 10) useParallelGrade = false;
+      if (tryBoth && i === 20){ useParallelGrade = tA <= tB; log('書き出し', `色処理：${useParallelGrade ? '複数コアで分担' : '1コアで処理'}（1コマあたり ${(Math.min(tA,tB)/10).toFixed(0)}ms）`, '#7dff6b'); }
+      const fs = performance.now();
+      if (exportAbort) throw new Error('中止しました');
+      if (encErr) throw encErr;
+      const t = i/FPS;
+      exportSrc.clear();
+      for (const id of ['main','broll']){
+        const c = topClip(T(id), t); if (!c) continue;
+        const m = M(c.media), src = m && sources.get(m);
+        if (src) exportSrc.set(m, await src.frameAt(c.in + (t - c.start)));
+      }
+      await renderFrameAsync(t);
+      const vf = new VideoFrame(view, {timestamp: Math.round(t*1e6), duration: Math.round(1e6/FPS)});
+      venc.encode(vf, {keyFrame: i % (FPS*2) === 0}); vf.close();
+      while (venc.encodeQueueSize > 6) await new Promise(r => setTimeout(r, 1));
+      if (tryBoth && i < 10) tA += performance.now() - fs; else if (tryBoth && i < 20) tB += performance.now() - fs;
+      // 40コマ作った時点で、このまま続けるとリアルタイムより遅いと分かったら切り替える
+      if (i === 40 && allowFallback && window.MediaRecorder){
+        const per = (performance.now() - loopStart)/(i+1), remain = per*(total-i-1)/1000;
+        if (remain > (end - t)*1.15 + 1) { const e = new Error('SLOW'); e.slow = true; throw e; }
+      }
+      if (i % 6 === 0){
+        const p = $('exProg'); if (p) p.style.width = (i/total*100) + '%';
+        const el = (performance.now()-started)/1000, eta = el/(i+1)*(total-i-1);
+        stat(`映像を作成中 ${i+1} / ${total} コマ ・ 経過 ${el.toFixed(1)}秒 ・ 残り約 ${Math.ceil(eta)}秒`);
+        curT = t; updateTimeUI();
+        await new Promise(r => setTimeout(r, 0));
+      }
+    }
+    stat('仕上げ中…');
+    await venc.flush(); if (aenc) await aenc.flush();
+    muxer.finalize();
+    const blob = new Blob([muxer.target.buffer], {type:'video/mp4'});
+    showExportResult(blob, 'mp4', (performance.now()-started)/1000, '高速書き出し');
+    if (vcodec.mux !== 'avc') log('書き出し', 'このブラウザではH.264が使えずVP9で保存しました。インスタで読めない場合は Chrome / Edge で書き出してください', '#ffa24c');
+    if (!acodec) log('書き出し', 'このブラウザでは音声エンコードが使えず、音なしで保存しました', '#ffa24c');
+    else if (acodec.mux !== 'aac') log('書き出し', 'このブラウザではAAC音声が使えずOpus音声で保存しました。インスタで音が出ない場合は Windows / Mac の Chrome か Edge で書き出してください', '#ffa24c');
+  } finally {
+    exportSrc = null; for (const s of sources.values()) s.close();
+    fastExporting = false; setRes(+$('quality').value); seek(0);
+  }
+}
+
+/* ---- リアルタイム書き出し（高速書き出しが使えないブラウザ用） ---- */
+function realtimeExport(res, mime){
+  const end = projectEnd(), started = performance.now();
+  setRes(res); pause(); seek(0);
+  const vs = view.captureStream(FPS);
+  const stream = new MediaStream([...vs.getVideoTracks(), ...exportDest.stream.getAudioTracks()]);
+  recChunks = [];
+  recorder = new MediaRecorder(stream, {mimeType: mime || undefined, videoBitsPerSecond: W>=1080 ? 10_000_000 : 5_000_000, audioBitsPerSecond: 192_000});
+  recorder.ondataavailable = e => { if (e.data.size) recChunks.push(e.data); };
+  recorder.onstop = () => {
+    if (!recChunks.length) return;
+    const blob = new Blob(recChunks, {type: recorder.mimeType || mime || 'video/webm'});
+    const ext = (recorder.mimeType||mime).includes('mp4') ? 'mp4' : 'webm';
+    showExportResult(blob, ext, (performance.now()-started)/1000, 'リアルタイム書き出し');
+  };
+  exporting = true; recorder.start(500);
+  setTimeout(() => play(), 150);
+  const tick = () => { if (!exporting) return; const p = $('exProg'); if (p) p.style.width = (curT/end*100)+'%'; requestAnimationFrame(tick); }; tick();
+}
+
 function startExport(){
   const end = projectEnd(); if (!end){ toast('タイムラインが空です'); return; }
-  if (!window.MediaRecorder){ toast('このブラウザは書き出しに対応していません（Chrome / Edge を推奨）'); return; }
-  const mime = pickMime();
+  const fast = fastExportAvailable(), mime = pickMime();
+  if (!fast && !window.MediaRecorder){ toast('このブラウザは書き出しに対応していません（Chrome / Edge を推奨）'); return; }
   showModal(`<h3>書き出し</h3>
-  <div>形式：<b>${mime.startsWith('video/mp4') ? 'MP4（そのままインスタに投稿可）' : 'WebM（インスタ投稿前にMP4への変換が必要な場合があります）'}</b><br>
-  解像度：<select id="exRes"><option value="1080">1080×1920（推奨）</option><option value="720">720×1280（軽い）</option></select><br>
-  長さ：${fmtS(end)}（書き出しも同じ時間かかります）</div>
-  <div style="color:var(--dim);font-size:11px;margin-top:6px">書き出し中はこのタブを前面に表示したままにしてください。別のタブに切り替えると映像が止まることがあります。</div>
+  <div>方式：<b>${fast ? '高速書き出し（再生を待たずに作成・MP4）' : 'リアルタイム書き出し（このブラウザは高速書き出し非対応）'}</b><br>
+  解像度：<select id="exRes"><option value="1080">1080×1920（推奨）</option><option value="720">720×1280（さらに速い）</option></select><br>
+  長さ：${fmtS(end)}${fast ? '' : '（書き出しにも同じ時間かかります）'}</div>
+  <div style="color:var(--dim);font-size:11px;margin-top:6px">${fast ? '動画の長さより短い時間で作れます（速さはパソコンの性能によります）。' : '書き出し中はこのタブを前面に表示したままにしてください。'}</div>
   <div class="prog"><i id="exProg"></i></div>
-  <div style="display:flex;gap:8px;justify-content:flex-end"><button id="exCancel">閉じる</button><button class="primary" id="exGo">開始</button></div>`);
-  $('exCancel').onclick = () => { if (exporting) abortExport(); hideModal(); };
-  $('exGo').onclick = () => {
+  <div id="exStat" style="color:var(--dim);font-size:11px;min-height:16px"></div>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px"><button id="exCancel">閉じる</button><button class="primary" id="exGo">開始</button></div>`);
+  $('exCancel').onclick = () => { if (fastExporting) exportAbort = true; if (exporting) abortExport(); hideModal(); };
+  $('exGo').onclick = async () => {
     $('exGo').disabled = true; audioCtxFor();
-    setRes(+$('exRes').value); pause(); seek(0);
-    const vs = view.captureStream(FPS);
-    const stream = new MediaStream([...vs.getVideoTracks(), ...exportDest.stream.getAudioTracks()]);
-    recChunks = [];
-    recorder = new MediaRecorder(stream, {mimeType: mime || undefined, videoBitsPerSecond: W>=1080 ? 10_000_000 : 5_000_000, audioBitsPerSecond: 192_000});
-    recorder.ondataavailable = e => { if (e.data.size) recChunks.push(e.data); };
-    recorder.onstop = () => {
-      if (!recChunks.length) return;
-      const blob = new Blob(recChunks, {type: recorder.mimeType || mime || 'video/webm'});
-      const ext = (recorder.mimeType||mime).includes('mp4') ? 'mp4' : 'webm';
-      const url = URL.createObjectURL(blob), fname = `${$('projName').textContent}.${ext}`;
-      log('書き出し', `書き出しました（${(blob.size/1e6).toFixed(1)}MB / ${ext.toUpperCase()}）`, '#7dff6b');
-      $('modalBox').querySelector('h3').textContent = '書き出し完了';
-      const box = document.createElement('div');
-      box.innerHTML = `<video controls playsinline style="width:100%;max-height:50vh;background:#000;border-radius:6px;margin-top:8px"></video>
-        <div style="display:flex;gap:8px;align-items:center;margin-top:8px"><button class="primary" id="exSave">動画を保存</button><span id="exSaveMsg" style="color:var(--dim);font-size:11px"></span></div>`;
-      box.querySelector('video').src = url;
-      $('exProg').parentElement.after(box);
-      $('exSave').onclick = async () => { $('exSaveMsg').textContent = await saveFile(fname, blob); };
-    };
-    exporting = true; recorder.start(500);
-    setTimeout(() => play(), 150);
-    const tick = () => { if (!exporting) return; const p = $('exProg'); if (p) p.style.width = (curT/end*100)+'%'; requestAnimationFrame(tick); }; tick();
+    const res = +$('exRes').value;
+    if (fast){
+      try { await fastExport(res); return; }
+      catch(e){
+        if (exportAbort){ log('書き出し', '書き出しを中止しました', '#888'); return; }
+        if (e.slow) log('書き出し', 'このパソコンでは高速書き出しが再生より遅くなるため、リアルタイム書き出しに切り替えます', '#ffa24c');
+        else log('書き出し', `高速書き出しに失敗（${e.message}）。リアルタイム書き出しに切り替えます`, '#ffa24c');
+        if (!window.MediaRecorder) return;
+      }
+    }
+    realtimeExport(res, mime);
   };
 }
 function finishExport(){ exporting = false; setTimeout(() => { if (recorder && recorder.state !== 'inactive') recorder.stop(); setRes(+$('quality').value); const p = $('exProg'); if (p) p.style.width = '100%'; }, 300); }
