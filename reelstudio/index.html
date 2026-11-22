@@ -4,290 +4,477 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>リールスタジオ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
+/* レイアウト：上に5つの手順、左に常にプレビュー、右に「いまの手順」だけ、下にタイムライン */
 :root{
-  --bg:#0b0d10; --panel:#12151a; --panel2:#171b21; --line:#242a33; --line2:#2f3742;
-  --text:#e6e9ee; --dim:#8a93a0; --dim2:#5d6672;
-  --accent:#e8ff3a; --accent2:#c8e000;
-  color-scheme:dark;
-  --c-telop:#d9b92f; --c-broll:#3d63c9; --c-main:#2f9e5b; --c-grade:#b8323a; --c-voice:#4fb34a; --c-bgm:#7b4fd0; --c-sfx:#c26a2b;
+  --bg:#eceff3; --surface:#ffffff; --surface-2:#f5f6f9; --ink:#14161b; --muted:#5b6271; --faint:#8a91a0;
+  --line:#dde1e8; --line-2:#c9cfd9; --accent:#e0245e; --accent-ink:#ffffff; --accent-soft:#fde6ee;
+  --ok:#15885a; --ok-soft:#e1f4ea; --warn:#b86a00; --warn-soft:#fdf0dc; --bad:#cc2f2f;
+  --monitor:#0c0d10; --monitor-ink:#e9ebef;
+  --c-telop:#d4a91a; --c-broll:#3d63c9; --c-main:#2a9757; --c-grade:#b8323a; --c-voice:#45a840; --c-bgm:#7b4fd0; --c-sfx:#c26a2b;
+  --font:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP","Yu Gothic UI","Meiryo",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:10px;
+  /* 旧名（スクリプト内のインライン指定用） */
+  --panel:var(--surface); --panel2:var(--surface-2); --text:var(--ink); --dim:var(--muted); --dim2:var(--faint); --accent2:var(--accent);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0e0f12; --surface:#17191e; --surface-2:#1e2128; --ink:#eceef2; --muted:#a3aab7; --faint:#6e7584;
+  --line:#2a2e36; --line-2:#3a3f4a; --accent:#ff5c8d; --accent-ink:#1b0710; --accent-soft:#3b1624;
+  --ok:#4cc98a; --ok-soft:#14301f; --warn:#f0a840; --warn-soft:#33250f; --bad:#ff6b6b; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0e0f12; --surface:#17191e; --surface-2:#1e2128; --ink:#eceef2; --muted:#a3aab7; --faint:#6e7584;
+  --line:#2a2e36; --line-2:#3a3f4a; --accent:#ff5c8d; --accent-ink:#1b0710; --accent-soft:#3b1624;
+  --ok:#4cc98a; --ok-soft:#14301f; --warn:#f0a840; --warn-soft:#33250f; --bad:#ff6b6b; color-scheme:dark;
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic UI","Meiryo",sans-serif;font-size:12px;overflow:hidden}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;overflow:hidden}
 button,select,input,textarea{font:inherit;color:inherit}
-button{background:var(--panel2);border:1px solid var(--line2);border-radius:6px;padding:4px 9px;cursor:pointer}
-button:hover{border-color:#4a5563;background:#1d232b}
-button.on{background:var(--accent);color:#111;border-color:var(--accent);font-weight:700}
-button.primary{background:var(--accent);color:#111;border-color:var(--accent);font-weight:800}
+button{background:var(--surface);border:1px solid var(--line-2);border-radius:8px;padding:6px 12px;cursor:pointer;line-height:1.3}
+button:hover{border-color:var(--muted)}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:700}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+button.primary:hover{filter:brightness(1.06)}
+button.ghost{background:none;border-color:transparent;color:var(--muted)}
+button.ghost:hover{color:var(--ink);background:var(--surface-2)}
 button:disabled{opacity:.45;cursor:default}
-select,input[type=text],input[type=number],textarea{background:#0e1115;border:1px solid var(--line2);border-radius:5px;padding:3px 6px}
+select,input[type=text],input[type=number],textarea{background:var(--surface);border:1px solid var(--line-2);border-radius:8px;padding:6px 9px}
+textarea{line-height:1.7}
 input[type=range]{accent-color:var(--accent);width:100%}
-.app{display:grid;grid-template-rows:44px 1fr 310px;height:100%}
-#projName[contenteditable=true]{outline:1px solid var(--accent);padding:0 4px;border-radius:3px}
-header{display:flex;align-items:center;gap:14px;padding:0 12px;border-bottom:1px solid var(--line);background:#0d1014}
-.logo{display:flex;align-items:center;gap:7px;font-weight:900;font-size:15px;letter-spacing:.04em}
-.logo i{display:inline-block;width:18px;height:18px;background:var(--accent);border-radius:4px;clip-path:polygon(15% 10%,90% 50%,15% 90%)}
-.menu{display:flex;gap:2px}
-.menu button{background:none;border:none;color:var(--dim);padding:4px 8px}
-.menu button:hover{color:var(--text)}
-.title{flex:1;text-align:center;line-height:1.2}
-.title b{font-size:12px}
-.title small{display:block;color:var(--dim);font-size:10px}
-.agentbadge{display:flex;align-items:center;gap:6px;border:1px solid var(--line2);border-radius:20px;padding:3px 10px;color:var(--dim)}
-.agentbadge .dot{width:7px;height:7px;border-radius:50%;background:#3a4350}
-.agentbadge.live .dot{background:var(--accent);box-shadow:0 0 8px var(--accent)}
-.agentbadge.live{color:var(--accent)}
-.top{display:grid;grid-template-columns:250px 1fr 290px 320px;min-height:0}
-.col{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;overflow:hidden}
-.col:last-child{border-right:none}
-.ph{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-bottom:1px solid var(--line);color:var(--dim);font-size:11px;letter-spacing:.06em;flex:none}
-.ph b{color:var(--text);font-weight:700}
-.scroll{overflow:auto;min-height:0}
-/* media bin */
-.bin{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:8px}
-.mi{background:#0e1115;border:1px solid var(--line);border-radius:6px;overflow:hidden;cursor:grab;position:relative}
-.mi:hover{border-color:var(--accent2)}
-.mi canvas{display:block;width:100%;aspect-ratio:9/16;background:#000}
-.mi .nm{font-size:9px;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--dim)}
-.mi .mbtn{position:absolute;top:3px;width:20px;height:20px;padding:0;font-size:11px;line-height:18px;border-radius:50%;background:#000b;border:1px solid #fff4;color:#fff}
-.mi .mbtn.add{right:3px}
-.mi .mbtn.del{right:26px;opacity:0}
-.mi:hover .mbtn.del,.mi .mbtn.del:focus{opacity:1}
-@media (hover:none){.mi .mbtn.del{opacity:1}}
-.mi .tag{position:absolute;top:3px;left:3px;font-size:8px;background:#000a;padding:1px 4px;border-radius:3px}
-.mi.audio canvas{aspect-ratio:9/8}
-.binbar{display:flex;gap:6px;padding:6px 8px;border-bottom:1px solid var(--line);flex-wrap:wrap}
-/* agents */
-.agents{display:flex;flex-direction:column;gap:4px;padding:6px 8px}
-.ag{display:grid;grid-template-columns:10px 1fr auto auto;gap:6px;align-items:center;padding:4px 6px;border-radius:5px;background:#0e1115;border:1px solid var(--line)}
-.ag > span{min-width:0;overflow:hidden;text-overflow:ellipsis}
-.top > .col{min-width:0}
-.ag .d{width:8px;height:8px;border-radius:50%}
-.ag .st{color:var(--dim);font-size:10px}
-.ag.run{border-color:var(--accent)}
-.ag.run .st{color:var(--accent)}
-.ag button{padding:1px 7px;font-size:10px}
-.log{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;padding:6px 8px;line-height:1.55}
-.log div{display:grid;grid-template-columns:52px 64px 1fr;gap:4px}
-.log .t{color:var(--dim2)}
-.log .who{font-weight:700}
-details summary{cursor:pointer;color:var(--dim);padding:4px 8px}
-/* preview */
-.stage{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;position:relative;background:radial-gradient(circle at 50% 40%,#151a20,#0b0d10)}
-.cv-wrap{position:relative;height:calc(100% - 20px);aspect-ratio:9/16;box-shadow:0 0 0 1px #2c333d,0 20px 60px #000c;background:#000}
+input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
+h2{font-size:19px;margin:0;font-weight:900;text-wrap:balance}
+h3{font-size:15px;margin:0;font-weight:700}
+p{margin:0}
+.app{display:grid;grid-template-rows:auto minmax(0,1fr) auto;height:100%}
+
+/* ヘッダー */
+.top{display:flex;align-items:center;gap:16px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:8px;font-weight:900;font-size:16px;white-space:nowrap}
+.brand i{width:22px;height:22px;border-radius:6px;background:var(--accent);display:inline-grid;place-items:center}
+.brand i:after{content:"";width:0;height:0;border-left:8px solid var(--accent-ink);border-top:5px solid transparent;border-bottom:5px solid transparent;margin-left:2px}
+.pname{min-width:0;line-height:1.25}
+.pname b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;cursor:text}
+.pname small{color:var(--faint);font-size:11px}
+#projName[contenteditable=true]{outline:2px solid var(--accent);border-radius:4px;padding:0 4px}
+.stepper{flex:1;display:flex;justify-content:center;gap:4px;min-width:0}
+.step{display:flex;align-items:center;gap:7px;border:none;background:none;padding:6px 10px;border-radius:999px;color:var(--muted);white-space:nowrap}
+.step .n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;border:1.5px solid var(--line-2);font-family:var(--mono)}
+.step.done .n{background:var(--ok);border-color:var(--ok);color:#fff}
+.step.done .n span{display:none}
+.step.done .n:after{content:"✓"}
+.step.cur{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.step.cur .n{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
+.step + .step:before{content:"";width:14px;height:1px;background:var(--line-2);margin-right:4px}
+.hright{display:flex;align-items:center;gap:8px}
+.menu{position:relative}
+.menu summary{list-style:none;cursor:pointer;padding:6px 12px;border-radius:8px;border:1px solid var(--line-2);background:var(--surface)}
+.menu summary::-webkit-details-marker{display:none}
+.menu-pop{position:absolute;right:0;top:calc(100% + 6px);z-index:60;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 12px 32px #0003;padding:6px;display:flex;flex-direction:column;min-width:200px}
+.menu-pop button{border:none;text-align:left;background:none;padding:8px 10px;border-radius:6px}
+.menu-pop button:hover{background:var(--surface-2)}
+.menu-pop hr{border:none;border-top:1px solid var(--line);margin:4px 0}
+
+/* 作業エリア */
+.work{display:grid;grid-template-columns:minmax(280px,0.85fr) minmax(360px,1.15fr);min-height:0}
+.monitor{display:flex;flex-direction:column;min-height:0;background:var(--monitor);color:var(--monitor-ink)}
+.stage{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;position:relative;padding:14px}
+.cv-wrap{position:relative;height:100%;max-height:100%;aspect-ratio:9/16;max-width:100%;border-radius:12px;overflow:hidden;box-shadow:0 0 0 1px #ffffff14,0 18px 50px #000a;background:#000}
 #view{width:100%;height:100%;display:block}
 .safe{position:absolute;inset:0;pointer-events:none;display:none}
 .safe.show{display:block}
-.safe div{position:absolute;left:0;right:0;background:repeating-linear-gradient(45deg,#ff3b3b22 0 6px,transparent 6px 12px);border:1px dashed #ff5b5b88;color:#ff9b9b;font-size:9px;padding:2px 4px}
-.transport{display:flex;align-items:center;gap:8px;padding:6px 10px;border-top:1px solid var(--line);flex:none}
-.tc{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;color:var(--accent);min-width:96px}
-.dropnote{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:#e8ff3a22;border:2px dashed var(--accent);font-size:16px;font-weight:800;z-index:50}
-/* scopes */
-.scope{padding:6px 10px}
-.scope canvas{width:100%;background:#050607;border:1px solid var(--line);border-radius:4px;display:block}
-.meter{display:grid;grid-template-columns:70px 1fr 50px;gap:6px;align-items:center;margin:4px 0;font-size:10.5px;color:var(--dim)}
-.bar{height:7px;background:#0e1115;border-radius:4px;overflow:hidden;position:relative}
-.bar i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#2f9e5b,#e8ff3a 80%,#ff4b4b)}
-.bar b{position:absolute;top:-2px;bottom:-2px;width:2px;background:#fff8}
-.num{text-align:right;font-family:ui-monospace,Menlo,monospace;color:var(--text)}
-/* color */
-.wheels{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:8px}
-.wheel{text-align:center;color:var(--dim);font-size:10.5px}
+.safe div{position:absolute;left:0;right:0;background:repeating-linear-gradient(45deg,#ff3b3b26 0 6px,transparent 6px 12px);border:1px dashed #ff7b7b99;color:#ffb3b3;font-size:10px;padding:3px 6px}
+.dropnote{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:#e0245e33;border:3px dashed var(--accent);font-size:18px;font-weight:900;z-index:50;color:#fff}
+.transport{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid #ffffff14;flex-wrap:wrap}
+.transport button{background:#ffffff10;border-color:#ffffff22;color:var(--monitor-ink)}
+.transport button:hover{border-color:#ffffff55}
+.transport .play{width:44px;height:44px;border-radius:50%;padding:0;font-size:16px;background:var(--accent);border-color:var(--accent);color:#fff}
+.tc{font-family:var(--mono);font-size:15px;font-variant-numeric:tabular-nums}
+.transport .tdur{color:#9aa1ad;font-family:var(--mono);font-size:12px}
+.transport label{display:flex;align-items:center;gap:5px;font-size:12px;color:#c3c8d1}
+.transport select{background:#ffffff10;border-color:#ffffff22;color:var(--monitor-ink);font-size:12px}
+.transport select option{color:#111}
+
+/* 手順パネル */
+.panel{display:flex;flex-direction:column;min-height:0;background:var(--surface);border-left:1px solid var(--line)}
+.pane{display:flex;flex-direction:column;min-height:0;flex:1}
+.pane-body{flex:1;overflow:auto;padding:20px 22px;display:flex;flex-direction:column;gap:16px;min-height:0}
+.pane-body > *, [data-tabpane] > *{flex-shrink:0}
+.pane-head{display:flex;flex-direction:column;gap:6px}
+.pane-head p{color:var(--muted);line-height:1.7;max-width:62ch}
+.eyebrow{font-size:11px;letter-spacing:.12em;color:var(--accent);font-weight:700}
+.pane-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 22px;border-top:1px solid var(--line);background:var(--surface)}
+.pane-foot .primary{padding:9px 18px}
+.card{border:1px solid var(--line);border-radius:var(--r);background:var(--surface-2);padding:14px;display:flex;flex-direction:column;gap:10px}
+.hint{color:var(--muted);font-size:12.5px;line-height:1.7}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* 1 素材 */
+.drop{border:2px dashed var(--line-2);background:var(--surface-2);border-radius:14px;padding:22px;display:flex;flex-direction:column;align-items:center;gap:6px;width:100%}
+.drop:hover{border-color:var(--accent);background:var(--accent-soft)}
+.drop b{font-size:16px}
+.drop span{color:var(--muted);font-size:12.5px}
+.binhead{display:flex;align-items:center;gap:8px}
+.binhead b{font-size:14px}
+.binhead .cnt{color:var(--faint);font-size:12px;flex:1}
+.bin{display:flex;flex-direction:column;gap:6px}
+.mi{display:grid;grid-template-columns:40px minmax(0,1fr) auto auto auto;gap:10px;align-items:center;padding:7px 8px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);cursor:grab}
+.mi:hover{border-color:var(--line-2)}
+.mi canvas{width:40px;height:auto;aspect-ratio:9/16;border-radius:5px;background:#000;display:block}
+.mi.audio canvas{aspect-ratio:1}
+.mi .nm{min-width:0}
+.mi .nm b{display:block;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mi .nm small{color:var(--faint);font-size:11.5px}
+.mi select{font-size:12px;padding:4px 6px}
+.mi .mbtn{width:30px;height:30px;padding:0;border-radius:8px}
+.mi .mbtn.del{color:var(--faint)}
+.mi .mbtn.del:hover{color:var(--bad);border-color:var(--bad)}
+.empty{color:var(--faint);padding:10px 2px;font-size:12.5px;line-height:1.7}
+
+/* 2 台本 */
+#script{width:100%;min-height:220px;resize:vertical;font-size:15px}
+.sinfo{display:flex;gap:6px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:3px 9px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);color:var(--muted)}
+.chip.ok{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
+.chip.warn{background:var(--warn-soft);border-color:transparent;color:var(--warn)}
+
+/* 3 おまかせ編集 */
+.bigrun{padding:14px 18px;font-size:16px;border-radius:12px}
+.agents{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.ag{display:grid;grid-template-columns:auto 10px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:10px 12px;background:var(--surface);border-top:1px solid var(--line)}
+.ag:first-child{border-top:none}
+.ag .d{width:10px;height:10px;border-radius:50%}
+.ag .nm b{font-size:13.5px}
+.ag .nm small{display:block;color:var(--faint);font-size:11.5px;line-height:1.5}
+.ag .res{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.pill{font-size:11px;padding:2px 9px;border-radius:999px;background:var(--surface-2);color:var(--faint);white-space:nowrap}
+.pill.run{background:var(--accent-soft);color:var(--accent)}
+.pill.done{background:var(--ok-soft);color:var(--ok)}
+.pill.err{background:var(--warn-soft);color:var(--warn)}
+.ag button{padding:4px 10px;font-size:12px}
+details.fold{border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+details.fold > summary{cursor:pointer;padding:10px 12px;color:var(--muted);font-size:13px}
+details.fold > div{padding:0 12px 12px}
+.log{font-family:var(--mono);font-size:11.5px;line-height:1.6;max-height:220px;overflow:auto}
+.log div{display:grid;grid-template-columns:62px 74px minmax(0,1fr);gap:6px}
+.log .t{color:var(--faint)}
+.log .who{font-weight:700;display:flex;align-items:center;gap:5px;font-family:var(--font)}
+.log .who i{width:7px;height:7px;border-radius:50%;flex:none}
+.sl{display:grid;grid-template-columns:96px minmax(0,1fr) 44px;gap:10px;align-items:center;font-size:13px;color:var(--muted)}
+.sl span:last-child{text-align:right;color:var(--ink);font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums}
+
+/* 4 仕上げ */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);padding:0 22px;background:var(--surface)}
+.tab{border:none;background:none;border-bottom:2px solid transparent;border-radius:0;padding:10px 12px;color:var(--muted)}
+.tab.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:700;background:none}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.grid3 button{padding:8px 4px;font-size:12.5px}
+.tlist{display:flex;flex-direction:column;gap:6px}
+.trow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.trow.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.trow .time{font-family:var(--mono);font-size:12px;padding:5px 8px}
+.trow input{width:100%;min-width:0}
+.trow .x{width:30px;height:30px;padding:0;color:var(--faint)}
+.styles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.styles button{padding:8px 4px;font-size:12.5px}
+.sw{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:12.5px}
+.sw i{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid var(--line-2)}
+.sw i.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--surface) inset}
+.insp textarea{width:100%;height:64px;resize:vertical}
+.looks{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.look{display:flex;flex-direction:column;gap:5px;padding:6px;border-radius:var(--r);align-items:stretch;font-size:12px}
+.look canvas{width:100%;aspect-ratio:4/5;border-radius:6px;display:block;background:#000}
+.look.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);color:var(--accent);font-weight:700}
+.wheels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.wheel{text-align:center;color:var(--muted);font-size:12px;display:flex;flex-direction:column;gap:4px}
 .wheel canvas{width:100%;aspect-ratio:1;cursor:crosshair;touch-action:none}
-.wheel input{margin-top:2px}
-.sl{display:grid;grid-template-columns:72px 1fr 36px;gap:6px;align-items:center;padding:1px 10px;color:var(--dim);font-size:10.5px}
-.sl span:last-child{text-align:right;color:var(--text);font-family:ui-monospace,Menlo,monospace}
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;padding:6px 10px}
-.grid3 button{font-size:10.5px;padding:5px 2px}
-.sw{display:flex;gap:6px;padding:4px 10px;align-items:center;color:var(--dim);font-size:10.5px}
-.sw i{width:16px;height:16px;border-radius:50%;cursor:pointer;border:2px solid transparent}
-.sw i.on{border-color:#fff}
-.insp textarea{width:calc(100% - 20px);margin:4px 10px;height:54px;resize:vertical}
-.empty{color:var(--dim2);padding:10px;font-size:11px;line-height:1.6}
-/* timeline */
-.tl{border-top:1px solid var(--line);display:flex;flex-direction:column;min-height:0;background:#0d1014}
-.tlbar{display:flex;align-items:center;gap:6px;padding:5px 10px;border-bottom:1px solid var(--line);flex:none}
-.tlbar .sep{width:1px;height:18px;background:var(--line2);margin:0 4px}
+.mix{display:flex;flex-direction:column;gap:10px}
+.mixrow{display:grid;grid-template-columns:12px 88px minmax(0,1fr) 44px auto;gap:10px;align-items:center;font-size:13px}
+.mixrow i{width:10px;height:10px;border-radius:3px}
+.mixrow span.v{font-family:var(--mono);font-size:12px;text-align:right}
+.mixrow button{padding:3px 9px;font-size:12px}
+.meter{display:grid;grid-template-columns:80px minmax(0,1fr) 52px;gap:10px;align-items:center;font-size:12.5px;color:var(--muted)}
+.bar{height:8px;background:var(--surface-2);border:1px solid var(--line);border-radius:5px;overflow:hidden;position:relative}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--ok),#d8c400 80%,var(--bad))}
+.bar b{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink);opacity:.5}
+.num{text-align:right;font-family:var(--mono);color:var(--ink);font-size:12px}
+.scopes{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:10px}
+.scopes canvas{width:100%;background:#050607;border-radius:8px;display:block}
+.scopes figure{margin:0;display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+
+/* 5 書き出し */
+.qc{display:flex;flex-direction:column;gap:6px}
+.qc div{display:flex;gap:8px;align-items:flex-start;font-size:13px;line-height:1.6;padding:8px 10px;border-radius:8px;background:var(--surface-2)}
+.qc div.ok{background:var(--ok-soft);color:var(--ok)}
+.qc div.warn{background:var(--warn-soft);color:var(--warn)}
+.prog{height:10px;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+
+/* タイムライン */
+.dock{border-top:1px solid var(--line);display:flex;flex-direction:column;height:282px;background:var(--surface)}
+.dock.big{height:420px}
+.dock.small{height:44px}
+.dock.small .tlbody{display:none}
+.tlbar{display:flex;align-items:center;gap:6px;padding:6px 12px;border-bottom:1px solid var(--line);flex:none;flex-wrap:wrap}
+.tlbar button{padding:4px 10px;font-size:12.5px}
+.tlbar .sep{width:1px;height:20px;background:var(--line);margin:0 4px}
+.tlbar .tc{font-size:13px;color:var(--accent)}
+.tlbar .keys{color:var(--faint);font-size:11.5px}
+kbd{background:var(--surface-2);border:1px solid var(--line-2);border-radius:4px;padding:0 5px;font-size:11px;font-family:var(--mono)}
 .tlbody{flex:1;display:flex;min-height:0}
-.heads{width:150px;flex:none;border-right:1px solid var(--line)}
+.heads{width:116px;flex:none;border-right:1px solid var(--line);overflow:hidden}
 .heads .rsp{height:22px;border-bottom:1px solid var(--line)}
-.hd{height:32px;display:flex;align-items:center;gap:6px;padding:0 6px;border-bottom:1px solid var(--line)}
-.hd .cb{width:4px;height:22px;border-radius:2px}
-.hd .n{flex:1;font-size:11px;white-space:nowrap}
-.hd button{padding:0 5px;font-size:10px;height:18px}
-.hd input{width:38px}
-.tlscroll{flex:1;overflow-x:auto;overflow-y:hidden;position:relative}
+.hd{height:30px;display:flex;align-items:center;gap:6px;padding:0 6px 0 8px;border-bottom:1px solid var(--line)}
+.hd .cb{width:4px;height:18px;border-radius:2px}
+.hd .n{flex:1;font-size:12px;white-space:nowrap}
+.hd button{padding:0 6px;font-size:10.5px;height:20px;border-radius:5px;white-space:nowrap}
+.tlscroll{flex:1;overflow:auto;position:relative}
 .tlinner{position:relative;min-width:100%}
-.ruler{touch-action:none;height:22px;border-bottom:1px solid var(--line);position:relative;cursor:ew-resize;background:#0f1216}
-.ruler span{position:absolute;top:4px;font-size:9px;color:var(--dim2);transform:translateX(3px)}
-.ruler i{position:absolute;bottom:0;width:1px;background:#39414c}
-.lane{height:32px;border-bottom:1px solid var(--line);position:relative}
-.lane.dragover{background:#e8ff3a14}
-.clip{position:absolute;top:3px;height:26px;border-radius:4px;overflow:hidden;cursor:grab;border:1px solid #0006;user-select:none;touch-action:none}
-.clip .lb{position:absolute;left:5px;top:2px;font-size:9.5px;white-space:nowrap;color:#fff;text-shadow:0 1px 2px #000;z-index:2;pointer-events:none}
-.clip canvas{position:absolute;left:0;bottom:0;height:18px;pointer-events:none;opacity:.85}
-.clip .h{position:absolute;top:0;bottom:0;width:7px;cursor:ew-resize;z-index:3}
+.ruler{touch-action:none;height:22px;border-bottom:1px solid var(--line);position:relative;cursor:ew-resize;background:var(--surface-2)}
+.ruler span{position:absolute;top:4px;font-size:10px;color:var(--faint);transform:translateX(3px);font-family:var(--mono)}
+.ruler i{position:absolute;bottom:0;width:1px;background:var(--line-2)}
+.lane{height:30px;border-bottom:1px solid var(--line);position:relative}
+.lane.dragover{background:var(--accent-soft)}
+.clip{position:absolute;top:3px;height:24px;border-radius:5px;overflow:hidden;cursor:grab;border:1px solid #0003;user-select:none;touch-action:none}
+.clip .lb{position:absolute;left:6px;top:3px;font-size:10.5px;white-space:nowrap;color:#fff;text-shadow:0 1px 2px #0009;z-index:2;pointer-events:none}
+.clip canvas{position:absolute;left:0;bottom:0;height:16px;pointer-events:none;opacity:.8}
+.clip .h{position:absolute;top:0;bottom:0;width:8px;cursor:ew-resize;z-index:3}
 .clip .h.l{left:0}.clip .h.r{right:0}
-.clip .h:hover{background:#fff4}
-.clip.sel{outline:2px solid #fff;outline-offset:-1px;z-index:5}
+.clip .h:hover{background:#fff5}
+.clip.sel{outline:2px solid var(--ink);outline-offset:-1px;z-index:5}
 .clip.grade{background:repeating-linear-gradient(135deg,#b8323a 0 7px,#8a2229 7px 14px)}
-.playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--accent);pointer-events:none;z-index:20;box-shadow:0 0 6px var(--accent)}
+.playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--accent);pointer-events:none;z-index:20}
 .playhead:before{content:"";position:absolute;top:0;left:-5px;border:6px solid transparent;border-top:8px solid var(--accent)}
-/* agent cursors */
-.cursor{position:fixed;z-index:100;pointer-events:none;transition:left .9s cubic-bezier(.3,.7,.2,1),top .9s cubic-bezier(.3,.7,.2,1),opacity .4s;opacity:0}
-.cursor svg{display:block}
-.cursor span{position:absolute;left:14px;top:12px;font-size:10px;font-weight:800;color:#111;padding:1px 6px;border-radius:4px;white-space:nowrap}
-.modal{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;z-index:200}
+
+/* モーダル */
+.modal{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;z-index:200;padding:16px}
 .modal.show{display:flex}
-.modal .box{background:var(--panel);border:1px solid var(--line2);border-radius:10px;padding:18px 20px;width:min(520px,92vw);max-height:86vh;overflow:auto;line-height:1.7}
-.modal h3{margin:0 0 8px}
-.prog{height:8px;background:#0e1115;border-radius:4px;overflow:hidden;margin:10px 0}
-.prog i{display:block;height:100%;width:0;background:var(--accent)}
-@media (max-width:900px){
-  html,body{overflow:auto;height:auto}
-  .app{height:auto;grid-template-rows:auto auto 340px}
-  header{flex-wrap:wrap;gap:8px;padding:6px 12px}
-  .title{order:5;flex-basis:100%;text-align:left}
-  .top{grid-template-columns:minmax(0,1fr)}
-  .bin{grid-template-columns:repeat(auto-fill,minmax(64px,1fr))}
-  .col > .scroll{max-height:240px}
-  .col{border-right:none;border-bottom:1px solid var(--line);max-height:none}
-  .stage{height:62vh;flex:none}
-  .heads{width:112px}
-  .tlbar{flex-wrap:wrap}
-  .tlbar > span:last-child{display:none}
+.modal .box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 22px;width:min(540px,100%);max-height:88vh;overflow:auto;line-height:1.8}
+.modal h3{margin:0 0 8px;font-size:17px}
+
+/* 狭い画面 */
+@media (max-width:1100px){
+  .step .lbl{display:none}
+  .step.cur .lbl{display:inline}
 }
-kbd{background:#222831;border:1px solid #3a4350;border-radius:3px;padding:0 4px;font-size:10px}
+@media (max-width:860px){
+  html,body{overflow:auto;height:auto}
+  .app{height:auto;display:flex;flex-direction:column}
+  .top{flex-wrap:wrap;gap:10px;padding:10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px))}
+  .stepper{order:5;flex-basis:100%;justify-content:space-between;overflow-x:auto}
+  .step{padding:6px 6px}
+  .step + .step:before{width:6px}
+  .pname b{max-width:150px}
+  .work{display:flex;flex-direction:column}
+  .stage{height:56vh;flex:none}
+  .dock{height:330px}
+  .panel{border-left:none}
+  .pane-body{padding:16px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px))}
+  .pane-foot{padding:12px 16px}
+  .tabs{padding:0 16px;overflow-x:auto}
+  .tlbar .keys{display:none}
+  .mi{grid-template-columns:36px minmax(0,1fr) auto auto;}
+  .mi select{grid-column:2 / 3}
+  .mixrow{grid-template-columns:12px 70px minmax(0,1fr) 40px auto}
+  .scopes{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion: reduce){ *{transition:none!important} }
 </style>
 </head>
 <body>
 <div class="app">
-<header>
-  <div class="logo"><i></i>リールスタジオ</div>
-  <div class="menu">
-    <button id="mImport">ファイル読込</button>
-    <button id="mSave">保存</button>
-    <button id="mLoad">開く</button>
-    <button id="mDemo">デモ素材</button>
-    <button id="mNew">新規</button>
-    <button id="mHelp">使い方</button>
-  </div>
-  <div class="title"><b id="projName">ショート_新規プロジェクト</b><small id="projSub">9:16 ・ 1080×1920 ・ 30fps</small></div>
-  <div class="agentbadge" id="agentBadge"><span class="dot"></span><span id="agentBadgeText">7 エージェント待機中</span></div>
-  <button class="primary" id="btnExport">書き出し</button>
-</header>
-
-<div class="top">
-  <!-- left -->
-  <div class="col">
-    <div class="ph"><b>メディア</b><span id="binCount">0 件</span></div>
-    <div class="binbar">
-      <button id="bImport">＋ 読み込み</button>
-      <span style="color:var(--dim2);font-size:10px;align-self:center">ドラッグでタイムラインへ</span>
-    </div>
-    <div class="scroll" style="flex:1 1 40%"><div class="bin" id="bin"></div></div>
-    <div class="ph" style="border-top:1px solid var(--line)"><b>AIエージェント</b><button class="primary" id="runAll" style="padding:2px 8px">全自動編集</button></div>
-    <div class="agents" id="agents"></div>
-    <details>
-      <summary>台本・設定</summary>
-      <div style="padding:0 8px 6px">
-        <div style="color:var(--dim);font-size:10.5px">台本（1行＝1テロップ。1行目はタイトル）</div>
-        <textarea id="script" style="width:100%;height:70px;resize:vertical"></textarea>
-        <div id="aiBox" hidden style="margin:4px 0 6px;display:flex;flex-direction:column;gap:4px">
-          <div style="display:flex;gap:4px"><input type="text" id="aiTheme" placeholder="テーマ（例：美容室の予約が増える3つのコツ）" style="flex:1;min-width:0"><button id="aiScript" class="primary" style="padding:2px 8px">AIで台本</button></div>
-          <div style="display:flex;gap:4px;align-items:center"><button id="aiCaption" style="padding:2px 8px">投稿文とハッシュタグを作る</button><span id="aiMsg" style="color:var(--dim);font-size:10px;min-width:0"></span></div>
-        </div>
-        <div class="sl" style="padding:2px 0"><span>無音の基準</span><input type="range" id="silTh" min="-60" max="-20" value="-38"><span id="silThV">-38</span></div>
-        <div class="sl" style="padding:2px 0"><span>最短の無音</span><input type="range" id="silMin" min="0.15" max="1.5" step="0.05" value="0.35"><span id="silMinV">0.35</span></div>
+<header class="top">
+  <div class="brand"><i></i>リールスタジオ</div>
+  <div class="pname"><b id="projName" title="ダブルクリックで名前を変更">ショート_新規プロジェクト</b><small>縦 9:16 ・ 1080×1920</small></div>
+  <nav class="stepper" id="stepper" aria-label="作業の手順">
+    <button class="step" data-step="1"><span class="n"><span>1</span></span><span class="lbl">素材</span></button>
+    <button class="step" data-step="2"><span class="n"><span>2</span></span><span class="lbl">台本</span></button>
+    <button class="step" data-step="3"><span class="n"><span>3</span></span><span class="lbl">おまかせ編集</span></button>
+    <button class="step" data-step="4"><span class="n"><span>4</span></span><span class="lbl">仕上げ</span></button>
+    <button class="step" data-step="5"><span class="n"><span>5</span></span><span class="lbl">書き出し</span></button>
+  </nav>
+  <div class="hright">
+    <details class="menu" id="fileMenu"><summary>ファイル ▾</summary>
+      <div class="menu-pop">
+        <button id="mNew">新しいプロジェクト</button>
+        <button id="mLoad">プロジェクトを開く…</button>
+        <button id="mSave">プロジェクトを保存</button>
+        <hr>
+        <button id="mImport">素材を読み込む…</button>
+        <button id="mDemo">デモ素材を追加</button>
+        <hr>
+        <button id="mHelp">使い方</button>
       </div>
     </details>
-    <div class="ph" style="border-top:1px solid var(--line)"><b>エージェント活動ログ</b><button id="clearLog" style="padding:0 6px;font-size:10px">消去</button></div>
-    <div class="scroll log" id="log" style="flex:1 1 30%"></div>
+    <button class="primary" id="btnExport">書き出す</button>
   </div>
+</header>
 
-  <!-- preview -->
-  <div class="col">
-    <div class="ph"><b>プログラム</b><span><label><input type="checkbox" id="safeT"> セーフエリア</label></span></div>
+<main class="work">
+  <section class="monitor" aria-label="プレビュー">
     <div class="stage" id="stage">
       <div class="cv-wrap" id="cvWrap">
         <canvas id="view" width="540" height="960"></canvas>
         <div class="safe" id="safe">
-          <div style="top:0;height:11%">上部：アカウント表示などに隠れやすい（目安）</div>
-          <div style="bottom:0;height:20%">下部：キャプション・ボタンに隠れやすい（目安）</div>
+          <div style="top:0;height:11%">上：アカウント名などに隠れやすい（目安）</div>
+          <div style="bottom:0;height:20%">下：キャプション・ボタンに隠れやすい（目安）</div>
         </div>
       </div>
       <div class="dropnote" id="dropnote">ここにドロップして読み込み</div>
     </div>
     <div class="transport">
-      <button id="tStart" title="先頭へ">⏮</button>
-      <button id="tBack" title="1フレーム戻る">◀</button>
-      <button id="tPlay" style="min-width:56px">▶ 再生</button>
-      <button id="tFwd" title="1フレーム進む">▶</button>
-      <span class="tc" id="tc">00:00:00:00</span>
-      <span style="color:var(--dim)">/ <span id="tdur">00:00:00</span></span>
+      <button id="tStart" title="先頭へ" aria-label="先頭へ">⏮</button>
+      <button id="tBack" title="1コマ戻る" aria-label="1コマ戻る">◀</button>
+      <button id="tPlay" class="play" aria-label="再生">▶</button>
+      <button id="tFwd" title="1コマ進む" aria-label="1コマ進む">▶</button>
+      <span class="tc" id="tc">00:00:00:00</span><span class="tdur">/ <span id="tdur">00:00:00</span></span>
       <span style="flex:1"></span>
-      <select id="quality" title="プレビュー画質"><option value="540">プレビュー 1/2</option><option value="1080">プレビュー フル</option></select>
+      <label><input type="checkbox" id="safeT"> 隠れる範囲</label>
+      <select id="quality" title="プレビューの画質"><option value="540">軽い表示</option><option value="1080">きれいな表示</option></select>
     </div>
-  </div>
+  </section>
 
-  <!-- scopes -->
-  <div class="col">
-    <div class="ph"><b>波形モニター</b><span>輝度</span></div>
-    <div class="scope"><canvas id="scWave" width="256" height="128"></canvas></div>
-    <div class="ph"><b>ベクトルスコープ</b><span>色</span></div>
-    <div class="scope"><canvas id="scVec" width="180" height="180" style="width:62%;margin:0 auto"></canvas></div>
-    <div class="ph"><b>ラウドネス</b><span>目安 -14</span></div>
-    <div class="scope">
-      <div class="meter"><span>瞬間</span><div class="bar"><i id="mM"></i><b style="left:77%"></b></div><span class="num" id="mMv">-∞</span></div>
-      <div class="meter"><span>3秒平均</span><div class="bar"><i id="mS"></i><b style="left:77%"></b></div><span class="num" id="mSv">-∞</span></div>
-      <div class="meter"><span>ピーク</span><div class="bar"><i id="mP"></i><b style="left:98%"></b></div><span class="num" id="mPv">-∞</span></div>
-      <div style="color:var(--dim2);font-size:10px;line-height:1.5;margin-top:4px">dBFS（RMS）での簡易表示です。正式なLUFS測定ではありません。</div>
-    </div>
-    <div class="ph"><b>クリップ</b><span id="clipKind"></span></div>
-    <div class="scroll insp" id="clipInsp" style="flex:1"></div>
-  </div>
-
-  <!-- color + telop -->
-  <div class="col">
-    <div class="ph"><b>カラー</b><button id="gradeReset" style="padding:0 6px;font-size:10px">リセット</button></div>
-    <div class="scroll" style="flex:1">
-      <div class="wheels">
-        <div class="wheel"><canvas id="wLift" width="160" height="160"></canvas>リフト<input type="range" id="wLiftM" min="-0.2" max="0.2" step="0.005" value="0"></div>
-        <div class="wheel"><canvas id="wGamma" width="160" height="160"></canvas>ガンマ<input type="range" id="wGammaM" min="-0.6" max="0.6" step="0.01" value="0"></div>
-        <div class="wheel"><canvas id="wGain" width="160" height="160"></canvas>ゲイン<input type="range" id="wGainM" min="-0.5" max="0.5" step="0.01" value="0"></div>
+  <section class="panel" id="panel">
+    <!-- 1 素材 -->
+    <div class="pane" data-pane="1">
+      <div class="pane-body">
+        <div class="pane-head"><span class="eyebrow">手順 1 / 5</span><h2>素材を入れる</h2>
+          <p>話している動画、合間に入れる映像や写真、BGMを入れます。種類は名前から自動で見分けます。違っていたら右の選択で直せます。</p></div>
+        <button class="drop" id="bImport"><b>＋ 動画・写真・音楽を選ぶ</b><span>またはこの画面にファイルをドラッグ＆ドロップ</span></button>
+        <div class="binhead"><b>読み込んだ素材</b><span class="cnt" id="binCount">0 件</span><button class="ghost" id="mDemo2">デモ素材で試す</button></div>
+        <div class="bin" id="bin"></div>
       </div>
-      <div class="sl"><span>露出</span><input type="range" id="gExp" min="-1" max="1" step="0.01" value="0"><span>0</span></div>
-      <div class="sl"><span>コントラスト</span><input type="range" id="gCon" min="-0.5" max="0.8" step="0.01" value="0"><span>0</span></div>
-      <div class="sl"><span>彩度</span><input type="range" id="gSat" min="0" max="2" step="0.01" value="1"><span>1</span></div>
-      <div class="sl"><span>色温度</span><input type="range" id="gTemp" min="-1" max="1" step="0.01" value="0"><span>0</span></div>
-      <div class="sl"><span>ティント</span><input type="range" id="gTint" min="-1" max="1" step="0.01" value="0"><span>0</span></div>
-      <div class="sl"><span>ビネット</span><input type="range" id="gVig" min="0" max="1" step="0.01" value="0"><span>0</span></div>
-      <div class="sl"><span>グレイン</span><input type="range" id="gGrain" min="0" max="1" step="0.01" value="0"><span>0</span></div>
-      <div class="ph" style="margin-top:6px"><b>LUT（グレードクリップ用）</b></div>
-      <div class="grid3" id="lutBtns"></div>
-      <div class="ph" style="margin-top:4px"><b>テロップ</b><button id="addTelop" style="padding:0 6px;font-size:10px">＋ 追加</button></div>
-      <div id="telopInsp" class="insp"></div>
+      <div class="pane-foot"><span class="hint">素材はこのブラウザに保存されます</span><button class="primary" data-go="2">次へ：台本 →</button></div>
     </div>
-  </div>
-</div>
 
-<!-- timeline -->
-<div class="tl">
+    <!-- 2 台本 -->
+    <div class="pane" data-pane="2" hidden>
+      <div class="pane-body">
+        <div class="pane-head"><span class="eyebrow">手順 2 / 5</span><h2>台本を入れる</h2>
+          <p>1行目がタイトル（画面の上に出ます）、2行目からが話す内容です。話す区間ごとに1行ずつテロップになります。台本がなくても先に進めます。</p></div>
+        <div class="card" id="aiBox" hidden>
+          <h3>AIに台本を書いてもらう</h3>
+          <div class="row"><input type="text" id="aiTheme" placeholder="テーマ（例：美容室の予約が増える3つのコツ）" style="flex:1;min-width:200px"><button id="aiScript" class="primary">台本を作る</button></div>
+          <span class="hint" id="aiMsg"></span>
+        </div>
+        <textarea id="script" placeholder="例）&#10;予約が増える3つのコツ&#10;今日は予約が増えるコツを話します&#10;まずプロフィールに料金を書く&#10;…"></textarea>
+        <div class="sinfo" id="scriptInfo"></div>
+      </div>
+      <div class="pane-foot"><button class="ghost" data-go="1">← 戻る</button><button class="primary" data-go="3">次へ：おまかせ編集 →</button></div>
+    </div>
+
+    <!-- 3 おまかせ編集 -->
+    <div class="pane" data-pane="3" hidden>
+      <div class="pane-body">
+        <div class="pane-head"><span class="eyebrow">手順 3 / 5</span><h2>おまかせ編集</h2>
+          <p>チェックした作業を上から順に自動で行います。終わったら左のプレビューで確認してください。気に入らなければもう一度押せばやり直せます（<kbd>Ctrl</kbd>+<kbd>Z</kbd> で元に戻せます）。</p></div>
+        <button class="primary bigrun" id="runAll">▶ おまかせ編集を始める</button>
+        <div class="agents" id="agents"></div>
+        <details class="fold"><summary>カットの細かい設定</summary><div style="display:flex;flex-direction:column;gap:8px">
+          <div class="sl"><span>無音とみなす音量</span><input type="range" id="silTh" min="-60" max="-20" value="-38"><span id="silThV">-38</span></div>
+          <div class="sl"><span>削る無音の長さ</span><input type="range" id="silMin" min="0.15" max="1.5" step="0.05" value="0.35"><span id="silMinV">0.35</span></div>
+          <span class="hint">声が小さい動画で話の途中まで切れるときは「無音とみなす音量」を左に動かします。</span>
+        </div></details>
+        <details class="fold"><summary>作業の記録</summary><div><div class="log" id="log"></div><button class="ghost" id="clearLog" style="margin-top:6px">記録を消す</button></div></details>
+      </div>
+      <div class="pane-foot"><button class="ghost" data-go="2">← 戻る</button><button class="primary" data-go="4">次へ：仕上げ →</button></div>
+    </div>
+
+    <!-- 4 仕上げ -->
+    <div class="pane" data-pane="4" hidden>
+      <div class="tabs" role="tablist">
+        <button class="tab on" data-tab="telop">テロップ</button>
+        <button class="tab" data-tab="color">色</button>
+        <button class="tab" data-tab="sound">音</button>
+        <button class="tab" data-tab="detail">詳しく</button>
+      </div>
+      <div class="pane-body">
+        <div data-tabpane="telop" style="display:flex;flex-direction:column;gap:14px">
+          <div class="pane-head"><span class="eyebrow">手順 4 / 5</span><h2>テロップを直す</h2><p>文字をそのまま書き換えられます。時刻を押すとその場面に移動します。</p></div>
+          <div class="tlist" id="telopList"></div>
+          <div class="row"><button id="addTelop">＋ 今の位置にテロップを追加</button></div>
+          <div class="card insp" id="telopInsp"></div>
+        </div>
+        <div data-tabpane="color" hidden style="display:flex;flex-direction:column;gap:14px">
+          <div class="pane-head"><span class="eyebrow">手順 4 / 5</span><h2>色の雰囲気</h2><p>動画全体の雰囲気を選びます。明るさなどは下で調整できます。</p></div>
+          <div class="looks" id="lutBtns"></div>
+          <div class="sl"><span>雰囲気の強さ</span><input type="range" id="lookAmt" min="0" max="1.5" step="0.01" value="0.8"><span id="lookAmtV">0.80</span></div>
+          <div class="card" style="gap:8px">
+            <div class="row" style="justify-content:space-between"><h3>明るさと色</h3><button class="ghost" id="gradeReset">元に戻す</button></div>
+            <div class="sl"><span>明るさ</span><input type="range" id="gExp" min="-1" max="1" step="0.01" value="0"><span>0</span></div>
+            <div class="sl"><span>メリハリ</span><input type="range" id="gCon" min="-0.5" max="0.8" step="0.01" value="0"><span>0</span></div>
+            <div class="sl"><span>鮮やかさ</span><input type="range" id="gSat" min="0" max="2" step="0.01" value="1"><span>1</span></div>
+            <div class="sl"><span>暖かさ</span><input type="range" id="gTemp" min="-1" max="1" step="0.01" value="0"><span>0</span></div>
+            <div class="sl"><span>緑⇔赤紫</span><input type="range" id="gTint" min="-1" max="1" step="0.01" value="0"><span>0</span></div>
+            <div class="sl"><span>周辺を暗く</span><input type="range" id="gVig" min="0" max="1" step="0.01" value="0"><span>0</span></div>
+            <div class="sl"><span>フィルム感</span><input type="range" id="gGrain" min="0" max="1" step="0.01" value="0"><span>0</span></div>
+          </div>
+          <details class="fold"><summary>プロ向け：カラーホイール</summary><div>
+            <div class="wheels">
+              <div class="wheel"><canvas id="wLift" width="160" height="160"></canvas>暗部<input type="range" id="wLiftM" min="-0.2" max="0.2" step="0.005" value="0"></div>
+              <div class="wheel"><canvas id="wGamma" width="160" height="160"></canvas>中間<input type="range" id="wGammaM" min="-0.6" max="0.6" step="0.01" value="0"></div>
+              <div class="wheel"><canvas id="wGain" width="160" height="160"></canvas>明部<input type="range" id="wGainM" min="-0.5" max="0.5" step="0.01" value="0"></div>
+            </div><span class="hint">円の中をドラッグで色味、ダブルクリックで中央に戻ります。</span>
+          </div></details>
+        </div>
+        <div data-tabpane="sound" hidden style="display:flex;flex-direction:column;gap:14px">
+          <div class="pane-head"><span class="eyebrow">手順 4 / 5</span><h2>音のバランス</h2><p>声が聞き取りやすいように、BGMは小さめがおすすめです。</p></div>
+          <div class="card mix" id="mixer"></div>
+          <div class="card" style="gap:8px">
+            <h3>音の大きさ（再生中に動きます）</h3>
+            <div class="meter"><span>今</span><div class="bar"><i id="mM"></i><b style="left:77%"></b></div><span class="num" id="mMv">-∞</span></div>
+            <div class="meter"><span>3秒の平均</span><div class="bar"><i id="mS"></i><b style="left:77%"></b></div><span class="num" id="mSv">-∞</span></div>
+            <div class="meter"><span>いちばん大きい</span><div class="bar"><i id="mP"></i><b style="left:98%"></b></div><span class="num" id="mPv">-∞</span></div>
+            <span class="hint">線は目安（平均 -14 / 最大 -1）。dBFS での簡易表示で、正式なLUFS測定ではありません。</span>
+          </div>
+        </div>
+        <div data-tabpane="detail" hidden style="display:flex;flex-direction:column;gap:14px">
+          <div class="pane-head"><span class="eyebrow">手順 4 / 5</span><h2>詳しい情報</h2><p>タイムラインで選んだクリップの設定と、映像の明るさ・色の分布です。</p></div>
+          <div class="card"><div class="row" style="justify-content:space-between"><h3>選んだクリップ</h3><span class="hint" id="clipKind"></span></div><div class="insp" id="clipInsp"></div></div>
+          <div class="scopes"><figure><canvas id="scWave" width="256" height="128"></canvas><figcaption>明るさの分布（波形）</figcaption></figure><figure><canvas id="scVec" width="180" height="180"></canvas><figcaption>色の分布（ベクトルスコープ）</figcaption></figure></div>
+        </div>
+      </div>
+      <div class="pane-foot"><button class="ghost" data-go="3">← 戻る</button><button class="primary" data-go="5">次へ：書き出し →</button></div>
+    </div>
+
+    <!-- 5 書き出し -->
+    <div class="pane" data-pane="5" hidden>
+      <div class="pane-body">
+        <div class="pane-head"><span class="eyebrow">手順 5 / 5</span><h2>書き出す</h2><p>投稿前のチェックをしてから、動画ファイルを作ります。</p></div>
+        <div class="card"><div class="row" style="justify-content:space-between"><h3>投稿前チェック</h3><button id="qcRun">チェックする</button></div><div class="qc" id="qcList"><div>「チェックする」を押すと、長さ・黒い画面・テロップの位置などを確かめます。</div></div></div>
+        <div class="card" id="exportArea"></div>
+        <div class="card" id="capBox" hidden>
+          <h3>投稿文とハッシュタグ</h3>
+          <span class="hint">台本をもとに、AIがキャプションとハッシュタグを作ります。</span>
+          <div class="row"><button id="aiCaption" class="primary">投稿文を作る</button><span class="hint" id="capAiMsg"></span></div>
+        </div>
+      </div>
+      <div class="pane-foot"><button class="ghost" data-go="4">← 戻る</button><span></span></div>
+    </div>
+  </section>
+</main>
+
+<section class="dock" id="dock" aria-label="タイムライン">
   <div class="tlbar">
-    <button id="tlPlay">▶</button>
-    <span class="tc" id="tc2" style="font-size:13px">00:00:00:00</span>
+    <button id="tlPlay" aria-label="再生">▶</button>
+    <span class="tc" id="tc2">00:00:00:00</span>
     <span class="sep"></span>
-    <button id="tlSplit" title="再生ヘッドで分割 (S)">✂ 分割</button>
-    <button id="tlDel" title="選択を削除 (Delete)">削除</button>
-    <button id="tlRipple" title="選択を削除して詰める">リップル削除</button>
-    <button id="tlUndo" title="元に戻す (Ctrl+Z)">↶</button>
-    <button id="tlRedo" title="やり直し (Ctrl+Shift+Z)">↷</button>
+    <button id="tlSplit" title="再生位置で分割 (S)">✂ 分割</button>
+    <button id="tlDel" title="選んだクリップを削除 (Delete)">削除</button>
+    <button id="tlRipple" title="削除して後ろを詰める">削除して詰める</button>
     <span class="sep"></span>
-    <button id="tlSnap" class="on">スナップ</button>
-    <span style="color:var(--dim)">ズーム</span><input type="range" id="tlZoom" min="10" max="200" value="44" style="width:110px">
+    <button id="tlUndo" title="元に戻す (Ctrl+Z)">↶ 戻す</button>
+    <button id="tlRedo" title="やり直す (Ctrl+Shift+Z)">↷</button>
+    <span class="sep"></span>
+    <button id="tlSnap" class="on" title="端をそろえて吸着">吸着</button>
+    <label class="row" style="gap:6px;font-size:12.5px;color:var(--muted)">拡大<input type="range" id="tlZoom" min="10" max="200" value="44" style="width:100px"></label>
     <span style="flex:1"></span>
-    <span style="color:var(--dim2)"><kbd>Space</kbd> 再生 <kbd>S</kbd> 分割 <kbd>Del</kbd> 削除 <kbd>←→</kbd> 1コマ</span>
+    <span class="keys"><kbd>Space</kbd> 再生 <kbd>S</kbd> 分割 <kbd>Del</kbd> 削除</span>
+    <button class="ghost" id="dockSize" title="タイムラインの大きさ">タイムラインを大きく</button>
   </div>
   <div class="tlbody">
     <div class="heads" id="heads"></div>
@@ -299,7 +486,7 @@ kbd{background:#222831;border:1px solid #3a4350;border-radius:3px;padding:0 4px;
       </div>
     </div>
   </div>
-</div>
+</section>
 </div>
 
 <input type="file" id="fileIn" multiple accept="video/*,audio/*,image/*" style="display:none">
@@ -559,14 +746,17 @@ const hasVideo = m => m && (m.kind==='video' || m.kind==='proc' || m.kind==='ima
 /* =========================================================
    メディアビン
    ========================================================= */
+const ROLE_LABEL = {main:'メイン（話す動画）', broll:'Bロール（差し込み）', voice:'ナレーション', bgm:'BGM', sfx:'効果音'};
 function renderBin(){
   const bin = $('bin'); bin.innerHTML = '';
-  $('binCount').textContent = media.length + ' 件';
-  for (const m of media){
+  const list = media.filter(m => !m.builtin);
+  $('binCount').textContent = list.length + ' 件';
+  if (!list.length){ bin.innerHTML = '<div class="empty">まだ素材がありません。上のボタンから選ぶか、「デモ素材で試す」を押してください。</div>'; return; }
+  for (const m of list){
     const d = document.createElement('div'); d.className = 'mi' + (hasVideo(m)?'':' audio'); d.draggable = true;
     if (!m.thumb){
       const c = document.createElement('canvas'); m.thumb = c;
-      if (hasVideo(m)){ c.width = 90; c.height = 160; } else { c.width = 90; c.height = 80; }
+      if (hasVideo(m)){ c.width = 90; c.height = 160; } else { c.width = 80; c.height = 80; }
       const g = c.getContext('2d');
       if (m.kind==='proc') PROC[m.proc](g, 1.5, 90, 160, m);
       else if (m.kind==='image') drawCover(g, m.img, 90, 160, m.img.naturalWidth, m.img.naturalHeight);
@@ -576,22 +766,28 @@ function renderBin(){
         tv.onloadeddata = () => { tv.currentTime = Math.min(0.5, (tv.duration||1)/2); };
         tv.onseeked = () => { g.fillStyle = '#000'; g.fillRect(0,0,90,160); drawCover(g, tv, 90, 160, tv.videoWidth, tv.videoHeight); tv.removeAttribute('src'); tv.load(); };
       }
-      else { g.fillStyle='#14101f'; g.fillRect(0,0,90,80); g.strokeStyle = m.role==='bgm'?'#9b74ef':m.role==='sfx'?'#e08a4a':'#6bd166'; g.beginPath(); for (let x=0;x<90;x++){ const v=(m.peaks?m.peaks[Math.floor(x/90*m.peaks.length)]:0)*36; g.moveTo(x,40-v); g.lineTo(x,40+v);} g.stroke(); }
+      else { g.fillStyle='#1b1530'; g.fillRect(0,0,80,80); g.strokeStyle = m.role==='bgm'?'#a98bff':m.role==='sfx'?'#f0a060':'#7fd67a'; g.lineWidth = 1.5; g.beginPath(); for (let x=0;x<80;x+=2){ const v=(m.peaks?m.peaks[Math.floor(x/80*m.peaks.length)]:0)*34; g.moveTo(x,40-v); g.lineTo(x,40+v);} g.stroke(); }
     }
     d.appendChild(m.thumb);
-    const add = document.createElement('button'); add.className = 'mbtn add'; add.textContent = '＋'; add.title = '再生ヘッドの位置に追加';
+    const nm = document.createElement('div'); nm.className = 'nm';
+    const b = document.createElement('b'); b.textContent = m.name; const sm = document.createElement('small');
+    sm.textContent = (m.kind==='image' ? '写真' : hasVideo(m) ? '動画' : '音声') + (isFinite(m.duration) ? ' ・ ' + fmtS(m.duration) : '') + (m.demo ? ' ・ デモ' : '');
+    nm.append(b, sm); d.appendChild(nm);
+    const sel = document.createElement('select'); sel.setAttribute('aria-label', m.name + 'の種類');
+    const roles = hasVideo(m) ? ['main','broll'] : ['voice','bgm','sfx'];
+    for (const r of roles){ const o = document.createElement('option'); o.value = r; o.textContent = ROLE_LABEL[r]; if (m.role === r) o.selected = true; sel.appendChild(o); }
+    sel.onchange = () => { m.role = sel.value; updateSteps(); log('システム', `${m.name} を「${ROLE_LABEL[m.role]}」にしました`); };
+    d.appendChild(sel);
+    const add = document.createElement('button'); add.className = 'mbtn'; add.textContent = '＋'; add.title = 'タイムラインの今の位置に置く';
+    add.setAttribute('aria-label', m.name + 'をタイムラインに置く');
     add.onclick = e => { e.stopPropagation(); addMediaClip(m, defaultTrackFor(m), curT); };
     d.appendChild(add);
-    if (!m.demo){
-      const del = document.createElement('button'); del.className = 'mbtn del'; del.textContent = '✕'; del.title = '素材を削除';
-      del.onclick = e => { e.stopPropagation(); askRemoveMedia(m); };
-      d.appendChild(del);
-    }
-    const tag = document.createElement('span'); tag.className='tag'; tag.textContent = {main:'メイン',broll:'Bロール',voice:'ボイス',bgm:'BGM',sfx:'効果音'}[m.role]; d.appendChild(tag);
-    const nm = document.createElement('div'); nm.className='nm'; nm.textContent = m.name + (isFinite(m.duration)?' ・ '+fmtS(m.duration):''); d.appendChild(nm);
-    d.title = '＋：再生ヘッドの位置に追加 ／ ドラッグ：好きなトラックへ';
+    const del = document.createElement('button'); del.className = 'mbtn del'; del.textContent = '✕'; del.title = '素材を削除'; del.setAttribute('aria-label', m.name + 'を削除');
+    del.onclick = e => { e.stopPropagation(); askRemoveMedia(m); };
+    if (m.demo) del.style.visibility = 'hidden';
+    d.appendChild(del);
+    d.title = 'ドラッグでタイムラインの好きな場所へ置けます';
     d.ondragstart = e => { e.dataTransfer.setData('text/media', m.id); e.dataTransfer.effectAllowed='copy'; };
-    d.ondblclick = () => { addMediaClip(m, defaultTrackFor(m), curT); };
     bin.appendChild(d);
   }
 }
@@ -934,6 +1130,13 @@ async function renderFrameAsync(t){
 }
 function renderFrame(t){
   ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
+  if (!exporting && !fastExporting && projectEnd() === 0){
+    ctx.fillStyle = '#ffffff99'; ctx.font = `700 ${W*0.045}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('ここにできあがりが映ります', W/2, H*0.46);
+    ctx.fillStyle = '#ffffff66'; ctx.font = `500 ${W*0.033}px ${FONT}`;
+    ctx.fillText('素材を入れて「おまかせ編集」を押してください', W/2, H*0.52);
+    return;
+  }
   drawVideoLayer('main', t);
   drawVideoLayer('broll', t);
   applyGrade(effectiveGrade(t));
@@ -977,7 +1180,7 @@ function pause(){ playing = false; stopAudio(); updatePlayBtn(); syncVideos(curT
 function togglePlay(){ playing ? pause() : play(); }
 function seek(t){ curT = Math.max(0, t); if (playing) scheduleAudio(curT); syncVideos(curT); }
 function restartIfPlaying(){ if (playing) scheduleAudio(curT); }
-function updatePlayBtn(){ $('tPlay').textContent = playing ? '❚❚ 停止' : '▶ 再生'; $('tlPlay').textContent = playing ? '❚❚' : '▶'; }
+function updatePlayBtn(){ for (const id of ['tPlay','tlPlay']){ $(id).textContent = playing ? '❚❚' : '▶'; $(id).setAttribute('aria-label', playing ? '一時停止' : '再生'); } }
 
 let frameN = 0;
 function loop(){
@@ -1001,6 +1204,7 @@ function loop(){
 const scCv = document.createElement('canvas'); scCv.width = 72; scCv.height = 128;
 const scCtx = scCv.getContext('2d', {willReadFrequently:true});
 function drawScopes(){
+  if (!$('scWave').offsetParent) return;
   scCtx.drawImage(view, 0, 0, 72, 128);
   const d = scCtx.getImageData(0,0,72,128).data;
   const wv = $('scWave').getContext('2d'), WW = 256, WH = 128;
@@ -1054,15 +1258,26 @@ function renderHeads(){
   for (const tr of tracks){
     const d = document.createElement('div'); d.className = 'hd';
     d.innerHTML = `<span class="cb" style="background:${tr.color}"></span><span class="n">${tr.name}</span>`;
-    const mb = document.createElement('button'); mb.textContent = 'M'; mb.title = 'ミュート/非表示'; if (tr.mute) mb.classList.add('on');
+    const mb = document.createElement('button'); mb.textContent = tr.type==='audio' || tr.id==='main' ? '消音' : '隠す'; mb.title = tr.type==='audio' ? 'このトラックの音を消す' : 'このトラックを一時的に隠す'; if (tr.mute) mb.classList.add('on');
     mb.onclick = () => { tr.mute = !tr.mute; renderHeads(); restartIfPlaying(); commit(); };
     d.appendChild(mb);
-    if (tr.type==='audio' || tr.id==='main'){
-      const v = document.createElement('input'); v.type = 'range'; v.min = 0; v.max = 1.5; v.step = 0.01; v.value = tr.vol; v.title = '音量';
-      v.oninput = () => { tr.vol = +v.value; restartIfPlaying(); }; v.onchange = commit;
-      d.appendChild(v);
-    }
     h.appendChild(d);
+  }
+  renderMixer();
+}
+const MIX = [['main','話し声（メイン動画）'],['voice','ナレーション'],['bgm','BGM'],['sfx','効果音'],['broll','Bロールの音']];
+function renderMixer(){
+  const box = $('mixer'); if (!box) return; box.innerHTML = '';
+  for (const [id, label] of MIX){
+    const tr = T(id); if (id==='broll' && !tr.clips.some(c => c.props.audio)) continue;
+    const row = document.createElement('div'); row.className = 'mixrow';
+    row.innerHTML = `<i style="background:${tr.color}"></i><span>${label}</span>`;
+    const r = document.createElement('input'); r.type = 'range'; r.min = 0; r.max = 1.5; r.step = 0.01; r.value = tr.vol; r.setAttribute('aria-label', label+'の音量');
+    const v = document.createElement('span'); v.className = 'v'; v.textContent = Math.round(tr.vol*100) + '%';
+    r.oninput = () => { tr.vol = +r.value; v.textContent = Math.round(tr.vol*100) + '%'; restartIfPlaying(); }; r.onchange = commit;
+    const mb = document.createElement('button'); mb.textContent = tr.mute ? '消音中' : '消音'; if (tr.mute) mb.classList.add('on');
+    mb.onclick = () => { tr.mute = !tr.mute; renderHeads(); restartIfPlaying(); commit(); };
+    row.append(r, v, mb); box.appendChild(row);
   }
 }
 function renderTimeline(){
@@ -1092,6 +1307,7 @@ function renderTimeline(){
     lanes.appendChild(lane);
   }
   $('tdur').textContent = fmtTC(projectEnd()).slice(0,8);
+  renderTelopList(); renderLooks(); updateSteps();
 }
 function clipLabel(tr, c){
   if (tr.type==='text') return c.props.text.replace(/\n/g,' ');
@@ -1212,6 +1428,7 @@ function redoFn(){ if (!redo.length) return; const s = redo.pop(); hist.push(s);
    ========================================================= */
 function renderInspectors(){
   const [tr, c] = findClip(selId);
+  document.querySelectorAll('.trow').forEach(r => r.classList.toggle('sel', r.dataset.id === selId));
   // テロップ
   const ti = $('telopInsp');
   if (tr && tr.type === 'text'){
@@ -1228,7 +1445,7 @@ function renderInspectors(){
     ti.appendChild(slider('サイズ', 30, 180, 1, p.size, v => p.size = v));
     ti.appendChild(slider('高さ位置', 0.05, 0.95, 0.01, p.y, v => p.y = v));
   } else {
-    ti.innerHTML = '<div class="empty">テロップのクリップを選ぶと、ここで文字・スタイル・色・位置を編集できます。<br>「＋ 追加」で再生ヘッドの位置に新しいテロップを置きます。</div>';
+    ti.innerHTML = '<div class="empty">上の一覧からテロップを選ぶと、ここで見た目（スタイル・色・大きさ・高さ）を変えられます。</div>';
   }
   // クリップ
   const ci = $('clipInsp'); ci.innerHTML = '';
@@ -1274,12 +1491,12 @@ function drawWheel(cv, w){
   const cg = g.createConicGradient(0, S/2, S/2);
   for (let i=0;i<=360;i+=30) cg.addColorStop(i/360, `hsl(${i},80%,50%)`);
   g.fillStyle = cg; g.beginPath(); g.arc(S/2,S/2,r,0,7); g.fill();
-  const rg = g.createRadialGradient(S/2,S/2,0,S/2,S/2,r); rg.addColorStop(0,'#1a1e24'); rg.addColorStop(0.75,'#1a1e2499'); rg.addColorStop(1,'#1a1e2400');
+  const rg = g.createRadialGradient(S/2,S/2,0,S/2,S/2,r); const sc = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#ffffff'; rg.addColorStop(0,sc); rg.addColorStop(0.7,sc+'aa'); rg.addColorStop(1,sc+'00');
   g.fillStyle = rg; g.beginPath(); g.arc(S/2,S/2,r,0,7); g.fill();
   g.strokeStyle = '#ffffff22'; g.beginPath(); g.moveTo(S/2,8); g.lineTo(S/2,S-8); g.moveTo(8,S/2); g.lineTo(S-8,S/2); g.stroke();
   const px = S/2 + w.x*r, py = S/2 + w.y*r;
-  g.strokeStyle = '#fff'; g.lineWidth = 2.5; g.beginPath(); g.arc(px,py,7,0,7); g.stroke();
-  g.fillStyle = '#e8ff3a'; g.beginPath(); g.arc(px,py,3,0,7); g.fill();
+  g.strokeStyle = '#fff'; g.lineWidth = 3; g.beginPath(); g.arc(px,py,8,0,7); g.stroke(); g.strokeStyle = '#000'; g.lineWidth = 1; g.beginPath(); g.arc(px,py,9.5,0,7); g.stroke();
+  g.fillStyle = '#e0245e'; g.beginPath(); g.arc(px,py,3,0,7); g.fill();
 }
 for (const [cid, key] of WHEELS){
   const cv = $(cid);
@@ -1302,81 +1519,122 @@ function syncGradeUI(){
   for (const [id, key] of GSL){ $(id).value = grade[key]; $(id).nextElementSibling.textContent = (+grade[key]).toFixed(2); }
 }
 $('gradeReset').onclick = () => { grade = DEFAULT_GRADE(); syncGradeUI(); commit(); };
-(function(){
-  const g = $('lutBtns');
-  for (const k of Object.keys(LUTS)){
-    if (k==='なし') continue;
-    const b = document.createElement('button'); b.textContent = k; b.title = '再生ヘッド位置にグレードクリップを追加（選択中のグレードクリップがあれば差し替え）';
-    b.onclick = () => {
-      const [tr, c] = findClip(selId);
-      if (tr && tr.type==='grade'){ c.props.lut = k; }
-      else { const end = projectEnd(); const nc = {id:newId('c'), media:null, start:curT, in:0, dur: Math.max(2, (end > curT ? end - curT : 5)), props:{lut:k, amt:1}}; T('grade').clips.push(nc); selId = nc.id; }
-      afterEdit();
-    };
-    g.appendChild(b);
+/* 色の雰囲気：動画全体に1つのグレードクリップを敷く。見本は今の場面に色を当てて作る */
+function currentLook(){ const g = T('grade').clips; return g.length ? g[0].props.lut : 'なし'; }
+let lookThumbsAt = -1;
+function renderLooks(){
+  const box = $('lutBtns'); if (!box) return;
+  const cur = currentLook();
+  if (box.childElementCount !== Object.keys(LUTS).length){
+    box.innerHTML = '';
+    for (const k of Object.keys(LUTS)){
+      const b = document.createElement('button'); b.className = 'look'; b.dataset.lut = k;
+      const cv = document.createElement('canvas'); cv.width = 80; cv.height = 100; b.appendChild(cv);
+      b.append(k === 'なし' ? 'そのまま' : k);
+      b.onclick = () => setLook(k);
+      box.appendChild(b);
+    }
   }
-})();
+  for (const b of box.children) b.classList.toggle('on', b.dataset.lut === cur);
+  const g = T('grade').clips[0]; $('lookAmt').value = g ? (g.props.amt ?? 1) : $('lookAmt').value; $('lookAmtV').textContent = (+$('lookAmt').value).toFixed(2);
+}
+function setLook(k){
+  const end = projectEnd();
+  if (k === 'なし') T('grade').clips = [];
+  else T('grade').clips = [{id:newId('c'), media:null, start:0, in:0, dur:Math.max(end, 1), props:{lut:k, amt:+$('lookAmt').value}}];
+  afterEdit();
+}
+function drawLookThumbs(){
+  if (lookThumbsAt === curT) return; lookThumbsAt = curT;
+  // 色を当てる前の今の場面を小さく取る
+  const save = grade, gt = T('grade'), mute = gt.mute; grade = DEFAULT_GRADE(); gt.mute = true;
+  renderFrame(curT); const sm = document.createElement('canvas'); sm.width = 80; sm.height = 100;
+  const sg = sm.getContext('2d', {willReadFrequently:true}); sg.drawImage(view, 0, H*0.15, W, W*1.25, 0, 0, 80, 100);
+  grade = save; gt.mute = mute; renderFrame(curT);
+  const base = sg.getImageData(0,0,80,100);
+  for (const b of $('lutBtns').children){
+    const g = mergeGrade(DEFAULT_GRADE(), LUTS[b.dataset.lut] || {}, 1), [lr,lg,lb] = buildLUT(g); lutCacheKey = '';
+    const img = new ImageData(new Uint8ClampedArray(base.data), 80, 100), d = img.data;
+    for (let i=0;i<d.length;i+=4){ let r = lr[d[i]], gg = lg[d[i+1]], bb = lb[d[i+2]]; const l = 0.2126*r+0.7152*gg+0.0722*bb; d[i] = l+(r-l)*g.sat; d[i+1] = l+(gg-l)*g.sat; d[i+2] = l+(bb-l)*g.sat; }
+    b.querySelector('canvas').getContext('2d').putImageData(img, 0, 0);
+  }
+}
+$('lookAmt').oninput = () => { $('lookAmtV').textContent = (+$('lookAmt').value).toFixed(2); const g = T('grade').clips; for (const c of g) c.props.amt = +$('lookAmt').value; };
+$('lookAmt').onchange = commit;
 
-/* =========================================================
-   AIエージェント
-   ========================================================= */
+/* テロップ一覧：文字をその場で直せる */
+function renderTelopList(){
+  const box = $('telopList'); if (!box) return;
+  if (box.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return;   // 入力中は作り直さない
+  const list = T('telop').clips.slice().sort((a,b) => a.start - b.start);
+  box.innerHTML = '';
+  if (!list.length){ box.innerHTML = '<div class="empty">テロップはまだありません。「おまかせ編集」を使うか、下のボタンで追加します。</div>'; return; }
+  for (const c of list){
+    const row = document.createElement('div'); row.className = 'trow' + (c.id === selId ? ' sel' : ''); row.dataset.id = c.id;
+    const tb = document.createElement('button'); tb.className = 'time ghost'; tb.textContent = fmtTC(c.start).slice(3,8); tb.title = 'この場面へ移動';
+    tb.onclick = () => { selId = c.id; seek(c.start + Math.min(0.3, c.dur/2)); renderTimeline(); renderInspectors(); };
+    const inp = document.createElement('input'); inp.type = 'text'; inp.value = c.props.text; inp.setAttribute('aria-label', 'テロップの文字');
+    inp.onfocus = () => { if (selId !== c.id){ selId = c.id; seek(c.start + Math.min(0.3, c.dur/2)); renderInspectors(); document.querySelectorAll('.clip').forEach(x => x.classList.remove('sel')); } };
+    inp.oninput = () => { c.props.text = inp.value; };
+    inp.onchange = () => { commit(); renderTimeline(); };
+    const x = document.createElement('button'); x.className = 'x ghost'; x.textContent = '✕'; x.title = 'このテロップを削除';
+    x.onclick = () => { T('telop').clips = T('telop').clips.filter(k => k !== c); if (selId === c.id) selId = null; afterEdit(); };
+    row.append(tb, inp, x); box.appendChild(row);
+  }
+}
+
 const AGENTS = [
-  {id:'cut',   name:'カット',   color:'#5b8cff', desc:'無音を検出して自動でカット', target:'lanes'},
-  {id:'telop', name:'テロップ', color:'#e8d44d', desc:'台本からテロップを配置', target:'telopInsp'},
-  {id:'broll', name:'Bロール', color:'#4fd1ff', desc:'話の合間に差し込み映像', target:'bin'},
-  {id:'color', name:'カラー',   color:'#ff6b81', desc:'明るさを解析して色補正', target:'wGamma'},
-  {id:'sfx',   name:'効果音',   color:'#ffa24c', desc:'テロップ・場面転換に効果音', target:'lanes'},
-  {id:'bgm',   name:'BGM',     color:'#b07cff', desc:'BGMを敷いて音量を調整', target:'mM'},
-  {id:'qc',    name:'書き出し', color:'#7dff6b', desc:'リール向けの最終チェック', target:'btnExport'},
+  {id:'cut',   name:'無音カット',   color:'#4c7dff', desc:'話していない間を見つけて切り、詰める'},
+  {id:'telop', name:'テロップ',     color:'#d4a91a', desc:'台本の文字を、話す区間ごとに置く'},
+  {id:'broll', name:'Bロール',      color:'#2fb4d8', desc:'話の合間に差し込み映像や写真を入れる'},
+  {id:'color', name:'色補正',       color:'#e0245e', desc:'明るさを測って整え、雰囲気を付ける'},
+  {id:'sfx',   name:'効果音',       color:'#e07a2b', desc:'テロップや場面の切り替わりに音を付ける'},
+  {id:'bgm',   name:'BGM',          color:'#7b4fd0', desc:'BGMを敷き、声が聞こえる音量にする'},
+  {id:'qc',    name:'投稿前チェック', color:'#15885a', desc:'長さ・黒い画面・テロップの位置を確かめる'},
 ];
+const agentEnabled = Object.fromEntries(AGENTS.map(a => [a.id, true]));
+const agentResult = {};
+let qcMessages = [];
 const agentState = {};
 function renderAgents(){
   const box = $('agents'); box.innerHTML = '';
   for (const a of AGENTS){
     const st = agentState[a.id] || '待機';
-    const d = document.createElement('div'); d.className = 'ag' + (st==='実行中'?' run':''); d.title = a.desc;
-    d.innerHTML = `<span class="d" style="background:${a.color}"></span><span>${a.name}<span style="color:var(--dim2);font-size:9.5px"> ・${a.desc}</span></span><span class="st">${st}</span>`;
-    const b = document.createElement('button'); b.textContent = '実行'; b.disabled = st==='実行中'; b.onclick = () => runAgent(a.id);
-    d.appendChild(b); box.appendChild(d);
+    const d = document.createElement('div'); d.className = 'ag';
+    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = agentEnabled[a.id]; cb.setAttribute('aria-label', a.name + 'を行う');
+    cb.onchange = () => { agentEnabled[a.id] = cb.checked; };
+    const dot = document.createElement('span'); dot.className = 'd'; dot.style.background = a.color;
+    const nm = document.createElement('div'); nm.className = 'nm';
+    nm.innerHTML = `<b></b><small></small><span class="res"></span>`;
+    nm.querySelector('b').textContent = a.name; nm.querySelector('small').textContent = a.desc;
+    nm.querySelector('.res').textContent = agentResult[a.id] || '';
+    const pill = document.createElement('span'); pill.className = 'pill' + (st==='実行中' ? ' run' : st==='完了' ? ' done' : st==='エラー' ? ' err' : '');
+    pill.textContent = st==='待機' ? 'まだ' : st;
+    const b = document.createElement('button'); b.textContent = 'これだけ実行'; b.disabled = st==='実行中'; b.onclick = () => runAgent(a.id);
+    d.append(cb, dot, nm, pill, b); box.appendChild(d);
   }
-  const n = Object.values(agentState).filter(s => s==='実行中').length;
-  $('agentBadge').classList.toggle('live', n>0);
-  $('agentBadgeText').textContent = n ? `${n} エージェント稼働中` : `${AGENTS.length} エージェント待機中`;
 }
 function log(who, msg, color){
   const l = $('log'), d = document.createElement('div'), now = new Date();
-  d.innerHTML = `<span class="t">${now.toTimeString().slice(0,8)}</span><span class="who" style="color:${color||'#ccc'}">${who}</span><span></span>`;
+  const a = AGENTS.find(x => x.name === who);
+  d.innerHTML = `<span class="t">${now.toTimeString().slice(0,8)}</span><span class="who"><i style="background:${a ? a.color : 'var(--faint)'}"></i></span><span></span>`;
+  d.querySelector('.who').append(who);
   d.lastChild.textContent = msg; l.appendChild(d); l.scrollTop = l.scrollHeight;
 }
-const cursors = {};
-function moveCursor(a, targetId){
-  let c = cursors[a.id];
-  if (!c){
-    c = document.createElement('div'); c.className = 'cursor';
-    c.innerHTML = `<svg width="18" height="18" viewBox="0 0 18 18"><path d="M2 2 L16 8 L9 10 L7 16 Z" fill="${a.color}" stroke="#000" stroke-width="1"/></svg><span style="background:${a.color}">${a.name}-01</span>`;
-    c.style.left = '50%'; c.style.top = '50%'; document.body.appendChild(c); cursors[a.id] = c;
-  }
-  const el = $(targetId); if (!el) return;
-  const r = el.getBoundingClientRect();
-  c.style.opacity = 1;
-  c.style.left = (r.left + r.width*(0.2+Math.random()*0.6)) + 'px';
-  c.style.top = (r.top + Math.min(r.height, 200)*(0.2+Math.random()*0.6)) + 'px';
-}
-function hideCursor(id){ const c = cursors[id]; if (c) setTimeout(() => c.style.opacity = 0, 1200); }
 const wait = ms => new Promise(r => setTimeout(r, ms));
 function mainSegments(){ return T('main').clips.slice().sort((a,b)=>a.start-b.start); }
 
 async function runAgent(id){
   const a = AGENTS.find(x => x.id === id);
   if (agentState[id]==='実行中') return;
-  agentState[id] = '実行中'; renderAgents(); moveCursor(a, a.target);
-  const L = msg => log(a.name, msg, a.color);
+  agentState[id] = '実行中'; agentResult[id] = ''; if (id === 'qc') qcMessages = []; renderAgents();
+  const L = msg => { log(a.name, msg, a.color); agentResult[id] = msg; if (id === 'qc') qcMessages.push(msg); };
   try {
     await wait(350);
     await AGENT_FN[id](L, a);
     agentState[id] = '完了';
   } catch(e){ L('エラー: ' + e.message); agentState[id] = 'エラー'; console.error(e); }
-  renderAgents(); hideCursor(id); afterEdit();
+  renderAgents(); afterEdit(); if (id === 'qc') renderQC();
 }
 const AGENT_FN = {
   async cut(L){
@@ -1521,6 +1779,11 @@ const AGENT_FN = {
     await wait(200);
   },
 };
+let autoEdited = false;
+function renderQC(){
+  const box = $('qcList'); box.innerHTML = '';
+  for (const m of qcMessages){ const d = document.createElement('div'); d.className = m.startsWith('⚠') ? 'warn' : m.startsWith('✓') ? 'ok' : ''; d.textContent = m; box.appendChild(d); }
+}
 async function runAll(){
   audioCtxFor();
   if (!T('main').clips.length){
@@ -1530,11 +1793,12 @@ async function runAll(){
     T('main').clips.push({id:newId('c'), media:m.id, start:0, in:0, dur:isFinite(m.duration)?m.duration:5, props:{vol:1}});
     log('システム', `${m.name} をメインに配置`, '#888'); renderTimeline();
   }
-  $('runAll').disabled = true;
-  log('システム', '全自動編集を開始', '#e8ff3a');
-  for (const a of AGENTS) await runAgent(a.id);
-  log('システム', '全自動編集が完了。再生して確認してください', '#e8ff3a');
-  $('runAll').disabled = false; seek(0);
+  $('runAll').disabled = true; $('runAll').textContent = '編集しています…';
+  log('システム', 'おまかせ編集を開始');
+  for (const a of AGENTS) if (agentEnabled[a.id]) await runAgent(a.id);
+  log('システム', 'おまかせ編集が終わりました。左のプレビューで確認してください');
+  autoEdited = true;
+  $('runAll').disabled = false; $('runAll').textContent = '▶ もう一度おまかせ編集する'; seek(0); updateSteps();
 }
 
 /* =========================================================
@@ -1551,16 +1815,17 @@ function hideModal(){ $('modal').classList.remove('show'); }
 /* ---- 書き出し完了後の表示（共通） ---- */
 function showExportResult(blob, ext, secs, mode){
   const url = URL.createObjectURL(blob), fname = `${$('projName').textContent}.${ext}`;
-  const end = projectEnd();
+  const end = projectEnd(); exportedOnce = true; updateSteps();
   log('書き出し', `${mode}で書き出しました（${(blob.size/1e6).toFixed(1)}MB / ${ext.toUpperCase()} / ${secs.toFixed(1)}秒、動画の長さの ${(end/Math.max(0.1,secs)).toFixed(1)} 倍速）`, '#7dff6b');
-  const h = $('modalBox').querySelector('h3'); if (h) h.textContent = '書き出し完了';
+  const h = $('exportArea').querySelector('h3'); if (h) h.textContent = '書き出しが終わりました';
   const st = $('exStat'); if (st) st.textContent = `かかった時間 ${secs.toFixed(1)} 秒（${mode}）`;
   const p = $('exProg'); if (p) p.style.width = '100%';
   const box = document.createElement('div');
-  box.innerHTML = `<video controls playsinline style="width:100%;max-height:50vh;background:#000;border-radius:6px;margin-top:8px"></video>
-    <div style="display:flex;gap:8px;align-items:center;margin-top:8px"><button class="primary" id="exSave">動画を保存</button><span id="exSaveMsg" style="color:var(--dim);font-size:11px"></span></div>`;
+  box.style.cssText = 'display:flex;flex-direction:column;gap:10px';
+  box.innerHTML = `<video controls playsinline style="width:min(100%,280px);aspect-ratio:9/16;background:#000;border-radius:10px"></video>
+    <div class="row"><button class="primary" id="exSave">動画を保存</button><span class="hint" id="exSaveMsg"></span></div>`;
   box.querySelector('video').src = url;
-  $('exProg').parentElement.after(box);
+  $('exStat').after(box); const eg = $('exGo'); if (eg){ eg.disabled = false; eg.textContent = 'もう一度書き出す'; }
   $('exSave').onclick = async () => { $('exSaveMsg').textContent = await saveFile(fname, blob); };
 }
 
@@ -1785,35 +2050,36 @@ function realtimeExport(res, mime){
   const tick = () => { if (!exporting) return; const p = $('exProg'); if (p) p.style.width = (curT/end*100)+'%'; requestAnimationFrame(tick); }; tick();
 }
 
-function startExport(){
-  const end = projectEnd(); if (!end){ toast('タイムラインが空です'); return; }
-  const fast = fastExportAvailable(), mime = pickMime();
-  if (!fast && !window.MediaRecorder){ toast('このブラウザは書き出しに対応していません（Chrome / Edge を推奨）'); return; }
-  showModal(`<h3>書き出し</h3>
-  <div>方式：<b>${fast ? '高速書き出し（再生を待たずに作成・MP4）' : 'リアルタイム書き出し（このブラウザは高速書き出し非対応）'}</b><br>
-  解像度：<select id="exRes"><option value="1080">1080×1920（推奨）</option><option value="720">720×1280（さらに速い）</option></select><br>
-  長さ：${fmtS(end)}${fast ? '' : '（書き出しにも同じ時間かかります）'}</div>
-  <div style="color:var(--dim);font-size:11px;margin-top:6px">${fast ? '動画の長さより短い時間で作れます（速さはパソコンの性能によります）。' : '書き出し中はこのタブを前面に表示したままにしてください。'}</div>
+function startExport(){ goStep(5); }
+function renderExportArea(){
+  const end = projectEnd(), fast = fastExportAvailable(), mime = pickMime();
+  const box = $('exportArea');
+  if (!fast && !window.MediaRecorder){ box.innerHTML = '<h3>動画ファイルを作る</h3><div class="hint">このブラウザは書き出しに対応していません。Chrome か Edge で開いてください。</div>'; return; }
+  box.innerHTML = `<h3>動画ファイルを作る</h3>
+  <div class="row"><label class="row" style="gap:6px">画質 <select id="exRes"><option value="1080">きれい 1080×1920（おすすめ）</option><option value="720">軽い 720×1280</option></select></label>
+    <span class="hint">長さ ${end ? fmtS(end) : '—'}・${fast ? 'MP4で作成' : 'リアルタイム（再生と同じ時間がかかります）'}</span></div>
+  <div class="row"><button class="primary" id="exGo" ${end ? '' : 'disabled'}>書き出しを始める</button><button class="ghost" id="exCancel" hidden>中止</button></div>
   <div class="prog"><i id="exProg"></i></div>
-  <div id="exStat" style="color:var(--dim);font-size:11px;min-height:16px"></div>
-  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px"><button id="exCancel">閉じる</button><button class="primary" id="exGo">開始</button></div>`);
-  $('exCancel').onclick = () => { if (fastExporting) exportAbort = true; if (exporting) abortExport(); hideModal(); };
+  <div class="hint" id="exStat">${end ? '' : 'タイムラインが空です。先に「おまかせ編集」をしてください。'}</div>`;
+  $('exCancel').onclick = () => { if (fastExporting) exportAbort = true; if (exporting) abortExport(); renderExportArea(); };
   $('exGo').onclick = async () => {
-    $('exGo').disabled = true; audioCtxFor();
+    $('exGo').disabled = true; $('exCancel').hidden = false; audioCtxFor();
+    const old = $('exportArea').querySelector('video'); if (old) old.parentElement.remove();
     const res = +$('exRes').value;
     if (fast){
-      try { await fastExport(res); return; }
+      try { await fastExport(res); $('exCancel').hidden = true; return; }
       catch(e){
-        if (exportAbort){ log('書き出し', '書き出しを中止しました', '#888'); return; }
-        if (e.slow) log('書き出し', 'このパソコンでは高速書き出しが再生より遅くなるため、リアルタイム書き出しに切り替えます', '#ffa24c');
-        else log('書き出し', `高速書き出しに失敗（${e.message}）。リアルタイム書き出しに切り替えます`, '#ffa24c');
+        if (exportAbort){ log('書き出し', '書き出しを中止しました'); return; }
+        if (e.slow) log('書き出し', 'このパソコンでは高速書き出しが再生より遅くなるため、リアルタイム書き出しに切り替えます');
+        else log('書き出し', `高速書き出しに失敗（${e.message}）。リアルタイム書き出しに切り替えます`);
         if (!window.MediaRecorder) return;
       }
     }
+    $('exStat').textContent = 'リアルタイムで書き出し中…（このタブを前に出したままにしてください）';
     realtimeExport(res, mime);
   };
 }
-function finishExport(){ exporting = false; setTimeout(() => { if (recorder && recorder.state !== 'inactive') recorder.stop(); setRes(+$('quality').value); const p = $('exProg'); if (p) p.style.width = '100%'; }, 300); }
+function finishExport(){ exporting = false; const cb = $('exCancel'); if (cb) cb.hidden = true; setTimeout(() => { if (recorder && recorder.state !== 'inactive') recorder.stop(); setRes(+$('quality').value); const p = $('exProg'); if (p) p.style.width = '100%'; }, 300); }
 function abortExport(){ exporting = false; recChunks = []; if (recorder && recorder.state !== 'inactive'){ recorder.ondataavailable = null; recorder.onstop = null; recorder.stop(); } pause(); setRes(+$('quality').value); }
 
 /* =========================================================
@@ -1867,10 +2133,10 @@ async function saveFile(filename, blob){
 }
 /* AI（claude.ai のアーティファクト内だけで使える）：台本づくり・投稿文づくり */
 let aiSample = null;
-if (window.claude && window.claude.use) window.claude.use('sample').then(sm => { aiSample = sm; if (sm) $('aiBox').hidden = false; }).catch(() => {});
+if (window.claude && window.claude.use) window.claude.use('sample').then(sm => { aiSample = sm; if (sm){ $('aiBox').hidden = false; $('capBox').hidden = false; } }).catch(() => {});
 function aiErr(e){
   const c = e && e.code;
-  if (c === 'not_granted' || c === 'sampling_disabled' || c === 'capability_disabled' || c === 'not_declared'){ $('aiBox').hidden = true; return 'AIの利用が許可されていません'; }
+  if (c === 'not_granted' || c === 'sampling_disabled' || c === 'capability_disabled' || c === 'not_declared'){ $('aiBox').hidden = true; $('capBox').hidden = true; return 'AIの利用が許可されていません'; }
   if (c === 'rate_limited') return '回数が多すぎます。少し待ってからもう一度押してください';
   if (c === 'refused') return 'このテーマでは作れませんでした。言い方を変えてください';
   if (c === 'invalid_json') return 'うまく作れませんでした。もう一度押してください';
@@ -1900,15 +2166,15 @@ $('aiScript').onclick = async () => {
     const lines = Array.isArray(r && r.lines) ? r.lines.map(x => String(x).trim()).filter(Boolean) : [];
     if (!r || !r.title || !lines.length) throw {code:'invalid_json'};
     $('script').value = [String(r.title).trim(), ...lines].join('\n'); autosave();
-    $('aiMsg').textContent = `台本を作りました（本文 ${lines.length} 行）。「テロップ」エージェントで反映できます`;
+    $('aiMsg').textContent = `台本を作りました（本文 ${lines.length} 行）。手順3の「おまかせ編集」でテロップになります`; updateScriptInfo();
     log('テロップ', `AIで台本を作成：「${r.title}」`, '#e8d44d');
   } catch(e){ $('aiMsg').textContent = aiErr(e); }
   finally { $('aiScript').disabled = false; }
 };
 $('aiCaption').onclick = async () => {
   const sc = $('script').value.trim();
-  if (!sc){ $('aiMsg').textContent = '先に台本を入れてください'; return; }
-  $('aiCaption').disabled = true; $('aiMsg').textContent = 'AIが投稿文を書いています…';
+  if (!sc){ $('capAiMsg').textContent = '先に手順2で台本を入れてください'; return; }
+  $('aiCaption').disabled = true; $('capAiMsg').textContent = 'AIが投稿文を書いています…';
   try {
     const r = await aiSample.json(
 `次のInstagramリールの台本をもとに、投稿に付けるキャプション（説明文）とハッシュタグを日本語で作ってください。
@@ -1934,8 +2200,8 @@ ${sc.slice(0, 4000)}
       navigator.clipboard.writeText($('capOut').value).then(() => $('capMsg').textContent = 'コピーしました')
         .catch(() => { $('capOut').select(); $('capMsg').textContent = '選択しました。長押しまたは Ctrl+C でコピーしてください'; });
     };
-    $('aiMsg').textContent = '';
-  } catch(e){ $('aiMsg').textContent = aiErr(e); }
+    $('capAiMsg').textContent = '';
+  } catch(e){ $('capAiMsg').textContent = aiErr(e); }
   finally { $('aiCaption').disabled = false; }
 };
 function toast(msg){ log('システム', msg, '#ff9b9b'); }
@@ -1946,9 +2212,9 @@ $('mNew').onclick = () => {
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button id="nwNo">やめる</button><button class="primary" id="nwYes">空にする</button></div>`);
   $('nwNo').onclick = hideModal;
   $('nwYes').onclick = () => { for (const t of tracks){ t.clips = []; t.vol = 1; t.mute = false; } grade = DEFAULT_GRADE(); $('script').value = ''; $('projName').textContent = 'ショート_新規プロジェクト';
-    for (const a of AGENTS) delete agentState[a.id]; selId = null; syncGradeUI(); renderHeads(); renderAgents(); seek(0); afterEdit(); hideModal(); log('システム', '新しいプロジェクトを始めました', '#888'); };
+    for (const a of AGENTS){ delete agentState[a.id]; delete agentResult[a.id]; } autoEdited = false; exportedOnce = false; qcMessages = []; $('qcList').innerHTML = ''; selId = null; updateScriptInfo(); goStep(1); syncGradeUI(); renderHeads(); renderAgents(); seek(0); afterEdit(); hideModal(); log('システム', '新しいプロジェクトを始めました', '#888'); };
 };
-$('mDemo').onclick = () => { audioCtxFor(); addDemoMedia(); log('システム', 'デモ素材を追加しました。「全自動編集」を押してみてください', '#e8ff3a'); };
+$('mDemo').onclick = $('mDemo2').onclick = () => { audioCtxFor(); addDemoMedia(); updateScriptInfo(); log('システム', 'デモ素材を追加しました'); };
 $('mSave').onclick = async () => {
   const name = $('projName').textContent.trim() || 'ショート';
   autosave();
@@ -1958,14 +2224,17 @@ $('mSave').onclick = async () => {
 $('mLoad').onclick = () => $('projIn').click();
 $('projIn').onchange = async e => { const f = e.target.files[0]; if (!f) return; try { loadProject(JSON.parse(await f.text())); } catch(err){ toast('プロジェクトを開けませんでした'); } e.target.value = ''; };
 $('mHelp').onclick = () => showModal(`<h3>使い方</h3>
-<b>1. 素材を入れる</b>：「ファイル読込」かドラッグ＆ドロップ。名前に「BGM」「Bロール」「SE」が入っていると種類を自動判定します。<br>
-<b>2. 全自動編集</b>：左の「全自動編集」で、カット→テロップ→Bロール→カラー→効果音→BGM→チェック の順にエージェントが作業します。<br>
-<b>3. 手直し</b>：クリップのドラッグで移動、端をつまんで長さ調整。<kbd>S</kbd>で分割、<kbd>Delete</kbd>で削除、<kbd>Ctrl+Z</kbd>で元に戻す。<br>
-<b>4. 書き出し</b>：右上の「書き出し」。Chrome / Edge ならMP4で保存できます。<br><br>
-<b>台本</b>：「台本・設定」に1行ずつ書くと、1行目がタイトル、2行目以降が話す区間ごとのテロップになります。<br>
-<b>AI</b>：claude.ai で開いたときは「台本・設定」でテーマから台本を作れます。投稿文とハッシュタグも作れます。<br><b>素材の保存</b>：読み込んだファイルはこのブラウザの中に保存され、開き直しても残ります（素材の「✕」で削除）。<br><b>試すだけなら</b>：「デモ素材」→「全自動編集」→「▶ 再生」。<br><br>
-<span style="color:var(--dim)">音声の文字起こしは行いません（台本を使います）。動画や音声はこのブラウザ内だけで処理され、外部へ送信されません。AI機能を使ったときだけ、テーマや台本の文章がClaudeに送られます。</span>
-<div style="text-align:right;margin-top:10px"><button onclick="hideModal()">閉じる</button></div>`);
+<p>上の <b>1〜5の手順</b> を順に進めれば、1本のリール動画ができます。</p>
+<ol style="padding-left:1.3em;margin:8px 0">
+<li><b>素材</b>：話している動画、差し込み映像・写真、BGMを入れます。</li>
+<li><b>台本</b>：1行目がタイトル、2行目からがテロップ。AIに書いてもらうこともできます（claude.ai で開いたとき）。</li>
+<li><b>おまかせ編集</b>：無音カット・テロップ・Bロール・色・効果音・BGMを自動で行います。</li>
+<li><b>仕上げ</b>：テロップの文字、色の雰囲気、音のバランスを直します。</li>
+<li><b>書き出し</b>：チェックしてMP4を作り、保存します。投稿文も作れます。</li>
+</ol>
+<p class="hint">下のタイムラインでは、クリップをドラッグで移動、端で長さ調整ができます。<kbd>Space</kbd> 再生、<kbd>S</kbd> 分割、<kbd>Delete</kbd> 削除、<kbd>Ctrl</kbd>+<kbd>Z</kbd> 元に戻す。</p>
+<p class="hint">動画や音声はこのブラウザの中だけで処理され、外に送られません。AI機能を使ったときだけ、テーマや台本の文章がClaudeに送られます。</p>
+<div style="text-align:right;margin-top:10px"><button class="primary" onclick="hideModal()">閉じる</button></div>`);
 $('modal').onclick = e => { if (e.target === $('modal') && !exporting) hideModal(); };
 $('btnExport').onclick = startExport;
 $('tPlay').onclick = $('tlPlay').onclick = togglePlay;
@@ -2009,9 +2278,52 @@ window.addEventListener('dragenter', e => { if (e.dataTransfer.types.includes('F
 window.addEventListener('dragleave', e => { if (e.dataTransfer.types.includes('Files')){ dragDepth--; if (dragDepth<=0) $('dropnote').style.display = 'none'; } });
 window.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); });
 window.addEventListener('drop', async e => { if (!e.dataTransfer.files.length) return; e.preventDefault(); dragDepth = 0; $('dropnote').style.display = 'none'; await importFiles([...e.dataTransfer.files]); relinkMissing(); });
-window.addEventListener('resize', () => { for (const id in cursors) cursors[id].style.opacity = 0; });
+
 
 /* ---- 起動 ---- */
+/* ---- 手順の切り替え ---- */
+let curStep = 1, curTab = 'telop', exportedOnce = false;
+function goStep(n){
+  curStep = n;
+  document.querySelectorAll('.pane').forEach(p => p.hidden = +p.dataset.pane !== n);
+  if (n === 5) renderExportArea();
+  if (n === 4 && curTab === 'color') drawLookThumbs();
+  updateSteps();
+  try { localStorage.setItem('reelstudio_step', n); } catch(e){}
+}
+function updateSteps(){
+  const done = {
+    1: media.some(m => hasVideo(m) && m.role === 'main') ,
+    2: !!$('script').value.trim(),
+    3: autoEdited || T('main').clips.length > 0,
+    4: autoEdited && curStep >= 5,
+    5: exportedOnce,
+  };
+  document.querySelectorAll('.step').forEach(b => { const n = +b.dataset.step; b.classList.toggle('cur', n === curStep); b.classList.toggle('done', !!done[n] && n !== curStep); b.setAttribute('aria-current', n === curStep ? 'step' : 'false'); });
+}
+document.querySelectorAll('.step').forEach(b => b.onclick = () => goStep(+b.dataset.step));
+document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => goStep(+b.dataset.go));
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
+  curTab = b.dataset.tab;
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('[data-tabpane]').forEach(x => x.hidden = x.dataset.tabpane !== curTab);
+  if (curTab === 'color'){ lookThumbsAt = -1; drawLookThumbs(); }
+});
+$('fileMenu').addEventListener('click', e => { if (e.target.tagName === 'BUTTON') $('fileMenu').open = false; });
+document.addEventListener('click', e => { if (!e.target.closest('#fileMenu')) $('fileMenu').open = false; });
+$('dockSize').onclick = () => { const d = $('dock'); const big = d.classList.toggle('big'); $('dockSize').textContent = big ? 'タイムラインを小さく' : 'タイムラインを大きく'; };
+$('qcRun').onclick = () => runAgent('qc');
+function updateScriptInfo(){
+  const lines = $('script').value.split('\n').map(x => x.trim()).filter(Boolean), box = $('scriptInfo');
+  box.innerHTML = '';
+  const chip = (t, cls='') => { const c = document.createElement('span'); c.className = 'chip ' + cls; c.textContent = t; box.appendChild(c); };
+  if (!lines.length){ chip('台本なし（仮の文字が入ります）'); return; }
+  chip('タイトル：' + lines[0].slice(0, 20) + (lines[0].length > 20 ? '…' : ''), lines[0].length <= 20 ? 'ok' : 'warn');
+  chip(`本文 ${lines.length - 1} 行`, lines.length > 1 ? 'ok' : 'warn');
+  const segs = mainSegments().length; if (autoEdited && segs && lines.length - 1 !== segs) chip(`話す区間は ${segs} 個（行数が違うと等間隔で並びます）`, 'warn');
+  const long = lines.slice(1).filter(l => l.length > 18).length; if (long) chip(`18文字を超える行 ${long} 行（2行に折り返します）`, 'warn');
+}
+$('script').addEventListener('input', () => { updateScriptInfo(); updateSteps(); });
 renderHeads(); renderBin(); renderAgents(); syncGradeUI(); renderTimeline(); renderInspectors();
 (async function boot(){
   let saved = null; try { saved = JSON.parse(localStorage.getItem('reelstudio_autosave')); } catch(e){}
@@ -2024,8 +2336,11 @@ renderHeads(); renderBin(); renderAgents(); syncGradeUI(); renderTimeline(); ren
     loadProject(saved); log('システム', '前回の作業を復元しました', '#888');
   } else {
     addDemoMedia(); commit();
-    log('システム', 'ようこそ。デモ素材を用意しました。左の「全自動編集」を押すと7つのエージェントが編集します', '#e8ff3a');
+    log('システム', 'ようこそ。デモ素材を用意しました');
   }
+  autoEdited = tracks.some(t => t.id !== 'main' && t.clips.length);
+  let st = 1; try { st = +localStorage.getItem('reelstudio_step') || 1; } catch(e){}
+  updateScriptInfo(); goStep(st >= 1 && st <= 5 ? st : 1);
 })();
 requestAnimationFrame(loop);
 </script>
