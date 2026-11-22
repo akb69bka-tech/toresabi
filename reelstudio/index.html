@@ -13,6 +13,7 @@
   --c-telop:#d9b92f; --c-broll:#3d63c9; --c-main:#2f9e5b; --c-grade:#b8323a; --c-voice:#4fb34a; --c-bgm:#7b4fd0; --c-sfx:#c26a2b;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic UI","Meiryo",sans-serif;font-size:12px;overflow:hidden}
 button,select,input,textarea{font:inherit;color:inherit}
 button{background:var(--panel2);border:1px solid var(--line2);border-radius:6px;padding:4px 9px;cursor:pointer}
@@ -49,6 +50,11 @@ header{display:flex;align-items:center;gap:14px;padding:0 12px;border-bottom:1px
 .mi:hover{border-color:var(--accent2)}
 .mi canvas{display:block;width:100%;aspect-ratio:9/16;background:#000}
 .mi .nm{font-size:9px;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--dim)}
+.mi .mbtn{position:absolute;top:3px;width:20px;height:20px;padding:0;font-size:11px;line-height:18px;border-radius:50%;background:#000b;border:1px solid #fff4;color:#fff}
+.mi .mbtn.add{right:3px}
+.mi .mbtn.del{right:26px;opacity:0}
+.mi:hover .mbtn.del,.mi .mbtn.del:focus{opacity:1}
+@media (hover:none){.mi .mbtn.del{opacity:1}}
 .mi .tag{position:absolute;top:3px;left:3px;font-size:8px;background:#000a;padding:1px 4px;border-radius:3px}
 .mi.audio canvas{aspect-ratio:9/8}
 .binbar{display:flex;gap:6px;padding:6px 8px;border-bottom:1px solid var(--line);flex-wrap:wrap}
@@ -113,12 +119,12 @@ details summary{cursor:pointer;color:var(--dim);padding:4px 8px}
 .hd input{width:38px}
 .tlscroll{flex:1;overflow-x:auto;overflow-y:hidden;position:relative}
 .tlinner{position:relative;min-width:100%}
-.ruler{height:22px;border-bottom:1px solid var(--line);position:relative;cursor:ew-resize;background:#0f1216}
+.ruler{touch-action:none;height:22px;border-bottom:1px solid var(--line);position:relative;cursor:ew-resize;background:#0f1216}
 .ruler span{position:absolute;top:4px;font-size:9px;color:var(--dim2);transform:translateX(3px)}
 .ruler i{position:absolute;bottom:0;width:1px;background:#39414c}
 .lane{height:32px;border-bottom:1px solid var(--line);position:relative}
 .lane.dragover{background:#e8ff3a14}
-.clip{position:absolute;top:3px;height:26px;border-radius:4px;overflow:hidden;cursor:grab;border:1px solid #0006;user-select:none}
+.clip{position:absolute;top:3px;height:26px;border-radius:4px;overflow:hidden;cursor:grab;border:1px solid #0006;user-select:none;touch-action:none}
 .clip .lb{position:absolute;left:5px;top:2px;font-size:9.5px;white-space:nowrap;color:#fff;text-shadow:0 1px 2px #000;z-index:2;pointer-events:none}
 .clip canvas{position:absolute;left:0;bottom:0;height:18px;pointer-events:none;opacity:.85}
 .clip .h{position:absolute;top:0;bottom:0;width:7px;cursor:ew-resize;z-index:3}
@@ -164,6 +170,7 @@ kbd{background:#222831;border:1px solid #3a4350;border-radius:3px;padding:0 4px;
     <button id="mSave">保存</button>
     <button id="mLoad">開く</button>
     <button id="mDemo">デモ素材</button>
+    <button id="mNew">新規</button>
     <button id="mHelp">使い方</button>
   </div>
   <div class="title"><b id="projName">ショート_新規プロジェクト</b><small id="projSub">9:16 ・ 1080×1920 ・ 30fps</small></div>
@@ -187,6 +194,10 @@ kbd{background:#222831;border:1px solid #3a4350;border-radius:3px;padding:0 4px;
       <div style="padding:0 8px 6px">
         <div style="color:var(--dim);font-size:10.5px">台本（1行＝1テロップ。1行目はタイトル）</div>
         <textarea id="script" style="width:100%;height:70px;resize:vertical"></textarea>
+        <div id="aiBox" hidden style="margin:4px 0 6px;display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;gap:4px"><input type="text" id="aiTheme" placeholder="テーマ（例：美容室の予約が増える3つのコツ）" style="flex:1;min-width:0"><button id="aiScript" class="primary" style="padding:2px 8px">AIで台本</button></div>
+          <div style="display:flex;gap:4px;align-items:center"><button id="aiCaption" style="padding:2px 8px">投稿文とハッシュタグを作る</button><span id="aiMsg" style="color:var(--dim);font-size:10px;min-width:0"></span></div>
+        </div>
         <div class="sl" style="padding:2px 0"><span>無音の基準</span><input type="range" id="silTh" min="-60" max="-20" value="-38"><span id="silThV">-38</span></div>
         <div class="sl" style="padding:2px 0"><span>最短の無音</span><input type="range" id="silMin" min="0.15" max="1.5" step="0.05" value="0.35"><span id="silMinV">0.35</span></div>
       </div>
@@ -462,9 +473,33 @@ function guessRole(name, kind){
   if (/broll|b-roll|bロール|素材/.test(n)) return 'broll';
   return kind==='image' ? 'broll' : 'main';
 }
-async function importFiles(files){
+/* 素材の保存：読み込んだファイルをこのブラウザの中(IndexedDB)に保存し、ページを開き直しても使えるようにする */
+const MediaStore = {
+  db: null,
+  async open(){
+    if (this.db !== null) return this.db;
+    this.db = await new Promise(res => {
+      try {
+        const rq = indexedDB.open('reelstudio', 1);
+        rq.onupgradeneeded = () => rq.result.createObjectStore('files', {keyPath:'name'});
+        rq.onsuccess = () => res(rq.result); rq.onerror = () => res(false); rq.onblocked = () => res(false);
+      } catch(e){ res(false); }
+    });
+    return this.db;
+  },
+  async tx(mode, fn){
+    const db = await this.open(); if (!db) return null;
+    return new Promise(res => { try { const t = db.transaction('files', mode), st = t.objectStore('files'); const r = fn(st); t.oncomplete = () => res(r && r.result !== undefined ? r.result : true); t.onerror = t.onabort = () => res(null); } catch(e){ res(null); } });
+  },
+  put(file){ return this.tx('readwrite', st => st.put({name:file.name, type:file.type, blob:file, saved:Date.now()})); },
+  del(name){ return this.tx('readwrite', st => st.delete(name)); },
+  all(){ return this.tx('readonly', st => st.getAll()); },
+  clear(){ return this.tx('readwrite', st => st.clear()); },
+};
+async function importFiles(files, opts={}){
   audioCtxFor();
   for (const f of files){
+    if (media.some(m => m.name === f.name && !m.demo)){ log('システム', `${f.name} はすでに読み込まれています`, '#888'); continue; }
     const kind = f.type.startsWith('video') ? 'video' : f.type.startsWith('audio') ? 'audio' : f.type.startsWith('image') ? 'image' : null;
     if (!kind) { log('システム', `${f.name} は読み込めない形式です`, '#888'); continue; }
     const m = {id:newId('m'), name:f.name, kind, role:guessRole(f.name, kind), duration:0};
@@ -485,23 +520,36 @@ async function importFiles(files){
         if (!m.duration) m.duration = m.buffer.duration;
       } catch(e){ if (kind==='audio'){ log('システム', `${f.name} の音声を読めませんでした`, '#888'); continue; } }
     }
+    m.file = f;
     media.push(m);
-    log('システム', `読み込み: ${f.name}（${kind==='image'?'画像':fmtS(m.duration)}）`, '#888');
+    if (!opts.restoring){
+      const ok = await MediaStore.put(f);
+      log('システム', `読み込み: ${f.name}（${kind==='image'?'画像':fmtS(m.duration)}）${ok ? '' : ' ※このブラウザでは素材を保存できないため、開き直すと再読み込みが必要です'}`, '#888');
+    }
   }
   renderBin();
 }
+function addBuiltinSfx(){
+  for (const [k,n] of [['pop','SE_ポップ.wav'],['whoosh','SE_シュッ.wav'],['ding','SE_キラーン.wav'],['boom','SE_ドン.wav']]){
+    if (media.some(m => m.sfx === k)) continue;
+    const b = synthSfx(k); media.push({id:newId('m'), demo:true, builtin:true, name:n, kind:'audio', role:'sfx', sfx:k, duration:b.duration, buffer:b, peaks:computePeaks(b)});
+  }
+  renderBin();
+}
+function addBuiltinBgm(){
+  let m = media.find(x => x.name === 'BGM_ローファイ.wav'); if (m) return m;
+  const bg = synthBGM(); m = {id:newId('m'), demo:true, builtin:true, name:'BGM_ローファイ.wav', kind:'audio', role:'bgm', duration:bg.duration, buffer:bg, peaks:computePeaks(bg)};
+  media.push(m); renderBin(); return m;
+}
 function addDemoMedia(){
-  if (media.some(m => m.demo)) return;
+  if (media.some(m => m.demo && !m.builtin)) return;
   const sp = synthSpeech();
   const mk = (o) => { const m = {id:newId('m'), demo:true, ...o}; media.push(m); return m; };
   mk({name:'デモ_トーク.mp4', kind:'proc', proc:'talk', role:'main', duration:20, buffer:sp, peaks:computePeaks(sp)});
   mk({name:'Bロール_PC作業.mp4', kind:'proc', proc:'pc', role:'broll', duration:8});
   mk({name:'Bロール_街並み.mp4', kind:'proc', proc:'city', role:'broll', duration:8});
   mk({name:'Bロール_資料.mp4', kind:'proc', proc:'desk', role:'broll', duration:8});
-  const bg = synthBGM(); mk({name:'BGM_ローファイ.wav', kind:'audio', role:'bgm', duration:bg.duration, buffer:bg, peaks:computePeaks(bg)});
-  for (const [k,n] of [['pop','SE_ポップ.wav'],['whoosh','SE_シュッ.wav'],['ding','SE_キラーン.wav'],['boom','SE_ドン.wav']]){
-    const b = synthSfx(k); mk({name:n, kind:'audio', role:'sfx', sfx:k, duration:b.duration, buffer:b, peaks:computePeaks(b)});
-  }
+  addBuiltinBgm(); addBuiltinSfx();
   if (!$('script').value.trim()) $('script').value = DEMO_SCRIPT;
   renderBin();
 }
@@ -516,21 +564,48 @@ function renderBin(){
   $('binCount').textContent = media.length + ' 件';
   for (const m of media){
     const d = document.createElement('div'); d.className = 'mi' + (hasVideo(m)?'':' audio'); d.draggable = true;
-    const c = document.createElement('canvas');
-    if (hasVideo(m)){ c.width = 90; c.height = 160; } else { c.width = 90; c.height = 80; }
-    const g = c.getContext('2d');
-    if (m.kind==='proc') PROC[m.proc](g, 1.5, 90, 160, m);
-    else if (m.kind==='image') drawCover(g, m.img, 90, 160, m.img.naturalWidth, m.img.naturalHeight);
-    else if (m.kind==='video'){ const go=()=>drawCover(g, m.el, 90, 160, m.el.videoWidth, m.el.videoHeight); m.el.currentTime = Math.min(0.5, m.duration/2); m.el.addEventListener('seeked', go, {once:true}); }
-    else { g.fillStyle='#14101f'; g.fillRect(0,0,90,80); g.strokeStyle = m.role==='bgm'?'#9b74ef':m.role==='sfx'?'#e08a4a':'#6bd166'; g.beginPath(); for (let x=0;x<90;x++){ const v=(m.peaks?m.peaks[Math.floor(x/90*m.peaks.length)]:0)*36; g.moveTo(x,40-v); g.lineTo(x,40+v);} g.stroke(); }
-    d.appendChild(c);
+    if (!m.thumb){
+      const c = document.createElement('canvas'); m.thumb = c;
+      if (hasVideo(m)){ c.width = 90; c.height = 160; } else { c.width = 90; c.height = 80; }
+      const g = c.getContext('2d');
+      if (m.kind==='proc') PROC[m.proc](g, 1.5, 90, 160, m);
+      else if (m.kind==='image') drawCover(g, m.img, 90, 160, m.img.naturalWidth, m.img.naturalHeight);
+      else if (m.kind==='video'){
+        // サムネイル用は別の video を使う（再生中の映像をシークで止めないため）
+        const tv = document.createElement('video'); tv.muted = true; tv.preload = 'auto'; tv.src = m.el.src;
+        tv.onloadeddata = () => { tv.currentTime = Math.min(0.5, (tv.duration||1)/2); };
+        tv.onseeked = () => { g.fillStyle = '#000'; g.fillRect(0,0,90,160); drawCover(g, tv, 90, 160, tv.videoWidth, tv.videoHeight); tv.removeAttribute('src'); tv.load(); };
+      }
+      else { g.fillStyle='#14101f'; g.fillRect(0,0,90,80); g.strokeStyle = m.role==='bgm'?'#9b74ef':m.role==='sfx'?'#e08a4a':'#6bd166'; g.beginPath(); for (let x=0;x<90;x++){ const v=(m.peaks?m.peaks[Math.floor(x/90*m.peaks.length)]:0)*36; g.moveTo(x,40-v); g.lineTo(x,40+v);} g.stroke(); }
+    }
+    d.appendChild(m.thumb);
+    const add = document.createElement('button'); add.className = 'mbtn add'; add.textContent = '＋'; add.title = '再生ヘッドの位置に追加';
+    add.onclick = e => { e.stopPropagation(); addMediaClip(m, defaultTrackFor(m), curT); };
+    d.appendChild(add);
+    if (!m.demo){
+      const del = document.createElement('button'); del.className = 'mbtn del'; del.textContent = '✕'; del.title = '素材を削除';
+      del.onclick = e => { e.stopPropagation(); askRemoveMedia(m); };
+      d.appendChild(del);
+    }
     const tag = document.createElement('span'); tag.className='tag'; tag.textContent = {main:'メイン',broll:'Bロール',voice:'ボイス',bgm:'BGM',sfx:'効果音'}[m.role]; d.appendChild(tag);
     const nm = document.createElement('div'); nm.className='nm'; nm.textContent = m.name + (isFinite(m.duration)?' ・ '+fmtS(m.duration):''); d.appendChild(nm);
-    d.title = 'ダブルクリック：再生ヘッドの位置に追加 ／ ドラッグ：好きなトラックへ';
+    d.title = '＋：再生ヘッドの位置に追加 ／ ドラッグ：好きなトラックへ';
     d.ondragstart = e => { e.dataTransfer.setData('text/media', m.id); e.dataTransfer.effectAllowed='copy'; };
     d.ondblclick = () => { addMediaClip(m, defaultTrackFor(m), curT); };
     bin.appendChild(d);
   }
+}
+function askRemoveMedia(m){
+  const used = tracks.reduce((n,t) => n + t.clips.filter(c => c.media === m.id).length, 0);
+  showModal(`<h3>素材を削除</h3><div>「${m.name.replace(/</g,'&lt;')}」を削除します。${used ? `タイムライン上の ${used} 個のクリップも消えます。` : ''}</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button id="rmNo">やめる</button><button class="primary" id="rmYes">削除する</button></div>`);
+  $('rmNo').onclick = hideModal;
+  $('rmYes').onclick = async () => {
+    for (const t of tracks) t.clips = t.clips.filter(c => c.media !== m.id);
+    media.splice(media.indexOf(m), 1); await MediaStore.del(m.name);
+    if (m.el){ m.el.pause(); m.el.removeAttribute('src'); m.el.load(); }
+    hideModal(); renderBin(); afterEdit(); log('システム', `${m.name} を削除しました`, '#888');
+  };
 }
 function defaultTrackFor(m){
   if (hasVideo(m)) return m.role==='broll' ? 'broll' : 'main';
@@ -1089,7 +1164,14 @@ function scrubFrom(e){
   window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
 }
 $('ruler').onpointerdown = scrubFrom;
-$('lanes').onpointerdown = e => { if (e.target.closest('.clip')) return; selId = null; renderTimeline(); renderInspectors(); scrubFrom(e); };
+$('lanes').onpointerdown = e => {
+  if (e.target.closest('.clip')) return;
+  selId = null; renderTimeline(); renderInspectors();
+  if (e.pointerType === 'mouse') scrubFrom(e);   // 指の場合は横スクロールを優先し、タップした位置へ移動
+  else { const r = $('ruler').getBoundingClientRect(), x0 = e.clientX, y0 = e.clientY;
+    const up = ev => { window.removeEventListener('pointerup', up); if (Math.hypot(ev.clientX-x0, ev.clientY-y0) < 8) seek(Math.max(0,(ev.clientX - r.left)/pps)); };
+    window.addEventListener('pointerup', up); }
+};
 
 /* ---- 編集操作 ---- */
 function splitAt(t){
@@ -1338,7 +1420,7 @@ const AGENT_FN = {
     const end = segs[segs.length-1].start + segs[segs.length-1].dur;
     T('telop').clips = [];
     let caps = lines.slice(1);
-    if (!lines.length){ caps = segs.map((_,i) => `テロップ ${i+1}`); L('台本が空なので仮の文字を入れました（台本欄に1行ずつ書くと反映されます）'); }
+    if (!lines.length){ caps = segs.map((_,i) => `（ここに文字 ${i+1}）`); L('台本が空なので仮の文字を入れました。「台本・設定」に1行ずつ書くか「AIで台本を作る」を使うと、その文字が入ります'); }
     else {
       addTelopAt(0, lines[0], 'blackred', {dur:end, y:0.13, size:62, color:'#ff2d2d'});
       L(`タイトル「${lines[0]}」を全体に配置`);
@@ -1360,13 +1442,18 @@ const AGENT_FN = {
     if (!cands.length){ L('Bロール素材がありません（ファイル名に「Bロール」と付けると自動で見分けます）'); return; }
     if (!segs.length){ L('メイントラックが空です'); return; }
     T('broll').clips = [];
-    let k = 0;
+    // 差し込む時刻を決める：カットが多いときは1つおきの区間、長いカットは約5秒おき（最初の2秒は顔を見せる）
+    const spots = [];
     segs.forEach((s, i) => {
-      if (i === 0 || i % 2 === 0 || s.dur < 1.2) return;
-      const m = cands[k++ % cands.length], dur = Math.min(1.8, s.dur - 0.5);
-      T('broll').clips.push({id:newId('c'), media:m.id, start:s.start + 0.25, in:0, dur:Math.min(dur, isFinite(m.duration)?m.duration:dur), props:{vol:1, zoom:0.1}});
-      L(`${fmtTC(s.start+0.25).slice(3)} に ${m.name} を差し込み`);
+      if (s.dur >= 7){ for (let t = s.start + (i===0 ? 2.5 : 1.5); t + 2 <= s.start + s.dur - 0.5; t += 5) spots.push([t, 1.8]); }
+      else if (i % 2 === 1 && s.dur >= 1.2) spots.push([s.start + 0.25, Math.min(1.8, s.dur - 0.5)]);
     });
+    let k = 0;
+    for (const [st, d0] of spots){
+      const m = cands[k++ % cands.length], dur = Math.min(d0, isFinite(m.duration) ? m.duration : d0);
+      T('broll').clips.push({id:newId('c'), media:m.id, start:st, in:0, dur, props:{vol:1, zoom:0.1}});
+      L(`${fmtTC(st).slice(3)} に ${m.name} を差し込み`);
+    }
     if (!k) L('差し込める長さの区間がありませんでした');
     renderTimeline(); await wait(300);
   },
@@ -1396,8 +1483,8 @@ const AGENT_FN = {
     syncGradeUI(); await wait(300);
   },
   async sfx(L){
+    if (!media.some(m => m.role==='sfx')){ addBuiltinSfx(); L('効果音素材がないので、内蔵の効果音4種類を追加しました'); }
     const pick = k => media.find(m => m.sfx === k) || media.find(m => m.role==='sfx');
-    if (!media.some(m => m.role==='sfx')){ L('効果音素材がありません（メニュー「デモ素材」で4種類追加されます）'); return; }
     const tr = T('sfx'); tr.clips = [];
     const caps = T('telop').clips.filter(c => c.props.y > 0.3).sort((a,b)=>a.start-b.start);
     caps.forEach((c,i) => { const m = pick(i===0?'ding':'pop'); if (m) tr.clips.push({id:newId('c'), media:m.id, start:c.start, in:0, dur:m.duration, props:{vol:i===0?0.6:0.45}}); });
@@ -1406,8 +1493,8 @@ const AGENT_FN = {
     renderTimeline(); await wait(300);
   },
   async bgm(L){
-    const m = media.find(x => x.role==='bgm');
-    if (!m){ L('BGM素材がありません（ファイル名に「BGM」と付けると自動で見分けます）'); return; }
+    let m = media.find(x => x.role==='bgm');
+    if (!m){ m = addBuiltinBgm(); L('BGM素材がないので、内蔵のBGMを使います（自分の曲はファイル名に「BGM」と入れて読み込むと優先されます）'); }
     const end = projectEnd(); if (!end){ L('タイムラインが空です'); return; }
     const tr = T('bgm'); tr.clips = [];
     for (let t=0; t<end; t+=m.duration) tr.clips.push({id:newId('c'), media:m.id, start:t, in:0, dur:Math.min(m.duration, end-t), props:{vol:1}});
@@ -1778,9 +1865,89 @@ async function saveFile(filename, blob){
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
   return '保存しました';
 }
+/* AI（claude.ai のアーティファクト内だけで使える）：台本づくり・投稿文づくり */
+let aiSample = null;
+if (window.claude && window.claude.use) window.claude.use('sample').then(sm => { aiSample = sm; if (sm) $('aiBox').hidden = false; }).catch(() => {});
+function aiErr(e){
+  const c = e && e.code;
+  if (c === 'not_granted' || c === 'sampling_disabled' || c === 'capability_disabled' || c === 'not_declared'){ $('aiBox').hidden = true; return 'AIの利用が許可されていません'; }
+  if (c === 'rate_limited') return '回数が多すぎます。少し待ってからもう一度押してください';
+  if (c === 'refused') return 'このテーマでは作れませんでした。言い方を変えてください';
+  if (c === 'invalid_json') return 'うまく作れませんでした。もう一度押してください';
+  if (c === 'session_expired') return 'ログインし直してください';
+  if (c === 'cancelled') return '';
+  return '作れませんでした。もう一度押してください';
+}
+$('aiScript').onclick = async () => {
+  const theme = $('aiTheme').value.trim();
+  if (!theme){ $('aiMsg').textContent = 'テーマを入れてください'; $('aiTheme').focus(); return; }
+  const segs = mainSegments(), n = segs.length >= 2 ? segs.length : 0;
+  $('aiScript').disabled = true; $('aiMsg').textContent = 'AIが台本を書いています…';
+  try {
+    const r = await aiSample.json(
+`あなたはInstagramリール（縦型ショート動画）の台本作家です。次のテーマで、話し手が読み上げる台本を日本語で作ってください。
+
+テーマ：${theme}
+
+条件：
+- タイトルは画面上部に出す短い見出し（20文字以内）。思わず止まって見たくなる言い方に。
+- 本文は画面に出すテロップでもあります。1行は18文字以内、話し言葉で、言い切る。
+- 1行目でつかみ（結論や意外な事実）、最後の行で保存やフォローをうながす。
+- ${n ? `本文はちょうど ${n} 行（動画の話す区間が ${n} 個あるため）。` : '本文は5〜7行。'}
+- 誇大な表現や効果の断定（「必ず」「絶対」など）は使わない。
+
+次のJSONだけを返してください：{"title": "タイトル", "lines": ["本文1", "本文2", ...]}`, {modelTier:'default', cache:false});
+    const lines = Array.isArray(r && r.lines) ? r.lines.map(x => String(x).trim()).filter(Boolean) : [];
+    if (!r || !r.title || !lines.length) throw {code:'invalid_json'};
+    $('script').value = [String(r.title).trim(), ...lines].join('\n'); autosave();
+    $('aiMsg').textContent = `台本を作りました（本文 ${lines.length} 行）。「テロップ」エージェントで反映できます`;
+    log('テロップ', `AIで台本を作成：「${r.title}」`, '#e8d44d');
+  } catch(e){ $('aiMsg').textContent = aiErr(e); }
+  finally { $('aiScript').disabled = false; }
+};
+$('aiCaption').onclick = async () => {
+  const sc = $('script').value.trim();
+  if (!sc){ $('aiMsg').textContent = '先に台本を入れてください'; return; }
+  $('aiCaption').disabled = true; $('aiMsg').textContent = 'AIが投稿文を書いています…';
+  try {
+    const r = await aiSample.json(
+`次のInstagramリールの台本をもとに、投稿に付けるキャプション（説明文）とハッシュタグを日本語で作ってください。
+
+台本：
+${sc.slice(0, 4000)}
+
+条件：
+- キャプションは3〜6行。1行目は続きを読みたくなる一文。最後に保存・コメントをうながす一文。
+- 絵文字は控えめに（全体で3個まで）。
+- ハッシュタグは関連性の高いものを8〜12個。大きすぎる一般語ばかりにしない。
+- 誇大な表現や効果の断定は使わない。
+
+次のJSONだけを返してください：{"caption": "キャプション本文", "hashtags": ["#タグ1", "#タグ2"]}`, {modelTier:'default', cache:false});
+    if (!r || !r.caption) throw {code:'invalid_json'};
+    const tags = (Array.isArray(r.hashtags) ? r.hashtags : []).map(t => String(t).trim()).filter(Boolean).map(t => t.startsWith('#') ? t : '#'+t);
+    const full = String(r.caption).trim() + (tags.length ? '\n\n' + tags.join(' ') : '');
+    showModal(`<h3>投稿文</h3><textarea id="capOut" style="width:100%;height:220px;resize:vertical"></textarea>
+      <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;margin-top:8px"><span id="capMsg" style="color:var(--dim);font-size:11px"></span><button id="capClose">閉じる</button><button class="primary" id="capCopy">コピー</button></div>`);
+    $('capOut').value = full;
+    $('capClose').onclick = hideModal;
+    $('capCopy').onclick = () => {
+      navigator.clipboard.writeText($('capOut').value).then(() => $('capMsg').textContent = 'コピーしました')
+        .catch(() => { $('capOut').select(); $('capMsg').textContent = '選択しました。長押しまたは Ctrl+C でコピーしてください'; });
+    };
+    $('aiMsg').textContent = '';
+  } catch(e){ $('aiMsg').textContent = aiErr(e); }
+  finally { $('aiCaption').disabled = false; }
+};
 function toast(msg){ log('システム', msg, '#ff9b9b'); }
 $('mImport').onclick = $('bImport').onclick = () => $('fileIn').click();
 $('fileIn').onchange = async e => { await importFiles([...e.target.files]); relinkMissing(); e.target.value = ''; };
+$('mNew').onclick = () => {
+  showModal(`<h3>新しいプロジェクト</h3><div>タイムラインを空にします。読み込んだ素材は残ります。今の作業が必要なら、先に「保存」してください。</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button id="nwNo">やめる</button><button class="primary" id="nwYes">空にする</button></div>`);
+  $('nwNo').onclick = hideModal;
+  $('nwYes').onclick = () => { for (const t of tracks){ t.clips = []; t.vol = 1; t.mute = false; } grade = DEFAULT_GRADE(); $('script').value = ''; $('projName').textContent = 'ショート_新規プロジェクト';
+    for (const a of AGENTS) delete agentState[a.id]; selId = null; syncGradeUI(); renderHeads(); renderAgents(); seek(0); afterEdit(); hideModal(); log('システム', '新しいプロジェクトを始めました', '#888'); };
+};
 $('mDemo').onclick = () => { audioCtxFor(); addDemoMedia(); log('システム', 'デモ素材を追加しました。「全自動編集」を押してみてください', '#e8ff3a'); };
 $('mSave').onclick = async () => {
   const name = $('projName').textContent.trim() || 'ショート';
@@ -1796,8 +1963,8 @@ $('mHelp').onclick = () => showModal(`<h3>使い方</h3>
 <b>3. 手直し</b>：クリップのドラッグで移動、端をつまんで長さ調整。<kbd>S</kbd>で分割、<kbd>Delete</kbd>で削除、<kbd>Ctrl+Z</kbd>で元に戻す。<br>
 <b>4. 書き出し</b>：右上の「書き出し」。Chrome / Edge ならMP4で保存できます。<br><br>
 <b>台本</b>：「台本・設定」に1行ずつ書くと、1行目がタイトル、2行目以降が話す区間ごとのテロップになります。<br>
-<b>試すだけなら</b>：「デモ素材」→「全自動編集」→「▶ 再生」。<br><br>
-<span style="color:var(--dim)">音声の文字起こしは行いません（台本を使います）。作業内容はこのブラウザ内だけで処理され、外部へ送信されません。</span>
+<b>AI</b>：claude.ai で開いたときは「台本・設定」でテーマから台本を作れます。投稿文とハッシュタグも作れます。<br><b>素材の保存</b>：読み込んだファイルはこのブラウザの中に保存され、開き直しても残ります（素材の「✕」で削除）。<br><b>試すだけなら</b>：「デモ素材」→「全自動編集」→「▶ 再生」。<br><br>
+<span style="color:var(--dim)">音声の文字起こしは行いません（台本を使います）。動画や音声はこのブラウザ内だけで処理され、外部へ送信されません。AI機能を使ったときだけ、テーマや台本の文章がClaudeに送られます。</span>
 <div style="text-align:right;margin-top:10px"><button onclick="hideModal()">閉じる</button></div>`);
 $('modal').onclick = e => { if (e.target === $('modal') && !exporting) hideModal(); };
 $('btnExport').onclick = startExport;
@@ -1825,7 +1992,10 @@ $('projName').onkeydown = e => { if (e.key === 'Enter'){ e.preventDefault(); $('
 $('script').onchange = autosave;
 
 window.addEventListener('keydown', e => {
-  if (e.target.matches('input[type=text],textarea,select')) return;
+  const tg = e.target;
+  if (tg.isContentEditable || tg.closest && tg.closest('input,textarea,select,[contenteditable="true"]')) return;
+  if (exporting || fastExporting) return;
+  if (e.code === 'Space' && tg.tagName === 'BUTTON') tg.blur();   // ボタンのSpace押下と二重に反応しないように
   if (e.code === 'Space'){ e.preventDefault(); togglePlay(); }
   else if (e.key === 's' || e.key === 'S'){ if (!e.ctrlKey && !e.metaKey) splitAt(curT); }
   else if (e.key === 'Delete' || e.key === 'Backspace'){ deleteSel(e.shiftKey); }
@@ -1843,8 +2013,13 @@ window.addEventListener('resize', () => { for (const id in cursors) cursors[id].
 
 /* ---- 起動 ---- */
 renderHeads(); renderBin(); renderAgents(); syncGradeUI(); renderTimeline(); renderInspectors();
-(function boot(){
+(async function boot(){
   let saved = null; try { saved = JSON.parse(localStorage.getItem('reelstudio_autosave')); } catch(e){}
+  const stored = await MediaStore.all();
+  if (stored && stored.length){
+    log('システム', `保存してある素材 ${stored.length} 件を読み込み中…`, '#888');
+    await importFiles(stored.map(r => r.blob instanceof File ? r.blob : new File([r.blob], r.name, {type:r.type})), {restoring:true});
+  }
   if (saved && saved.tracks && saved.tracks.some(t => t.clips.length)){
     loadProject(saved); log('システム', '前回の作業を復元しました', '#888');
   } else {
