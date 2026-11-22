@@ -9,6 +9,7 @@
   --bg:#0b0d10; --panel:#12151a; --panel2:#171b21; --line:#242a33; --line2:#2f3742;
   --text:#e6e9ee; --dim:#8a93a0; --dim2:#5d6672;
   --accent:#e8ff3a; --accent2:#c8e000;
+  color-scheme:dark;
   --c-telop:#d9b92f; --c-broll:#3d63c9; --c-main:#2f9e5b; --c-grade:#b8323a; --c-voice:#4fb34a; --c-bgm:#7b4fd0; --c-sfx:#c26a2b;
 }
 *{box-sizing:border-box}
@@ -21,7 +22,8 @@ button.primary{background:var(--accent);color:#111;border-color:var(--accent);fo
 button:disabled{opacity:.45;cursor:default}
 select,input[type=text],input[type=number],textarea{background:#0e1115;border:1px solid var(--line2);border-radius:5px;padding:3px 6px}
 input[type=range]{accent-color:var(--accent);width:100%}
-.app{display:grid;grid-template-rows:44px 1fr 310px;height:100vh}
+.app{display:grid;grid-template-rows:44px 1fr 310px;height:100%}
+#projName[contenteditable=true]{outline:1px solid var(--accent);padding:0 4px;border-radius:3px}
 header{display:flex;align-items:center;gap:14px;padding:0 12px;border-bottom:1px solid var(--line);background:#0d1014}
 .logo{display:flex;align-items:center;gap:7px;font-weight:900;font-size:15px;letter-spacing:.04em}
 .logo i{display:inline-block;width:18px;height:18px;background:var(--accent);border-radius:4px;clip-path:polygon(15% 10%,90% 50%,15% 90%)}
@@ -53,6 +55,8 @@ header{display:flex;align-items:center;gap:14px;padding:0 12px;border-bottom:1px
 /* agents */
 .agents{display:flex;flex-direction:column;gap:4px;padding:6px 8px}
 .ag{display:grid;grid-template-columns:10px 1fr auto auto;gap:6px;align-items:center;padding:4px 6px;border-radius:5px;background:#0e1115;border:1px solid var(--line)}
+.ag > span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.top > .col{min-width:0}
 .ag .d{width:8px;height:8px;border-radius:50%}
 .ag .st{color:var(--dim);font-size:10px}
 .ag.run{border-color:var(--accent)}
@@ -134,6 +138,20 @@ details summary{cursor:pointer;color:var(--dim);padding:4px 8px}
 .modal h3{margin:0 0 8px}
 .prog{height:8px;background:#0e1115;border-radius:4px;overflow:hidden;margin:10px 0}
 .prog i{display:block;height:100%;width:0;background:var(--accent)}
+@media (max-width:900px){
+  html,body{overflow:auto;height:auto}
+  .app{height:auto;grid-template-rows:auto auto 340px}
+  header{flex-wrap:wrap;gap:8px;padding:6px 12px}
+  .title{order:5;flex-basis:100%;text-align:left}
+  .top{grid-template-columns:minmax(0,1fr)}
+  .bin{grid-template-columns:repeat(auto-fill,minmax(64px,1fr))}
+  .col > .scroll{max-height:240px}
+  .col{border-right:none;border-bottom:1px solid var(--line);max-height:none}
+  .stage{height:62vh;flex:none}
+  .heads{width:112px}
+  .tlbar{flex-wrap:wrap}
+  .tlbar > span:last-child{display:none}
+}
 kbd{background:#222831;border:1px solid #3a4350;border-radius:3px;padding:0 4px;font-size:10px}
 </style>
 </head>
@@ -1331,9 +1349,15 @@ function startExport(){
       if (!recChunks.length) return;
       const blob = new Blob(recChunks, {type: recorder.mimeType || mime || 'video/webm'});
       const ext = (recorder.mimeType||mime).includes('mp4') ? 'mp4' : 'webm';
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${$('projName').textContent}.${ext}`; a.click();
-      log('書き出し', `保存しました（${(blob.size/1e6).toFixed(1)}MB / ${ext.toUpperCase()}）`, '#7dff6b');
+      const url = URL.createObjectURL(blob), fname = `${$('projName').textContent}.${ext}`;
+      log('書き出し', `書き出しました（${(blob.size/1e6).toFixed(1)}MB / ${ext.toUpperCase()}）`, '#7dff6b');
       $('modalBox').querySelector('h3').textContent = '書き出し完了';
+      const box = document.createElement('div');
+      box.innerHTML = `<video controls playsinline style="width:100%;max-height:50vh;background:#000;border-radius:6px;margin-top:8px"></video>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:8px"><button class="primary" id="exSave">動画を保存</button><span id="exSaveMsg" style="color:var(--dim);font-size:11px"></span></div>`;
+      box.querySelector('video').src = url;
+      $('exProg').parentElement.after(box);
+      $('exSave').onclick = async () => { $('exSaveMsg').textContent = await saveFile(fname, blob); };
     };
     exporting = true; recorder.start(500);
     setTimeout(() => play(), 150);
@@ -1380,15 +1404,27 @@ function relinkMissing(){
 /* =========================================================
    UI 配線
    ========================================================= */
+/* ファイル保存：claude.ai のアーティファクト内では downloads 機能、それ以外は通常のダウンロード */
+let dlCap; const dlReady = (window.claude && window.claude.use) ? window.claude.use('downloads').then(d => dlCap = d).catch(() => dlCap = null) : Promise.resolve(dlCap = null);
+async function saveFile(filename, blob){
+  if (window.claude && window.claude.use){
+    await dlReady;
+    if (!dlCap) return 'この表示では保存できません。ダウンロードしたローカル版をお使いください';
+    try { await dlCap.save({filename, data: blob}); return '保存しました'; }
+    catch(e){ return e && e.code === 'declined' ? '保存をキャンセルしました' : e && e.code === 'rate_limited' ? '少し待ってからもう一度押してください' : '保存できませんでした（' + (e && e.code || '不明') + '）'; }
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+  return '保存しました';
+}
 function toast(msg){ log('システム', msg, '#ff9b9b'); }
 $('mImport').onclick = $('bImport').onclick = () => $('fileIn').click();
 $('fileIn').onchange = async e => { await importFiles([...e.target.files]); relinkMissing(); e.target.value = ''; };
 $('mDemo').onclick = () => { audioCtxFor(); addDemoMedia(); log('システム', 'デモ素材を追加しました。「全自動編集」を押してみてください', '#e8ff3a'); };
-$('mSave').onclick = () => {
-  const name = prompt('プロジェクト名', $('projName').textContent); if (!name) return;
-  $('projName').textContent = name;
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([projectJSON()], {type:'application/json'})); a.download = name + '.reel.json'; a.click();
-  autosave(); log('システム', 'プロジェクトを保存しました（動画ファイル本体は含みません）', '#888');
+$('mSave').onclick = async () => {
+  const name = $('projName').textContent.trim() || 'ショート';
+  autosave();
+  const msg = await saveFile(name + '.reel.json', new Blob([projectJSON()], {type:'application/json'}));
+  log('システム', msg + '（プロジェクトには動画ファイル本体は含みません）', '#888');
 };
 $('mLoad').onclick = () => $('projIn').click();
 $('projIn').onchange = async e => { const f = e.target.files[0]; if (!f) return; try { loadProject(JSON.parse(await f.text())); } catch(err){ toast('プロジェクトを開けませんでした'); } e.target.value = ''; };
@@ -1420,7 +1456,10 @@ $('clearLog').onclick = () => $('log').innerHTML = '';
 $('addTelop').onclick = () => { const c = addTelopAt(curT); selId = c.id; afterEdit(); };
 $('silTh').oninput = () => $('silThV').textContent = $('silTh').value;
 $('silMin').oninput = () => $('silMinV').textContent = $('silMin').value;
-$('projName').ondblclick = () => { const n = prompt('プロジェクト名', $('projName').textContent); if (n) { $('projName').textContent = n; autosave(); } };
+$('projName').title = 'ダブルクリックで名前を変更';
+$('projName').ondblclick = () => { const el = $('projName'); el.contentEditable = 'true'; el.focus(); document.getSelection().selectAllChildren(el); };
+$('projName').onblur = () => { const el = $('projName'); el.contentEditable = 'false'; el.textContent = el.textContent.trim() || 'ショート'; autosave(); };
+$('projName').onkeydown = e => { if (e.key === 'Enter'){ e.preventDefault(); $('projName').blur(); } };
 $('script').onchange = autosave;
 
 window.addEventListener('keydown', e => {
