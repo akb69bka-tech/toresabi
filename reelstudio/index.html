@@ -1,0 +1,2348 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>リールスタジオ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* レイアウト：上に5つの手順、左に常にプレビュー、右に「いまの手順」だけ、下にタイムライン */
+:root{
+  --bg:#eceff3; --surface:#ffffff; --surface-2:#f5f6f9; --ink:#14161b; --muted:#5b6271; --faint:#8a91a0;
+  --line:#dde1e8; --line-2:#c9cfd9; --accent:#e0245e; --accent-ink:#ffffff; --accent-soft:#fde6ee;
+  --ok:#15885a; --ok-soft:#e1f4ea; --warn:#b86a00; --warn-soft:#fdf0dc; --bad:#cc2f2f;
+  --monitor:#0c0d10; --monitor-ink:#e9ebef;
+  --c-telop:#d4a91a; --c-broll:#3d63c9; --c-main:#2a9757; --c-grade:#b8323a; --c-voice:#45a840; --c-bgm:#7b4fd0; --c-sfx:#c26a2b;
+  --font:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP","Yu Gothic UI","Meiryo",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:10px;
+  /* 旧名（スクリプト内のインライン指定用） */
+  --panel:var(--surface); --panel2:var(--surface-2); --text:var(--ink); --dim:var(--muted); --dim2:var(--faint); --accent2:var(--accent);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0e0f12; --surface:#17191e; --surface-2:#1e2128; --ink:#eceef2; --muted:#a3aab7; --faint:#6e7584;
+  --line:#2a2e36; --line-2:#3a3f4a; --accent:#ff5c8d; --accent-ink:#1b0710; --accent-soft:#3b1624;
+  --ok:#4cc98a; --ok-soft:#14301f; --warn:#f0a840; --warn-soft:#33250f; --bad:#ff6b6b; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0e0f12; --surface:#17191e; --surface-2:#1e2128; --ink:#eceef2; --muted:#a3aab7; --faint:#6e7584;
+  --line:#2a2e36; --line-2:#3a3f4a; --accent:#ff5c8d; --accent-ink:#1b0710; --accent-soft:#3b1624;
+  --ok:#4cc98a; --ok-soft:#14301f; --warn:#f0a840; --warn-soft:#33250f; --bad:#ff6b6b; color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;overflow:hidden}
+button,select,input,textarea{font:inherit;color:inherit}
+button{background:var(--surface);border:1px solid var(--line-2);border-radius:8px;padding:6px 12px;cursor:pointer;line-height:1.3}
+button:hover{border-color:var(--muted)}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:700}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+button.primary:hover{filter:brightness(1.06)}
+button.ghost{background:none;border-color:transparent;color:var(--muted)}
+button.ghost:hover{color:var(--ink);background:var(--surface-2)}
+button:disabled{opacity:.45;cursor:default}
+select,input[type=text],input[type=number],textarea{background:var(--surface);border:1px solid var(--line-2);border-radius:8px;padding:6px 9px}
+textarea{line-height:1.7}
+input[type=range]{accent-color:var(--accent);width:100%}
+input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
+h2{font-size:19px;margin:0;font-weight:900;text-wrap:balance}
+h3{font-size:15px;margin:0;font-weight:700}
+p{margin:0}
+.app{display:grid;grid-template-rows:auto minmax(0,1fr) auto;height:100%}
+
+/* ヘッダー */
+.top{display:flex;align-items:center;gap:16px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:8px;font-weight:900;font-size:16px;white-space:nowrap}
+.brand i{width:22px;height:22px;border-radius:6px;background:var(--accent);display:inline-grid;place-items:center}
+.brand i:after{content:"";width:0;height:0;border-left:8px solid var(--accent-ink);border-top:5px solid transparent;border-bottom:5px solid transparent;margin-left:2px}
+.pname{min-width:0;line-height:1.25}
+.pname b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;cursor:text}
+.pname small{color:var(--faint);font-size:11px}
+#projName[contenteditable=true]{outline:2px solid var(--accent);border-radius:4px;padding:0 4px}
+.stepper{flex:1;display:flex;justify-content:center;gap:4px;min-width:0}
+.step{display:flex;align-items:center;gap:7px;border:none;background:none;padding:6px 10px;border-radius:999px;color:var(--muted);white-space:nowrap}
+.step .n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;border:1.5px solid var(--line-2);font-family:var(--mono)}
+.step.done .n{background:var(--ok);border-color:var(--ok);color:#fff}
+.step.done .n span{display:none}
+.step.done .n:after{content:"✓"}
+.step.cur{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.step.cur .n{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
+.step + .step:before{content:"";width:14px;height:1px;background:var(--line-2);margin-right:4px}
+.hright{display:flex;align-items:center;gap:8px}
+.menu{position:relative}
+.menu summary{list-style:none;cursor:pointer;padding:6px 12px;border-radius:8px;border:1px solid var(--line-2);background:var(--surface)}
+.menu summary::-webkit-details-marker{display:none}
+.menu-pop{position:absolute;right:0;top:calc(100% + 6px);z-index:60;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 12px 32px #0003;padding:6px;display:flex;flex-direction:column;min-width:200px}
+.menu-pop button{border:none;text-align:left;background:none;padding:8px 10px;border-radius:6px}
+.menu-pop button:hover{background:var(--surface-2)}
+.menu-pop hr{border:none;border-top:1px solid var(--line);margin:4px 0}
+
+/* 作業エリア */
+.work{display:grid;grid-template-columns:minmax(280px,0.85fr) minmax(360px,1.15fr);min-height:0}
+.monitor{display:flex;flex-direction:column;min-height:0;background:var(--monitor);color:var(--monitor-ink)}
+.stage{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;position:relative;padding:14px}
+.cv-wrap{position:relative;height:100%;max-height:100%;aspect-ratio:9/16;max-width:100%;border-radius:12px;overflow:hidden;box-shadow:0 0 0 1px #ffffff14,0 18px 50px #000a;background:#000}
+#view{width:100%;height:100%;display:block}
+.safe{position:absolute;inset:0;pointer-events:none;display:none}
+.safe.show{display:block}
+.safe div{position:absolute;left:0;right:0;background:repeating-linear-gradient(45deg,#ff3b3b26 0 6px,transparent 6px 12px);border:1px dashed #ff7b7b99;color:#ffb3b3;font-size:10px;padding:3px 6px}
+.dropnote{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:#e0245e33;border:3px dashed var(--accent);font-size:18px;font-weight:900;z-index:50;color:#fff}
+.transport{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid #ffffff14;flex-wrap:wrap}
+.transport button{background:#ffffff10;border-color:#ffffff22;color:var(--monitor-ink)}
+.transport button:hover{border-color:#ffffff55}
+.transport .play{width:44px;height:44px;border-radius:50%;padding:0;font-size:16px;background:var(--accent);border-color:var(--accent);color:#fff}
+.tc{font-family:var(--mono);font-size:15px;font-variant-numeric:tabular-nums}
+.transport .tdur{color:#9aa1ad;font-family:var(--mono);font-size:12px}
+.transport label{display:flex;align-items:center;gap:5px;font-size:12px;color:#c3c8d1}
+.transport select{background:#ffffff10;border-color:#ffffff22;color:var(--monitor-ink);font-size:12px}
+.transport select option{color:#111}
+
+/* 手順パネル */
+.panel{display:flex;flex-direction:column;min-height:0;background:var(--surface);border-left:1px solid var(--line)}
+.pane{display:flex;flex-direction:column;min-height:0;flex:1}
+.pane-body{flex:1;overflow:auto;padding:20px 22px;display:flex;flex-direction:column;gap:16px;min-height:0}
+.pane-body > *, [data-tabpane] > *{flex-shrink:0}
+.pane-head{display:flex;flex-direction:column;gap:6px}
+.pane-head p{color:var(--muted);line-height:1.7;max-width:62ch}
+.eyebrow{font-size:11px;letter-spacing:.12em;color:var(--accent);font-weight:700}
+.pane-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 22px;border-top:1px solid var(--line);background:var(--surface)}
+.pane-foot .primary{padding:9px 18px}
+.card{border:1px solid var(--line);border-radius:var(--r);background:var(--surface-2);padding:14px;display:flex;flex-direction:column;gap:10px}
+.hint{color:var(--muted);font-size:12.5px;line-height:1.7}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* 1 素材 */
+.drop{border:2px dashed var(--line-2);background:var(--surface-2);border-radius:14px;padding:22px;display:flex;flex-direction:column;align-items:center;gap:6px;width:100%}
+.drop:hover{border-color:var(--accent);background:var(--accent-soft)}
+.drop b{font-size:16px}
+.drop span{color:var(--muted);font-size:12.5px}
+.binhead{display:flex;align-items:center;gap:8px}
+.binhead b{font-size:14px}
+.binhead .cnt{color:var(--faint);font-size:12px;flex:1}
+.bin{display:flex;flex-direction:column;gap:6px}
+.mi{display:grid;grid-template-columns:40px minmax(0,1fr) auto auto auto;gap:10px;align-items:center;padding:7px 8px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);cursor:grab}
+.mi:hover{border-color:var(--line-2)}
+.mi canvas{width:40px;height:auto;aspect-ratio:9/16;border-radius:5px;background:#000;display:block}
+.mi.audio canvas{aspect-ratio:1}
+.mi .nm{min-width:0}
+.mi .nm b{display:block;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mi .nm small{color:var(--faint);font-size:11.5px}
+.mi select{font-size:12px;padding:4px 6px}
+.mi .mbtn{width:30px;height:30px;padding:0;border-radius:8px}
+.mi .mbtn.del{color:var(--faint)}
+.mi .mbtn.del:hover{color:var(--bad);border-color:var(--bad)}
+.empty{color:var(--faint);padding:10px 2px;font-size:12.5px;line-height:1.7}
+
+/* 2 台本 */
+#script{width:100%;min-height:220px;resize:vertical;font-size:15px}
+.sinfo{display:flex;gap:6px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:3px 9px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);color:var(--muted)}
+.chip.ok{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
+.chip.warn{background:var(--warn-soft);border-color:transparent;color:var(--warn)}
+
+/* 3 おまかせ編集 */
+.bigrun{padding:14px 18px;font-size:16px;border-radius:12px}
+.agents{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.ag{display:grid;grid-template-columns:auto 10px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:10px 12px;background:var(--surface);border-top:1px solid var(--line)}
+.ag:first-child{border-top:none}
+.ag .d{width:10px;height:10px;border-radius:50%}
+.ag .nm b{font-size:13.5px}
+.ag .nm small{display:block;color:var(--faint);font-size:11.5px;line-height:1.5}
+.ag .res{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.pill{font-size:11px;padding:2px 9px;border-radius:999px;background:var(--surface-2);color:var(--faint);white-space:nowrap}
+.pill.run{background:var(--accent-soft);color:var(--accent)}
+.pill.done{background:var(--ok-soft);color:var(--ok)}
+.pill.err{background:var(--warn-soft);color:var(--warn)}
+.ag button{padding:4px 10px;font-size:12px}
+details.fold{border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+details.fold > summary{cursor:pointer;padding:10px 12px;color:var(--muted);font-size:13px}
+details.fold > div{padding:0 12px 12px}
+.log{font-family:var(--mono);font-size:11.5px;line-height:1.6;max-height:220px;overflow:auto}
+.log div{display:grid;grid-template-columns:62px 74px minmax(0,1fr);gap:6px}
+.log .t{color:var(--faint)}
+.log .who{font-weight:700;display:flex;align-items:center;gap:5px;font-family:var(--font)}
+.log .who i{width:7px;height:7px;border-radius:50%;flex:none}
+.sl{display:grid;grid-template-columns:96px minmax(0,1fr) 44px;gap:10px;align-items:center;font-size:13px;color:var(--muted)}
+.sl span:last-child{text-align:right;color:var(--ink);font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums}
+
+/* 4 仕上げ */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);padding:0 22px;background:var(--surface)}
+.tab{border:none;background:none;border-bottom:2px solid transparent;border-radius:0;padding:10px 12px;color:var(--muted)}
+.tab.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:700;background:none}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.grid3 button{padding:8px 4px;font-size:12.5px}
+.tlist{display:flex;flex-direction:column;gap:6px}
+.trow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.trow.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.trow .time{font-family:var(--mono);font-size:12px;padding:5px 8px}
+.trow input{width:100%;min-width:0}
+.trow .x{width:30px;height:30px;padding:0;color:var(--faint)}
+.styles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.styles button{padding:8px 4px;font-size:12.5px}
+.sw{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:12.5px}
+.sw i{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid var(--line-2)}
+.sw i.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--surface) inset}
+.insp textarea{width:100%;height:64px;resize:vertical}
+.looks{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.look{display:flex;flex-direction:column;gap:5px;padding:6px;border-radius:var(--r);align-items:stretch;font-size:12px}
+.look canvas{width:100%;aspect-ratio:4/5;border-radius:6px;display:block;background:#000}
+.look.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);color:var(--accent);font-weight:700}
+.wheels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.wheel{text-align:center;color:var(--muted);font-size:12px;display:flex;flex-direction:column;gap:4px}
+.wheel canvas{width:100%;aspect-ratio:1;cursor:crosshair;touch-action:none}
+.mix{display:flex;flex-direction:column;gap:10px}
+.mixrow{display:grid;grid-template-columns:12px 88px minmax(0,1fr) 44px auto;gap:10px;align-items:center;font-size:13px}
+.mixrow i{width:10px;height:10px;border-radius:3px}
+.mixrow span.v{font-family:var(--mono);font-size:12px;text-align:right}
+.mixrow button{padding:3px 9px;font-size:12px}
+.meter{display:grid;grid-template-columns:80px minmax(0,1fr) 52px;gap:10px;align-items:center;font-size:12.5px;color:var(--muted)}
+.bar{height:8px;background:var(--surface-2);border:1px solid var(--line);border-radius:5px;overflow:hidden;position:relative}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--ok),#d8c400 80%,var(--bad))}
+.bar b{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink);opacity:.5}
+.num{text-align:right;font-family:var(--mono);color:var(--ink);font-size:12px}
+.scopes{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:10px}
+.scopes canvas{width:100%;background:#050607;border-radius:8px;display:block}
+.scopes figure{margin:0;display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+
+/* 5 書き出し */
+.qc{display:flex;flex-direction:column;gap:6px}
+.qc div{display:flex;gap:8px;align-items:flex-start;font-size:13px;line-height:1.6;padding:8px 10px;border-radius:8px;background:var(--surface-2)}
+.qc div.ok{background:var(--ok-soft);color:var(--ok)}
+.qc div.warn{background:var(--warn-soft);color:var(--warn)}
+.prog{height:10px;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+
+/* タイムライン */
+.dock{border-top:1px solid var(--line);display:flex;flex-direction:column;height:282px;background:var(--surface)}
+.dock.big{height:420px}
+.dock.small{height:44px}
+.dock.small .tlbody{display:none}
+.tlbar{display:flex;align-items:center;gap:6px;padding:6px 12px;border-bottom:1px solid var(--line);flex:none;flex-wrap:wrap}
+.tlbar button{padding:4px 10px;font-size:12.5px}
+.tlbar .sep{width:1px;height:20px;background:var(--line);margin:0 4px}
+.tlbar .tc{font-size:13px;color:var(--accent)}
+.tlbar .keys{color:var(--faint);font-size:11.5px}
+kbd{background:var(--surface-2);border:1px solid var(--line-2);border-radius:4px;padding:0 5px;font-size:11px;font-family:var(--mono)}
+.tlbody{flex:1;display:flex;min-height:0}
+.heads{width:116px;flex:none;border-right:1px solid var(--line);overflow:hidden}
+.heads .rsp{height:22px;border-bottom:1px solid var(--line)}
+.hd{height:30px;display:flex;align-items:center;gap:6px;padding:0 6px 0 8px;border-bottom:1px solid var(--line)}
+.hd .cb{width:4px;height:18px;border-radius:2px}
+.hd .n{flex:1;font-size:12px;white-space:nowrap}
+.hd button{padding:0 6px;font-size:10.5px;height:20px;border-radius:5px;white-space:nowrap}
+.tlscroll{flex:1;overflow:auto;position:relative}
+.tlinner{position:relative;min-width:100%}
+.ruler{touch-action:none;height:22px;border-bottom:1px solid var(--line);position:relative;cursor:ew-resize;background:var(--surface-2)}
+.ruler span{position:absolute;top:4px;font-size:10px;color:var(--faint);transform:translateX(3px);font-family:var(--mono)}
+.ruler i{position:absolute;bottom:0;width:1px;background:var(--line-2)}
+.lane{height:30px;border-bottom:1px solid var(--line);position:relative}
+.lane.dragover{background:var(--accent-soft)}
+.clip{position:absolute;top:3px;height:24px;border-radius:5px;overflow:hidden;cursor:grab;border:1px solid #0003;user-select:none;touch-action:none}
+.clip .lb{position:absolute;left:6px;top:3px;font-size:10.5px;white-space:nowrap;color:#fff;text-shadow:0 1px 2px #0009;z-index:2;pointer-events:none}
+.clip canvas{position:absolute;left:0;bottom:0;height:16px;pointer-events:none;opacity:.8}
+.clip .h{position:absolute;top:0;bottom:0;width:8px;cursor:ew-resize;z-index:3}
+.clip .h.l{left:0}.clip .h.r{right:0}
+.clip .h:hover{background:#fff5}
+.clip.sel{outline:2px solid var(--ink);outline-offset:-1px;z-index:5}
+.clip.grade{background:repeating-linear-gradient(135deg,#b8323a 0 7px,#8a2229 7px 14px)}
+.playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--accent);pointer-events:none;z-index:20}
+.playhead:before{content:"";position:absolute;top:0;left:-5px;border:6px solid transparent;border-top:8px solid var(--accent)}
+
+/* モーダル */
+.modal{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;z-index:200;padding:16px}
+.modal.show{display:flex}
+.modal .box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 22px;width:min(540px,100%);max-height:88vh;overflow:auto;line-height:1.8}
+.modal h3{margin:0 0 8px;font-size:17px}
+
+/* 狭い画面 */
+@media (max-width:1100px){
+  .step .lbl{display:none}
+  .step.cur .lbl{display:inline}
+}
+@media (max-width:860px){
+  html,body{overflow:auto;height:auto}
+  .app{height:auto;display:flex;flex-direction:column}
+  .top{flex-wrap:wrap;gap:10px;padding:10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px))}
+  .stepper{order:5;flex-basis:100%;justify-content:space-between;overflow-x:auto}
+  .step{padding:6px 6px}
+  .step + .step:before{width:6px}
+  .pname b{max-width:150px}
+  .work{display:flex;flex-direction:column}
+  .stage{height:56vh;flex:none}
+  .dock{height:330px}
+  .panel{border-left:none}
+  .pane-body{padding:16px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px))}
+  .pane-foot{padding:12px 16px}
+  .tabs{padding:0 16px;overflow-x:auto}
+  .tlbar .keys{display:none}
+  .mi{grid-template-columns:36px minmax(0,1fr) auto auto;}
+  .mi select{grid-column:2 / 3}
+  .mixrow{grid-template-columns:12px 70px minmax(0,1fr) 40px auto}
+  .scopes{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion: reduce){ *{transition:none!important} }
+</style>
+</head>
+<body>
+<div class="app">
+<header class="top">
+  <div class="brand"><i></i>リールスタジオ</div>
+  <div class="pname"><b id="projName" title="ダブルクリックで名前を変更">ショート_新規プロジェクト</b><small>縦 9:16 ・ 1080×1920</small></div>
+  <nav class="stepper" id="stepper" aria-label="作業の手順">
+    <button class="step" data-step="1"><span class="n"><span>1</span></span><span class="lbl">素材</span></button>
+    <button class="step" data-step="2"><span class="n"><span>2</span></span><span class="lbl">台本</span></button>
+    <button class="step" data-step="3"><span class="n"><span>3</span></span><span class="lbl">おまかせ編集</span></button>
+    <button class="step" data-step="4"><span class="n"><span>4</span></span><span class="lbl">仕上げ</span></button>
+    <button class="step" data-step="5"><span class="n"><span>5</span></span><span class="lbl">書き出し</span></button>
+  </nav>
+  <div class="hright">
+    <details class="menu" id="fileMenu"><summary>ファイル ▾</summary>
+      <div class="menu-pop">
+        <button id="mNew">新しいプロジェクト</button>
+        <button id="mLoad">プロジェクトを開く…</button>
+        <button id="mSave">プロジェクトを保存</button>
+        <hr>
+        <button id="mImport">素材を読み込む…</button>
+        <button id="mDemo">デモ素材を追加</button>
+        <hr>
+        <button id="mHelp">使い方</button>
+      </div>
+    </details>
+    <button class="primary" id="btnExport">書き出す</button>
+  </div>
+</header>
+
+<main class="work">
+  <section class="monitor" aria-label="プレビュー">
+    <div class="stage" id="stage">
+      <div class="cv-wrap" id="cvWrap">
+        <canvas id="view" width="540" height="960"></canvas>
+        <div class="safe" id="safe">
+          <div style="top:0;height:11%">上：アカウント名などに隠れやすい（目安）</div>
+          <div style="bottom:0;height:20%">下：キャプション・ボタンに隠れやすい（目安）</div>
+        </div>
+      </div>
+      <div class="dropnote" id="dropnote">ここにドロップして読み込み</div>
+    </div>
+    <div class="transport">
+      <button id="tStart" title="先頭へ" aria-label="先頭へ">⏮</button>
+      <button id="tBack" title="1コマ戻る" aria-label="1コマ戻る">◀</button>
+      <button id="tPlay" class="play" aria-label="再生">▶</button>
+      <button id="tFwd" title="1コマ進む" aria-label="1コマ進む">▶</button>
+      <span class="tc" id="tc">00:00:00:00</span><span class="tdur">/ <span id="tdur">00:00:00</span></span>
+      <span style="flex:1"></span>
+      <label><input type="checkbox" id="safeT"> 隠れる範囲</label>
+      <select id="quality" title="プレビューの画質"><option value="540">軽い表示</option><option value="1080">きれいな表示</option></select>
+    </div>
+  </section>
+
+  <section class="panel" id="panel">
+    <!-- 1 素材 -->
+    <div class="pane" data-pane="1">
+      <div class="pane-body">
+        <div class="pane-head"><span class="eyebrow">手順 1 / 5</span><h2>素材を入れる</h2>
+          <p>話している動画、合間に入れる映像や写真、BGMを入れます。種類は名前から自動で見分けます。違っていたら右の選択で直せます。</p></div>
+        <button class="drop" id="bImport"><b>＋ 動画・写真・音楽を選ぶ</b><span>またはこの画面にファイルをドラッグ＆ドロップ</span></button>
+        <div class="binhead"><b>読み込んだ素材</b><span class="cnt" id="binCount">0 件</span><button class="ghost" id="mDemo2">デモ素材で試す</button></div>
+        <div class="bin" id="bin"></div>
+      </div>
+      <div class="pane-foot"><span class="hint">素材はこのブラウザに保存されます</span><button class="primary" data-go="2">次へ：台本 →</button></div>
+    </div>
+
+    <!-- 2 台本 -->
+    <div class="pane" data-pane="2" hidden>
+      <div class="pane-body">
+        <div class="pane-head"><span class="eyebrow">手順 2 / 5</span><h2>台本を入れる</h2>
+          <p>1行目がタイトル（画面の上に出ます）、2行目からが話す内容です。話す区間ごとに1行ずつテロップになります。台本がなくても先に進めます。</p></div>
+        <div class="card" id="aiBox" hidden>
+          <h3>AIに台本を書いてもらう</h3>
+          <div class="row"><input type="text" id="aiTheme" placeholder="テーマ（例：美容室の予約が増える3つのコツ）" style="flex:1;min-width:200px"><button id="aiScript" class="primary">台本を作る</button></div>
+          <span class="hint" id="aiMsg"></span>
+        </div>
+        <textarea id="script" placeholder="例）&#10;予約が増える3つのコツ&#10;今日は予約が増えるコツを話します&#10;まずプロフィールに料金を書く&#10;…"></textarea>
+        <div class="sinfo" id="scriptInfo"></div>
+      </div>
+      <div class="pane-foot"><button class="ghost" data-go="1">← 戻る</button><button class="primary" data-go="3">次へ：おまかせ編集 →</button></div>
+    </div>
+
+    <!-- 3 おまかせ編集 -->
+    <div class="pane" data-pane="3" hidden>
+      <div class="pane-body">
+        <div class="pane-head"><span class="eyebrow">手順 3 / 5</span><h2>おまかせ編集</h2>
+          <p>チェックした作業を上から順に自動で行います。終わったら左のプレビューで確認してください。気に入らなければもう一度押せばやり直せます（<kbd>Ctrl</kbd>+<kbd>Z</kbd> で元に戻せます）。</p></div>
+        <button class="primary bigrun" id="runAll">▶ おまかせ編集を始める</button>
+        <div class="agents" id="agents"></div>
+        <details class="fold"><summary>カットの細かい設定</summary><div style="display:flex;flex-direction:column;gap:8px">
+          <div class="sl"><span>無音とみなす音量</span><input type="range" id="silTh" min="-60" max="-20" value="-38"><span id="silThV">-38</span></div>
+          <div class="sl"><span>削る無音の長さ</span><input type="range" id="silMin" min="0.15" max="1.5" step="0.05" value="0.35"><span id="silMinV">0.35</span></div>
+          <span class="hint">声が小さい動画で話の途中まで切れるときは「無音とみなす音量」を左に動かします。</span>
+        </div></details>
+        <details class="fold"><summary>作業の記録</summary><div><div class="log" id="log"></div><button class="ghost" id="clearLog" style="margin-top:6px">記録を消す</button></div></details>
+      </div>
+      <div class="pane-foot"><button class="ghost" data-go="2">← 戻る</button><button class="primary" data-go="4">次へ：仕上げ →</button></div>
+    </div>
+
+    <!-- 4 仕上げ -->
+    <div class="pane" data-pane="4" hidden>
+      <div class="tabs" role="tablist">
+        <button class="tab on" data-tab="telop">テロップ</button>
+        <button class="tab" data-tab="color">色</button>
+        <button class="tab" data-tab="sound">音</button>
+        <button class="tab" data-tab="detail">詳しく</button>
+      </div>
+      <div class="pane-body">
+        <div data-tabpane="telop" style="display:flex;flex-direction:column;gap:14px">
+          <div class="pane-head"><span class="eyebrow">手順 4 / 5</span><h2>テロップを直す</h2><p>文字をそのまま書き換えられます。時刻を押すとその場面に移動します。</p></div>
+          <div class="tlist" id="telopList"></div>
+          <div class="row"><button id="addTelop">＋ 今の位置にテロップを追加</button></div>
+          <div class="card insp" id="telopInsp"></div>
+        </div>
+        <div data-tabpane="color" hidden style="display:flex;flex-direction:column;gap:14px">
+          <div class="pane-head"><span class="eyebrow">手順 4 / 5</span><h2>色の雰囲気</h2><p>動画全体の雰囲気を選びます。明るさなどは下で調整できます。</p></div>
+          <div class="looks" id="lutBtns"></div>
+          <div class="sl"><span>雰囲気の強さ</span><input type="range" id="lookAmt" min="0" max="1.5" step="0.01" value="0.8"><span id="lookAmtV">0.80</span></div>
+          <div class="card" style="gap:8px">
+            <div class="row" style="justify-content:space-between"><h3>明るさと色</h3><button class="ghost" id="gradeReset">元に戻す</button></div>
+            <div class="sl"><span>明るさ</span><input type="range" id="gExp" min="-1" max="1" step="0.01" value="0"><span>0</span></div>
+            <div class="sl"><span>メリハリ</span><input type="range" id="gCon" min="-0.5" max="0.8" step="0.01" value="0"><span>0</span></div>
+            <div class="sl"><span>鮮やかさ</span><input type="range" id="gSat" min="0" max="2" step="0.01" value="1"><span>1</span></div>
+            <div class="sl"><span>暖かさ</span><input type="range" id="gTemp" min="-1" max="1" step="0.01" value="0"><span>0</span></div>
+            <div class="sl"><span>緑⇔赤紫</span><input type="range" id="gTint" min="-1" max="1" step="0.01" value="0"><span>0</span></div>
+            <div class="sl"><span>周辺を暗く</span><input type="range" id="gVig" min="0" max="1" step="0.01" value="0"><span>0</span></div>
+            <div class="sl"><span>フィルム感</span><input type="range" id="gGrain" min="0" max="1" step="0.01" value="0"><span>0</span></div>
+          </div>
+          <details class="fold"><summary>プロ向け：カラーホイール</summary><div>
+            <div class="wheels">
+              <div class="wheel"><canvas id="wLift" width="160" height="160"></canvas>暗部<input type="range" id="wLiftM" min="-0.2" max="0.2" step="0.005" value="0"></div>
+              <div class="wheel"><canvas id="wGamma" width="160" height="160"></canvas>中間<input type="range" id="wGammaM" min="-0.6" max="0.6" step="0.01" value="0"></div>
+              <div class="wheel"><canvas id="wGain" width="160" height="160"></canvas>明部<input type="range" id="wGainM" min="-0.5" max="0.5" step="0.01" value="0"></div>
+            </div><span class="hint">円の中をドラッグで色味、ダブルクリックで中央に戻ります。</span>
+          </div></details>
+        </div>
+        <div data-tabpane="sound" hidden style="display:flex;flex-direction:column;gap:14px">
+          <div class="pane-head"><span class="eyebrow">手順 4 / 5</span><h2>音のバランス</h2><p>声が聞き取りやすいように、BGMは小さめがおすすめです。</p></div>
+          <div class="card mix" id="mixer"></div>
+          <div class="card" style="gap:8px">
+            <h3>音の大きさ（再生中に動きます）</h3>
+            <div class="meter"><span>今</span><div class="bar"><i id="mM"></i><b style="left:77%"></b></div><span class="num" id="mMv">-∞</span></div>
+            <div class="meter"><span>3秒の平均</span><div class="bar"><i id="mS"></i><b style="left:77%"></b></div><span class="num" id="mSv">-∞</span></div>
+            <div class="meter"><span>いちばん大きい</span><div class="bar"><i id="mP"></i><b style="left:98%"></b></div><span class="num" id="mPv">-∞</span></div>
+            <span class="hint">線は目安（平均 -14 / 最大 -1）。dBFS での簡易表示で、正式なLUFS測定ではありません。</span>
+          </div>
+        </div>
+        <div data-tabpane="detail" hidden style="display:flex;flex-direction:column;gap:14px">
+          <div class="pane-head"><span class="eyebrow">手順 4 / 5</span><h2>詳しい情報</h2><p>タイムラインで選んだクリップの設定と、映像の明るさ・色の分布です。</p></div>
+          <div class="card"><div class="row" style="justify-content:space-between"><h3>選んだクリップ</h3><span class="hint" id="clipKind"></span></div><div class="insp" id="clipInsp"></div></div>
+          <div class="scopes"><figure><canvas id="scWave" width="256" height="128"></canvas><figcaption>明るさの分布（波形）</figcaption></figure><figure><canvas id="scVec" width="180" height="180"></canvas><figcaption>色の分布（ベクトルスコープ）</figcaption></figure></div>
+        </div>
+      </div>
+      <div class="pane-foot"><button class="ghost" data-go="3">← 戻る</button><button class="primary" data-go="5">次へ：書き出し →</button></div>
+    </div>
+
+    <!-- 5 書き出し -->
+    <div class="pane" data-pane="5" hidden>
+      <div class="pane-body">
+        <div class="pane-head"><span class="eyebrow">手順 5 / 5</span><h2>書き出す</h2><p>投稿前のチェックをしてから、動画ファイルを作ります。</p></div>
+        <div class="card"><div class="row" style="justify-content:space-between"><h3>投稿前チェック</h3><button id="qcRun">チェックする</button></div><div class="qc" id="qcList"><div>「チェックする」を押すと、長さ・黒い画面・テロップの位置などを確かめます。</div></div></div>
+        <div class="card" id="exportArea"></div>
+        <div class="card" id="capBox" hidden>
+          <h3>投稿文とハッシュタグ</h3>
+          <span class="hint">台本をもとに、AIがキャプションとハッシュタグを作ります。</span>
+          <div class="row"><button id="aiCaption" class="primary">投稿文を作る</button><span class="hint" id="capAiMsg"></span></div>
+        </div>
+      </div>
+      <div class="pane-foot"><button class="ghost" data-go="4">← 戻る</button><span></span></div>
+    </div>
+  </section>
+</main>
+
+<section class="dock" id="dock" aria-label="タイムライン">
+  <div class="tlbar">
+    <button id="tlPlay" aria-label="再生">▶</button>
+    <span class="tc" id="tc2">00:00:00:00</span>
+    <span class="sep"></span>
+    <button id="tlSplit" title="再生位置で分割 (S)">✂ 分割</button>
+    <button id="tlDel" title="選んだクリップを削除 (Delete)">削除</button>
+    <button id="tlRipple" title="削除して後ろを詰める">削除して詰める</button>
+    <span class="sep"></span>
+    <button id="tlUndo" title="元に戻す (Ctrl+Z)">↶ 戻す</button>
+    <button id="tlRedo" title="やり直す (Ctrl+Shift+Z)">↷</button>
+    <span class="sep"></span>
+    <button id="tlSnap" class="on" title="端をそろえて吸着">吸着</button>
+    <label class="row" style="gap:6px;font-size:12.5px;color:var(--muted)">拡大<input type="range" id="tlZoom" min="10" max="200" value="44" style="width:100px"></label>
+    <span style="flex:1"></span>
+    <span class="keys"><kbd>Space</kbd> 再生 <kbd>S</kbd> 分割 <kbd>Del</kbd> 削除</span>
+    <button class="ghost" id="dockSize" title="タイムラインの大きさ">タイムラインを大きく</button>
+  </div>
+  <div class="tlbody">
+    <div class="heads" id="heads"></div>
+    <div class="tlscroll" id="tlScroll">
+      <div class="tlinner" id="tlInner">
+        <div class="ruler" id="ruler"></div>
+        <div id="lanes"></div>
+        <div class="playhead" id="playhead"></div>
+      </div>
+    </div>
+  </div>
+</section>
+</div>
+
+<input type="file" id="fileIn" multiple accept="video/*,audio/*,image/*" style="display:none">
+<input type="file" id="projIn" accept=".json,application/json" style="display:none">
+
+<div class="modal" id="modal"><div class="box" id="modalBox"></div></div>
+
+<script src="vendor/mp4box.all.min.js"></script>
+<script src="vendor/mp4-muxer.js"></script>
+<script>
+'use strict';
+/* =========================================================
+   基本状態
+   ========================================================= */
+const FPS = 30;
+const view = document.getElementById('view');
+let GL = initGL();                                   // 本物のGPUがあれば色処理をGPUで
+const CTX_OPTS = GL ? {} : {willReadFrequently:true};  // GPUが無いときはCPUで読み書きしやすい設定に
+let ctx = view.getContext('2d', CTX_OPTS);
+let W = 540, H = 960;
+const $ = id => document.getElementById(id);
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+let uid = 1; const newId = p => p + (uid++);
+
+const media = [];            // {id,name,kind:'video'|'audio'|'image'|'proc',role,el,img,buffer,peaks,duration,proc}
+const TRACKS_DEF = [
+  {id:'telop', name:'テロップ', type:'text',  color:'var(--c-telop)'},
+  {id:'broll', name:'Bロール', type:'video', color:'var(--c-broll)'},
+  {id:'main',  name:'メイン',   type:'video', color:'var(--c-main)'},
+  {id:'grade', name:'グレード', type:'grade', color:'var(--c-grade)'},
+  {id:'voice', name:'ボイス',   type:'audio', color:'var(--c-voice)'},
+  {id:'bgm',   name:'BGM',     type:'audio', color:'var(--c-bgm)'},
+  {id:'sfx',   name:'効果音',   type:'audio', color:'var(--c-sfx)'},
+];
+let tracks = TRACKS_DEF.map(t => ({...t, clips:[], vol:1, mute:false}));
+const T = id => tracks.find(t => t.id === id);
+
+const DEFAULT_GRADE = () => ({exp:0,con:0,sat:1,temp:0,tint:0,vig:0,grain:0,
+  lift:{x:0,y:0,m:0}, gamma:{x:0,y:0,m:0}, gain:{x:0,y:0,m:0}});
+let grade = DEFAULT_GRADE();
+
+let playing = false, curT = 0, playStartCtx = 0, playStartT = 0;
+let selId = null, pps = 44, snap = true, exporting = false;
+
+/* =========================================================
+   音声
+   ========================================================= */
+const AC = new (window.AudioContext || window.webkitAudioContext)();
+const master = AC.createGain();
+const analyser = AC.createAnalyser(); analyser.fftSize = 2048;
+const exportDest = AC.createMediaStreamDestination();
+master.connect(analyser); analyser.connect(AC.destination); master.connect(exportDest);
+let liveSources = [];
+
+function computePeaks(buf){
+  const d = buf.getChannelData(0), sr = buf.sampleRate, step = Math.floor(sr/100);
+  const n = Math.ceil(d.length/step), p = new Float32Array(n);
+  for (let i=0;i<n;i++){ let m=0; const e=Math.min(d.length,(i+1)*step); for(let j=i*step;j<e;j+=4){const a=Math.abs(d[j]); if(a>m)m=a;} p[i]=m; }
+  return p;
+}
+function audioCtxFor(){ if (AC.state !== 'running') AC.resume(); }
+
+/* =========================================================
+   デモ素材（その場で生成。外部ファイル不要）
+   ========================================================= */
+const DEMO_PHRASES = [[0.8,2.9],[3.9,6.4],[7.5,9.4],[10.6,12.8],[13.7,16.0],[17.2,19.0]];
+const DEMO_SCRIPT = 'AI社長のチームの作り方\n今日はチームの作り方を話します\nステップは全部で3つ\nまずジャンルを1つに決める\n次に目標を数字で置く\n最後にAIに任せる作業を決める\n保存して見返してね';
+
+function synthSpeech(){
+  const sr = AC.sampleRate, len = Math.floor(sr*20), buf = AC.createBuffer(1,len,sr), d = buf.getChannelData(0);
+  let seed = 7; const rnd = () => (seed = (seed*16807)%2147483647)/2147483647;
+  for (const [a,b] of DEMO_PHRASES){
+    let t = a;
+    while (t < b-0.1){
+      const syl = 0.11 + rnd()*0.12, f0 = 125 + rnd()*55, amp = 0.18 + rnd()*0.16;
+      const s0 = Math.floor(t*sr), n = Math.floor(syl*sr);
+      const formant = 500 + rnd()*1500;
+      for (let i=0;i<n && s0+i<len;i++){
+        const x = i/n, env = Math.sin(Math.PI*x)**1.4, tt = i/sr;
+        const f = f0*(1+0.06*Math.sin(tt*9));
+        let v = 0; for (let h=1;h<=8;h++){ const fr=f*h; v += Math.sin(2*Math.PI*fr*tt)/h * Math.exp(-(((fr-formant)/900)**2)*0.8+0.2); }
+        v += (rnd()-0.5)*0.15;
+        d[s0+i] += v*amp*env*0.5;
+      }
+      t += syl + rnd()*0.05;
+    }
+  }
+  for (let i=0;i<len;i++) d[i] += (Math.random()-0.5)*0.0015; // 環境ノイズ
+  return buf;
+}
+function synthBGM(){
+  const sr = AC.sampleRate, dur = 16, len = Math.floor(sr*dur), buf = AC.createBuffer(2,len,sr);
+  const L = buf.getChannelData(0), R = buf.getChannelData(1);
+  const chords = [[57,60,64,67],[53,57,60,64],[55,59,62,65],[52,55,59,64]];
+  const mtof = m => 440*Math.pow(2,(m-69)/12);
+  const beat = 60/84;
+  for (let i=0;i<len;i++){
+    const t = i/sr, bar = Math.floor(t/(beat*4))%4, ch = chords[bar];
+    let v = 0; for (const m of ch){ const f=mtof(m); v += Math.sin(2*Math.PI*f*t)*0.05 + Math.sin(2*Math.PI*f*2*t)*0.012; }
+    v *= 0.75 + 0.25*Math.sin(2*Math.PI*t/(beat*2));
+    const bt = t % beat; v += Math.sin(2*Math.PI*(50+90*Math.exp(-bt*30))*bt)*Math.exp(-bt*9)*0.5;           // キック
+    const ht = (t+beat/2) % beat; v += (Math.random()-0.5)*Math.exp(-ht*60)*0.12;                                // ハット
+    L[i] = v*0.8; R[i] = v*0.8;
+  }
+  return buf;
+}
+function synthSfx(kind){
+  const sr = AC.sampleRate, dur = {pop:0.25,whoosh:0.6,ding:1.2,boom:0.9}[kind], len = Math.floor(sr*dur);
+  const buf = AC.createBuffer(1,len,sr), d = buf.getChannelData(0);
+  let lp = 0;
+  for (let i=0;i<len;i++){
+    const t = i/sr, x = t/dur; let v = 0;
+    if (kind==='pop'){ v = Math.sin(2*Math.PI*(900-700*x)*t)*Math.exp(-t*28); }
+    if (kind==='whoosh'){ const n=Math.random()*2-1; const k=0.02+0.25*Math.sin(Math.PI*x); lp += (n-lp)*k; v = lp*Math.sin(Math.PI*x)*1.6; }
+    if (kind==='ding'){ v = (Math.sin(2*Math.PI*1760*t)+0.5*Math.sin(2*Math.PI*2640*t)+0.3*Math.sin(2*Math.PI*3520*t))*Math.exp(-t*4)*0.4; }
+    if (kind==='boom'){ v = Math.sin(2*Math.PI*(40+80*Math.exp(-t*8))*t)*Math.exp(-t*4.5) + (Math.random()-0.5)*Math.exp(-t*25)*0.5; }
+    d[i] = v*0.7;
+  }
+  return buf;
+}
+function envAt(m, t){
+  if (!m.peaks) return 0; const i = Math.floor(t*100); let s=0; for (let k=i-2;k<=i+2;k++) s += m.peaks[k]||0; return s/5;
+}
+const PROC = {
+  talk(c, t, w, h, m){
+    const g = c.createLinearGradient(0,0,0,h); g.addColorStop(0,'#3b2a22'); g.addColorStop(1,'#1a1311'); c.fillStyle=g; c.fillRect(0,0,w,h);
+    c.fillStyle='#e8a15b22'; for (let i=0;i<5;i++){ c.beginPath(); c.arc(w*(0.15+i*0.18), h*0.22, w*0.06, 0, 7); c.fill(); }
+    c.fillStyle='#5a3a26'; c.fillRect(0,h*0.78,w,h*0.22);
+    const bob = Math.sin(t*2.1)*h*0.004, cx = w*0.5, cy = h*0.43+bob;
+    c.fillStyle='#202634'; c.beginPath(); c.ellipse(cx, h*0.74, w*0.33, h*0.17, 0, Math.PI, 0); c.fill();
+    c.fillStyle='#e9b896'; c.beginPath(); c.ellipse(cx, cy, w*0.16, h*0.11, 0, 0, 7); c.fill();
+    c.fillStyle='#1b1410'; c.beginPath(); c.ellipse(cx, cy-h*0.06, w*0.17, h*0.07, 0, Math.PI, 0); c.fill();
+    const blink = (t%3.7)<0.12 ? 0.15 : 1;
+    c.fillStyle='#1b1410'; c.beginPath(); c.ellipse(cx-w*0.055, cy-h*0.005, w*0.014, h*0.009*blink, 0, 0, 7); c.ellipse(cx+w*0.055, cy-h*0.005, w*0.014, h*0.009*blink, 0, 0, 7); c.fill();
+    const mo = clamp(envAt(m,t)*3.2, 0.05, 1);
+    c.fillStyle='#7a2a2a'; c.beginPath(); c.ellipse(cx, cy+h*0.05, w*0.035, h*0.004+h*0.02*mo, 0, 0, 7); c.fill();
+    c.fillStyle='#ffffff55'; c.font=`700 ${w*0.035}px sans-serif`; c.textAlign='left'; c.fillText('DEMO', w*0.04, h*0.04);
+  },
+  pc(c, t, w, h){
+    c.fillStyle='#0d1a2b'; c.fillRect(0,0,w,h);
+    c.fillStyle='#1e2f47'; c.fillRect(w*0.08,h*0.25,w*0.84,h*0.38);
+    for (let i=0;i<8;i++){ const v = 0.3+0.6*Math.abs(Math.sin(t*1.5+i*0.9)); c.fillStyle= i%2?'#4fd1ff':'#e8ff3a'; c.fillRect(w*(0.13+i*0.095), h*0.6 - h*0.3*v, w*0.06, h*0.3*v); }
+    c.fillStyle='#2a3a52'; c.fillRect(w*0.02,h*0.63,w*0.96,h*0.03);
+    c.fillStyle='#fff'; c.font=`800 ${w*0.06}px sans-serif`; c.textAlign='center'; c.fillText('KPI ' + Math.floor(120+t*37) + '%', w/2, h*0.2);
+  },
+  city(c, t, w, h){
+    const g = c.createLinearGradient(0,0,0,h); g.addColorStop(0,'#ff8a5b'); g.addColorStop(0.55,'#6a3d9a'); g.addColorStop(1,'#120c24'); c.fillStyle=g; c.fillRect(0,0,w,h);
+    c.fillStyle='#ffe7a8'; c.beginPath(); c.arc(w*0.5, h*0.5, w*0.16, 0, 7); c.fill();
+    for (let layer=0;layer<3;layer++){
+      c.fillStyle=['#3a2560','#24173f','#120c24'][layer];
+      const sp = (layer+1)*18, bw = w*(0.12+layer*0.04);
+      for (let i=-1;i<10;i++){ const x = ((i*bw*1.1 - t*sp) % (w+bw*2) + w+bw*2) % (w+bw*2) - bw; const bh = h*(0.15+((i*37+layer*11)%7)/14); c.fillRect(x, h*(0.72+layer*0.06)-bh, bw, bh+h); }
+    }
+  },
+  desk(c, t, w, h){
+    c.fillStyle='#e9e3d8'; c.fillRect(0,0,w,h);
+    c.save(); c.translate(w/2,h/2); c.rotate(Math.sin(t*0.5)*0.05); c.scale(1+t*0.02,1+t*0.02);
+    c.fillStyle='#fff'; c.fillRect(-w*0.3,-h*0.22,w*0.6,h*0.44);
+    c.fillStyle='#333'; for (let i=0;i<7;i++) c.fillRect(-w*0.24, -h*0.17+i*h*0.05, w*(0.3+((i*13)%5)*0.04), h*0.012);
+    c.fillStyle='#ff3d8b'; c.beginPath(); c.arc(w*0.16, h*0.12, w*0.06, 0, 7); c.fill();
+    c.restore();
+  }
+};
+
+/* =========================================================
+   メディア読み込み
+   ========================================================= */
+function guessRole(name, kind){
+  const n = name.toLowerCase();
+  if (kind==='audio'){ if (/bgm|music|曲|音楽/.test(n)) return 'bgm'; if (/se|sfx|効果/.test(n)) return 'sfx'; return 'voice'; }
+  if (/broll|b-roll|bロール|素材/.test(n)) return 'broll';
+  return kind==='image' ? 'broll' : 'main';
+}
+/* 素材の保存：読み込んだファイルをこのブラウザの中(IndexedDB)に保存し、ページを開き直しても使えるようにする */
+const MediaStore = {
+  db: null,
+  async open(){
+    if (this.db !== null) return this.db;
+    this.db = await new Promise(res => {
+      try {
+        const rq = indexedDB.open('reelstudio', 1);
+        rq.onupgradeneeded = () => rq.result.createObjectStore('files', {keyPath:'name'});
+        rq.onsuccess = () => res(rq.result); rq.onerror = () => res(false); rq.onblocked = () => res(false);
+      } catch(e){ res(false); }
+    });
+    return this.db;
+  },
+  async tx(mode, fn){
+    const db = await this.open(); if (!db) return null;
+    return new Promise(res => { try { const t = db.transaction('files', mode), st = t.objectStore('files'); const r = fn(st); t.oncomplete = () => res(r && r.result !== undefined ? r.result : true); t.onerror = t.onabort = () => res(null); } catch(e){ res(null); } });
+  },
+  put(file){ return this.tx('readwrite', st => st.put({name:file.name, type:file.type, blob:file, saved:Date.now()})); },
+  del(name){ return this.tx('readwrite', st => st.delete(name)); },
+  all(){ return this.tx('readonly', st => st.getAll()); },
+  clear(){ return this.tx('readwrite', st => st.clear()); },
+};
+async function importFiles(files, opts={}){
+  audioCtxFor();
+  for (const f of files){
+    if (media.some(m => m.name === f.name && !m.demo)){ log('システム', `${f.name} はすでに読み込まれています`, '#888'); continue; }
+    const kind = f.type.startsWith('video') ? 'video' : f.type.startsWith('audio') ? 'audio' : f.type.startsWith('image') ? 'image' : null;
+    if (!kind) { log('システム', `${f.name} は読み込めない形式です`, '#888'); continue; }
+    const m = {id:newId('m'), name:f.name, kind, role:guessRole(f.name, kind), duration:0};
+    const url = URL.createObjectURL(f);
+    if (kind==='image'){
+      m.img = new Image(); m.img.src = url; await m.img.decode().catch(()=>{}); m.duration = Infinity;
+    } else {
+      if (kind==='video'){
+        m.file = f;
+        m.el = document.createElement('video'); m.el.muted = true; m.el.playsInline = true; m.el.preload = 'auto'; m.el.src = url;
+        await new Promise(r => { m.el.onloadedmetadata = r; m.el.onerror = r; });
+        m.duration = m.el.duration || 0;
+      }
+      try {
+        const ab = await f.arrayBuffer();
+        m.buffer = await AC.decodeAudioData(ab);
+        m.peaks = computePeaks(m.buffer);
+        if (!m.duration) m.duration = m.buffer.duration;
+      } catch(e){ if (kind==='audio'){ log('システム', `${f.name} の音声を読めませんでした`, '#888'); continue; } }
+    }
+    m.file = f;
+    media.push(m);
+    if (!opts.restoring){
+      const ok = await MediaStore.put(f);
+      log('システム', `読み込み: ${f.name}（${kind==='image'?'画像':fmtS(m.duration)}）${ok ? '' : ' ※このブラウザでは素材を保存できないため、開き直すと再読み込みが必要です'}`, '#888');
+    }
+  }
+  renderBin();
+}
+function addBuiltinSfx(){
+  for (const [k,n] of [['pop','SE_ポップ.wav'],['whoosh','SE_シュッ.wav'],['ding','SE_キラーン.wav'],['boom','SE_ドン.wav']]){
+    if (media.some(m => m.sfx === k)) continue;
+    const b = synthSfx(k); media.push({id:newId('m'), demo:true, builtin:true, name:n, kind:'audio', role:'sfx', sfx:k, duration:b.duration, buffer:b, peaks:computePeaks(b)});
+  }
+  renderBin();
+}
+function addBuiltinBgm(){
+  let m = media.find(x => x.name === 'BGM_ローファイ.wav'); if (m) return m;
+  const bg = synthBGM(); m = {id:newId('m'), demo:true, builtin:true, name:'BGM_ローファイ.wav', kind:'audio', role:'bgm', duration:bg.duration, buffer:bg, peaks:computePeaks(bg)};
+  media.push(m); renderBin(); return m;
+}
+function addDemoMedia(){
+  if (media.some(m => m.demo && !m.builtin)) return;
+  const sp = synthSpeech();
+  const mk = (o) => { const m = {id:newId('m'), demo:true, ...o}; media.push(m); return m; };
+  mk({name:'デモ_トーク.mp4', kind:'proc', proc:'talk', role:'main', duration:20, buffer:sp, peaks:computePeaks(sp)});
+  mk({name:'Bロール_PC作業.mp4', kind:'proc', proc:'pc', role:'broll', duration:8});
+  mk({name:'Bロール_街並み.mp4', kind:'proc', proc:'city', role:'broll', duration:8});
+  mk({name:'Bロール_資料.mp4', kind:'proc', proc:'desk', role:'broll', duration:8});
+  addBuiltinBgm(); addBuiltinSfx();
+  if (!$('script').value.trim()) $('script').value = DEMO_SCRIPT;
+  renderBin();
+}
+const M = id => media.find(m => m.id === id);
+const hasVideo = m => m && (m.kind==='video' || m.kind==='proc' || m.kind==='image');
+
+/* =========================================================
+   メディアビン
+   ========================================================= */
+const ROLE_LABEL = {main:'メイン（話す動画）', broll:'Bロール（差し込み）', voice:'ナレーション', bgm:'BGM', sfx:'効果音'};
+function renderBin(){
+  const bin = $('bin'); bin.innerHTML = '';
+  const list = media.filter(m => !m.builtin);
+  $('binCount').textContent = list.length + ' 件';
+  if (!list.length){ bin.innerHTML = '<div class="empty">まだ素材がありません。上のボタンから選ぶか、「デモ素材で試す」を押してください。</div>'; return; }
+  for (const m of list){
+    const d = document.createElement('div'); d.className = 'mi' + (hasVideo(m)?'':' audio'); d.draggable = true;
+    if (!m.thumb){
+      const c = document.createElement('canvas'); m.thumb = c;
+      if (hasVideo(m)){ c.width = 90; c.height = 160; } else { c.width = 80; c.height = 80; }
+      const g = c.getContext('2d');
+      if (m.kind==='proc') PROC[m.proc](g, 1.5, 90, 160, m);
+      else if (m.kind==='image') drawCover(g, m.img, 90, 160, m.img.naturalWidth, m.img.naturalHeight);
+      else if (m.kind==='video'){
+        // サムネイル用は別の video を使う（再生中の映像をシークで止めないため）
+        const tv = document.createElement('video'); tv.muted = true; tv.preload = 'auto'; tv.src = m.el.src;
+        tv.onloadeddata = () => { tv.currentTime = Math.min(0.5, (tv.duration||1)/2); };
+        tv.onseeked = () => { g.fillStyle = '#000'; g.fillRect(0,0,90,160); drawCover(g, tv, 90, 160, tv.videoWidth, tv.videoHeight); tv.removeAttribute('src'); tv.load(); };
+      }
+      else { g.fillStyle='#1b1530'; g.fillRect(0,0,80,80); g.strokeStyle = m.role==='bgm'?'#a98bff':m.role==='sfx'?'#f0a060':'#7fd67a'; g.lineWidth = 1.5; g.beginPath(); for (let x=0;x<80;x+=2){ const v=(m.peaks?m.peaks[Math.floor(x/80*m.peaks.length)]:0)*34; g.moveTo(x,40-v); g.lineTo(x,40+v);} g.stroke(); }
+    }
+    d.appendChild(m.thumb);
+    const nm = document.createElement('div'); nm.className = 'nm';
+    const b = document.createElement('b'); b.textContent = m.name; const sm = document.createElement('small');
+    sm.textContent = (m.kind==='image' ? '写真' : hasVideo(m) ? '動画' : '音声') + (isFinite(m.duration) ? ' ・ ' + fmtS(m.duration) : '') + (m.demo ? ' ・ デモ' : '');
+    nm.append(b, sm); d.appendChild(nm);
+    const sel = document.createElement('select'); sel.setAttribute('aria-label', m.name + 'の種類');
+    const roles = hasVideo(m) ? ['main','broll'] : ['voice','bgm','sfx'];
+    for (const r of roles){ const o = document.createElement('option'); o.value = r; o.textContent = ROLE_LABEL[r]; if (m.role === r) o.selected = true; sel.appendChild(o); }
+    sel.onchange = () => { m.role = sel.value; updateSteps(); log('システム', `${m.name} を「${ROLE_LABEL[m.role]}」にしました`); };
+    d.appendChild(sel);
+    const add = document.createElement('button'); add.className = 'mbtn'; add.textContent = '＋'; add.title = 'タイムラインの今の位置に置く';
+    add.setAttribute('aria-label', m.name + 'をタイムラインに置く');
+    add.onclick = e => { e.stopPropagation(); addMediaClip(m, defaultTrackFor(m), curT); };
+    d.appendChild(add);
+    const del = document.createElement('button'); del.className = 'mbtn del'; del.textContent = '✕'; del.title = '素材を削除'; del.setAttribute('aria-label', m.name + 'を削除');
+    del.onclick = e => { e.stopPropagation(); askRemoveMedia(m); };
+    if (m.demo) del.style.visibility = 'hidden';
+    d.appendChild(del);
+    d.title = 'ドラッグでタイムラインの好きな場所へ置けます';
+    d.ondragstart = e => { e.dataTransfer.setData('text/media', m.id); e.dataTransfer.effectAllowed='copy'; };
+    bin.appendChild(d);
+  }
+}
+function askRemoveMedia(m){
+  const used = tracks.reduce((n,t) => n + t.clips.filter(c => c.media === m.id).length, 0);
+  showModal(`<h3>素材を削除</h3><div>「${m.name.replace(/</g,'&lt;')}」を削除します。${used ? `タイムライン上の ${used} 個のクリップも消えます。` : ''}</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button id="rmNo">やめる</button><button class="primary" id="rmYes">削除する</button></div>`);
+  $('rmNo').onclick = hideModal;
+  $('rmYes').onclick = async () => {
+    for (const t of tracks) t.clips = t.clips.filter(c => c.media !== m.id);
+    media.splice(media.indexOf(m), 1); await MediaStore.del(m.name);
+    if (m.el){ m.el.pause(); m.el.removeAttribute('src'); m.el.load(); }
+    hideModal(); renderBin(); afterEdit(); log('システム', `${m.name} を削除しました`, '#888');
+  };
+}
+function defaultTrackFor(m){
+  if (hasVideo(m)) return m.role==='broll' ? 'broll' : 'main';
+  return m.role==='bgm' ? 'bgm' : m.role==='sfx' ? 'sfx' : 'voice';
+}
+function addMediaClip(m, trackId, start){
+  const tr = T(trackId);
+  if (tr.type==='video' && !hasVideo(m)) { toast('映像トラックには映像・画像を置いてください'); return; }
+  if (tr.type==='audio' && !m.buffer) { toast('このトラックには音声のある素材を置いてください'); return; }
+  if (tr.type==='text' || tr.type==='grade') { toast('このトラックには素材は置けません'); return; }
+  const dur = isFinite(m.duration) ? m.duration : 3;
+  const c = {id:newId('c'), media:m.id, start:Math.max(0,start), in:0, dur, props:{vol:1, zoom: trackId==='broll'?0.08:0}};
+  tr.clips.push(c); selId = c.id; afterEdit();
+  return c;
+}
+
+/* =========================================================
+   描画（プレビュー）
+   ========================================================= */
+function drawCover(c, src, w, h, sw, sh, zoom=0){
+  if (!sw || !sh) return;
+  const s = Math.max(w/sw, h/sh)*(1+zoom), dw = sw*s, dh = sh*s;
+  c.drawImage(src, (w-dw)/2, (h-dh)/2, dw, dh);
+}
+function activeClips(track, t){ return track.clips.filter(c => t >= c.start && t < c.start + c.dur); }
+function topClip(track, t){ const a = activeClips(track, t); return a.length ? a.reduce((p,c)=> c.start>=p.start?c:p) : null; }
+
+function drawVideoLayer(trackId, t){
+  const tr = T(trackId); if (tr.mute) return;
+  const c = topClip(tr, t); if (!c) return;
+  const m = M(c.media); if (!m) return;
+  const lt = c.in + (t - c.start), z = (c.props.zoom||0) * ((t-c.start)/Math.max(0.1,c.dur));
+  let alpha = 1;
+  if (trackId==='broll'){ const a = t-c.start, b = c.start+c.dur-t; alpha = clamp(Math.min(a,b)/0.12, 0, 1); }
+  ctx.save(); ctx.globalAlpha = alpha;
+  if (m.kind==='proc'){
+    if (z){ ctx.translate(W/2,H/2); ctx.scale(1+z,1+z); ctx.translate(-W/2,-H/2); }
+    PROC[m.proc](ctx, lt, W, H, m);
+  } else if (m.kind==='image'){ drawCover(ctx, m.img, W, H, m.img.naturalWidth, m.img.naturalHeight, z); }
+  else if (m.kind==='video' && exportSrc){ const f = exportSrc.get(m); if (f){ const fw = f.displayWidth || f.videoWidth, fh = f.displayHeight || f.videoHeight; drawCover(ctx, f, W, H, fw, fh, z); } }
+  else if (m.kind==='video' && m.el.readyState >= 2){ drawCover(ctx, m.el, W, H, m.el.videoWidth, m.el.videoHeight, z); }
+  ctx.restore();
+}
+function syncVideos(t){
+  const want = new Map();
+  for (const id of ['main','broll']){ const c = topClip(T(id), t); if (c){ const m = M(c.media); if (m && m.kind==='video') want.set(m, c.in + (t-c.start)); } }
+  for (const m of media){
+    if (m.kind !== 'video') continue;
+    if (!want.has(m)){ if (!m.el.paused) m.el.pause(); continue; }
+    const target = want.get(m);
+    if (playing){
+      if (Math.abs(m.el.currentTime - target) > 0.25) m.el.currentTime = target;
+      if (m.el.paused) m.el.play().catch(()=>{});
+    } else {
+      if (!m.el.paused) m.el.pause();
+      if (Math.abs(m.el.currentTime - target) > 0.02) m.el.currentTime = target;
+    }
+  }
+}
+
+/* ---- カラーグレーディング ---- */
+const LUTS = {
+  'なし':           {},
+  'ウォーム':        {temp:0.35, sat:1.08, gain:{x:0.25,y:0.1,m:0.03}},
+  'シネマ':          {con:0.15, sat:0.9, lift:{x:-0.45,y:-0.1,m:0}, gain:{x:0.35,y:0.15,m:0}},
+  'ティール&オレンジ': {con:0.2, sat:1.15, lift:{x:-0.7,y:-0.15,m:0}, gamma:{x:-0.2,y:0,m:0}, gain:{x:0.5,y:0.25,m:0}},
+  'ビビッド':        {con:0.12, sat:1.45, exp:0.05},
+  'フィルム':        {con:-0.08, sat:0.85, temp:0.15, lift:{x:0.1,y:0.05,m:0.06}, grain:0.35},
+  'モノクロ':        {con:0.25, sat:0},
+  'ナイト':          {exp:-0.25, temp:-0.45, sat:0.9, lift:{x:-0.5,y:-0.4,m:0}},
+  'ポップ':          {exp:0.1, sat:1.3, tint:0.15, gain:{x:-0.1,y:0.3,m:0.02}},
+};
+function mergeGrade(base, p, amt=1){
+  const g = JSON.parse(JSON.stringify(base));
+  for (const k of ['exp','con','temp','tint','vig','grain']) if (p[k] != null) g[k] += p[k]*amt;
+  if (p.sat != null) g.sat *= 1 + (p.sat-1)*amt;
+  for (const k of ['lift','gamma','gain']) if (p[k]) { g[k].x += p[k].x*amt; g[k].y += p[k].y*amt; g[k].m += (p[k].m||0)*amt; }
+  return g;
+}
+function effectiveGrade(t){
+  const tr = T('grade'); let g = grade;
+  if (!tr.mute) for (const c of activeClips(tr, t)){
+    const a = t - c.start, b = c.start + c.dur - t, fade = clamp(Math.min(a,b)/0.2, 0, 1);
+    g = mergeGrade(g, LUTS[c.props.lut]||{}, (c.props.amt ?? 1)*fade);
+  }
+  return g;
+}
+function isNeutral(g){ return !g.exp && !g.con && g.sat===1 && !g.temp && !g.tint && !g.lift.x && !g.lift.y && !g.lift.m && !g.gamma.x && !g.gamma.y && !g.gamma.m && !g.gain.x && !g.gain.y && !g.gain.m; }
+function wheelRGB(w, k){ const r = Math.hypot(w.x,w.y), a = Math.atan2(w.y,w.x); return [Math.cos(a), Math.cos(a-2.0944), Math.cos(a+2.0944)].map(v => v*r*k); }
+let lutCacheKey = '', lutCache = null;
+function buildLUT(g){
+  const key = JSON.stringify(g); if (key === lutCacheKey) return lutCache;
+  const L = wheelRGB(g.lift, .12), G = wheelRGB(g.gamma, .35), N = wheelRGB(g.gain, .3);
+  const out = [new Uint8ClampedArray(256), new Uint8ClampedArray(256), new Uint8ClampedArray(256)];
+  const ex = Math.pow(2, g.exp);
+  for (let ch=0; ch<3; ch++) for (let i=0;i<256;i++){
+    let x = i/255 * ex;
+    x = x * (1 + N[ch] + g.gain.m);
+    x = x + (L[ch] + g.lift.m) * (1 - x);
+    x = Math.pow(Math.max(x,0), 1/Math.max(0.2, 1 + G[ch] + g.gamma.m));
+    x = (x - 0.5) * (1 + g.con) + 0.5;
+    if (ch===0) x += g.temp*0.07 + g.tint*0.02;
+    if (ch===1) x -= g.tint*0.05;
+    if (ch===2) x -= g.temp*0.07 - g.tint*0.02;
+    out[ch][i] = x*255;
+  }
+  lutCacheKey = key; lutCache = out; return out;
+}
+/* GPU（WebGL）でのカラー処理：CPUより大幅に速い。使えない環境では下のCPU処理に切り替え */
+function initGL(){
+  try {
+    const c = document.createElement('canvas');
+    const gl = c.getContext('webgl', {premultipliedAlpha:false, antialias:false, depth:false, preserveDrawingBuffer:false});
+    if (!gl) return null;
+    const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+    const rend = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '';
+    if (/swiftshader|llvmpipe|software|basic render/i.test(rend) && !/[?&]gl=force/.test(location.search)) return null;   // ソフトウェア描画ならCPUの方が速い
+    const sh = (type, src) => { const x = gl.createShader(type); gl.shaderSource(x, src); gl.compileShader(x); if (!gl.getShaderParameter(x, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(x)); return x; };
+    const prog = gl.createProgram();
+    gl.attachShader(prog, sh(gl.VERTEX_SHADER, 'attribute vec2 p;varying vec2 uv;void main(){uv=vec2(p.x*.5+.5,.5-p.y*.5);gl_Position=vec4(p,0.,1.);}'));
+    gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, `precision highp float;varying vec2 uv;
+      uniform sampler2D src,lut;uniform float sat,vig,grain,seed,useLut;uniform vec2 res;
+      float hash(vec2 q){return fract(sin(dot(q,vec2(12.9898,78.233))+seed)*43758.5453);}
+      float L(float v,int ch){vec4 t=texture2D(lut,vec2((v*255.+.5)/256.,.5));return ch==0?t.r:ch==1?t.g:t.b;}
+      void main(){vec4 c=texture2D(src,uv);vec3 o=c.rgb;
+        if(useLut>.5){o=vec3(L(o.r,0),L(o.g,1),L(o.b,2));float l=dot(o,vec3(.2126,.7152,.0722));o=clamp(l+(o-l)*sat,0.,1.);}
+        if(vig>0.){vec2 d=(uv-.5)*res;float r0=min(res.x,res.y)*.3,r1=length(res)*.55;float t=clamp((length(d)-r0)/(r1-r0),0.,1.);o*=1.-t*vig*.85;}
+        if(grain>0.){float n=hash(floor(uv*res));o=clamp(o+(n-.5)*grain*.12,0.,1.);}
+        gl_FragColor=vec4(o,1.);}`));
+    gl.linkProgram(prog); if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return null;
+    gl.useProgram(prog);
+    const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    const tex = unit => { const t = gl.createTexture(); gl.activeTexture(gl.TEXTURE0+unit); gl.bindTexture(gl.TEXTURE_2D, t);
+      for (const [k,v] of [[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D,k,v); return t; };
+    tex(0); tex(1);
+    const u = n => gl.getUniformLocation(prog, n);
+    gl.uniform1i(u('src'), 0); gl.uniform1i(u('lut'), 1);
+    return {c, gl, u:{sat:u('sat'),vig:u('vig'),grain:u('grain'),seed:u('seed'),useLut:u('useLut'),res:u('res')}, lutKey:''};
+  } catch(e){ console.warn('WebGL not available', e); return null; }
+}
+function applyGradeGL(g){
+  if (!GL) return false;
+  const {c, gl, u} = GL;
+  if (c.width !== W || c.height !== H){ c.width = W; c.height = H; }
+  gl.viewport(0, 0, W, H);
+  const neutral = isNeutral(g);
+  if (!neutral){
+    const key = JSON.stringify(g);
+    if (GL.lutKey !== key){
+      const [lr,lg,lb] = buildLUT(g), data = new Uint8Array(256*4);
+      for (let i=0;i<256;i++){ data[i*4]=lr[i]; data[i*4+1]=lg[i]; data[i*4+2]=lb[i]; data[i*4+3]=255; }
+      gl.activeTexture(gl.TEXTURE1); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+      GL.lutKey = key;
+    }
+  }
+  gl.activeTexture(gl.TEXTURE0); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, view);
+  gl.uniform1f(u.sat, g.sat); gl.uniform1f(u.vig, Math.max(0, g.vig)); gl.uniform1f(u.grain, Math.max(0, g.grain));
+  gl.uniform1f(u.seed, Math.random()*100); gl.uniform1f(u.useLut, neutral ? 0 : 1); gl.uniform2f(u.res, W, H);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  ctx.save(); ctx.globalCompositeOperation = 'copy'; ctx.drawImage(c, 0, 0); ctx.restore();
+  return true;
+}
+function applyGrade(g){
+  if (isNeutral(g) && !(g.vig > 0) && !(g.grain > 0)) return;
+  if (applyGradeGL(g)) return;
+  applyGradeCPU(g);
+}
+const EMPTY_MASK = new Uint16Array(1), EMPTY_NOISE = new Int8Array(65536);
+const CLAMP = new Uint8Array(2048); for (let i=0;i<2048;i++) CLAMP[i] = Math.max(0, Math.min(255, i-768));
+function gradeLoop(px, W, H, lr, lg, lb, doSat, K, KR, KG, KB, mask, useMask, noise, GA, ox, oy){
+  let i = 0;
+  for (let y=0; y<H; y++){
+    const ny = ((y+oy)&255)<<8;
+    for (let x=0; x<W; x++, i++){
+      const v = px[i]; let R = lr[v&255]|0, G = lg[(v>>>8)&255]|0, B = lb[(v>>>16)&255]|0;
+      if (doSat === 1){ const l = (R*KR + G*KG + B*KB)>>10; R = l + ((R*K)>>10); G = l + ((G*K)>>10); B = l + ((B*K)>>10); }
+      if (useMask === 1){ const m = mask[i]|0; R = (R*m)>>8; G = (G*m)>>8; B = (B*m)>>8; }
+      if (GA !== 0){ const n = (noise[ny | ((x+ox)&255)]*GA)>>8; R += n; G += n; B += n; }
+      px[i] = 0xff000000 | (CLAMP[B+768]<<16) | (CLAMP[G+768]<<8) | CLAMP[R+768];
+    }
+  }
+}
+/* CPU版：LUT・彩度・ビネット・グレインを1回の走査でまとめて処理 */
+let vigCache = {key:'', m:null}, noiseTile = null;
+function gradePrep(g){
+  const [lr,lg,lb] = buildLUT(g), k = g.sat, kr = 0.2126*(1-k), kg = 0.7152*(1-k), kb = 0.0722*(1-k);
+  const vig = Math.max(0, g.vig), grain = Math.max(0, g.grain);
+  let mask = null, maskKey = '';
+  if (vig > 0){
+    maskKey = W+'x'+H+':'+vig;
+    if (vigCache.key !== maskKey){
+      const m = new Uint16Array(W*H), r0 = Math.min(W,H)*0.3, r1 = Math.hypot(W,H)*0.55;
+      for (let y=0;y<H;y++) for (let x=0;x<W;x++){ const t = clamp((Math.hypot(x-W/2, y-H/2)-r0)/(r1-r0), 0, 1); m[y*W+x] = Math.round((1 - t*vig*0.85)*256); }
+      vigCache = {key:maskKey, m};
+    }
+    mask = vigCache.m;
+  }
+  if (grain > 0 && !noiseTile){ noiseTile = new Int8Array(65536); for (let i=0;i<65536;i++) noiseTile[i] = Math.round((Math.random()-0.5)*255); }
+  // 整数だけで計算（小数を混ぜるとJavaScriptの最適化が効かず遅くなる）
+  return {lr, lg, lb, doSat: k !== 1 ? 1 : 0, K:Math.round(k*1024), KR:Math.round(kr*1024), KG:Math.round(kg*1024), KB:Math.round(kb*1024),
+    mask, maskKey, GA:Math.round(grain*0.12*256), noise: grain > 0 ? noiseTile : null, ox:(Math.random()*256)|0, oy:(Math.random()*256)|0};
+}
+function applyGradeCPU(g){
+  const q = gradePrep(g);
+  const img = ctx.getImageData(0,0,W,H), px = new Uint32Array(img.data.buffer);
+  gradeLoop(px, W, H, q.lr, q.lg, q.lb, q.doSat, q.K, q.KR, q.KG, q.KB, q.mask || EMPTY_MASK, q.mask ? 1 : 0, q.noise || EMPTY_NOISE, q.GA, q.ox, q.oy);
+  ctx.putImageData(img,0,0);
+}
+/* 書き出し用：CPUの複数コアで分担して色処理（GPUが使えないパソコン向け） */
+let gradeWorkers = null, useParallelGrade = true;
+function getGradeWorkers(){
+  if (gradeWorkers) return gradeWorkers;
+  gradeWorkers = [];
+  const n = Math.min(6, (navigator.hardwareConcurrency || 2) - 1);
+  if (n < 2 || !window.Worker) return gradeWorkers;
+  try {
+    const code = `const EMPTY_MASK = new Uint16Array(1), EMPTY_NOISE = new Int8Array(65536);
+const CLAMP = new Uint8Array(2048); for (let i=0;i<2048;i++) CLAMP[i] = Math.max(0, Math.min(255, i-768));
+${gradeLoop.toString()}
+let mask = null;
+onmessage = e => { const d = e.data; if (d.mask) mask = d.mask;
+  const px = new Uint32Array(d.buf);
+  gradeLoop(px, d.W, d.rows, d.lr, d.lg, d.lb, d.doSat, d.K, d.KR, d.KG, d.KB, d.useMask ? mask : EMPTY_MASK, d.useMask, d.noise || EMPTY_NOISE, d.GA, d.ox, d.oy);
+  postMessage(d.buf, [d.buf]); };`;
+    const url = URL.createObjectURL(new Blob([code], {type:'text/javascript'}));
+    for (let i=0;i<n;i++){ const w = new Worker(url); w.maskKey = ''; gradeWorkers.push(w); }
+  } catch(e){ gradeWorkers = []; }
+  return gradeWorkers;
+}
+async function applyGradeParallel(g){
+  if (isNeutral(g) && !(g.vig > 0) && !(g.grain > 0)) return;
+  if (applyGradeGL(g)) return;
+  const ws = useParallelGrade ? getGradeWorkers() : [];
+  if (!ws.length){ applyGradeCPU(g); return; }
+  const q = gradePrep(g);
+  const img = ctx.getImageData(0,0,W,H), px = new Uint32Array(img.data.buffer), per = Math.ceil(H/ws.length);
+  await Promise.all(ws.map((w, j) => new Promise((res, rej) => {
+    const y0 = j*per, rows = Math.min(per, H-y0); if (rows <= 0) return res();
+    const slice = px.slice(y0*W, (y0+rows)*W);
+    const msg = {buf:slice.buffer, W, rows, lr:q.lr, lg:q.lg, lb:q.lb, doSat:q.doSat, K:q.K, KR:q.KR, KG:q.KG, KB:q.KB, useMask: q.mask ? 1 : 0, noise:q.noise, GA:q.GA, ox:q.ox, oy:(q.oy+y0)&255};
+    if (q.mask && w.maskKey !== q.maskKey+':'+j){ msg.mask = q.mask.slice(y0*W, (y0+rows)*W); w.maskKey = q.maskKey+':'+j; }
+    w.onmessage = e => { px.set(new Uint32Array(e.data), y0*W); res(); };
+    w.onerror = rej;
+    w.postMessage(msg, [slice.buffer]);
+  })));
+  ctx.putImageData(img,0,0);
+}
+let grainCv = null;
+function drawGrain(a){
+  if (!grainCv){ grainCv = document.createElement('canvas'); grainCv.width = 256; grainCv.height = 256; }
+  const gc = grainCv.getContext('2d'), id = gc.createImageData(256,256);
+  for (let i=0;i<id.data.length;i+=4){ const v = Math.random()*255; id.data[i]=id.data[i+1]=id.data[i+2]=v; id.data[i+3]=255; }
+  gc.putImageData(id,0,0);
+  ctx.save(); ctx.globalAlpha = a*0.12; ctx.globalCompositeOperation = 'overlay';
+  const p = ctx.createPattern(grainCv,'repeat'); ctx.fillStyle = p; ctx.fillRect(0,0,W,H); ctx.restore();
+}
+
+/* ---- テロップ ---- */
+const TELOP_STYLES = {
+  yellow:  {name:'イエローポップ'},
+  pink:    {name:'ピンク帯'},
+  blackred:{name:'黒レッド'},
+  neon:    {name:'ネオン'},
+  sub:     {name:'字幕'},
+  type:    {name:'タイプライター'},
+};
+const TELOP_COLORS = ['#ffe14d','#ff3d8b','#ff2d2d','#00e5ff','#ffffff','#7dff6b'];
+const FONT = '"Hiragino Sans","Noto Sans JP","Yu Gothic","Meiryo",sans-serif';
+function wrapLines(c, text, maxW){
+  const out = [];
+  for (const para of String(text).split('\n')){
+    let line = '';
+    for (const ch of para){ if (c.measureText(line+ch).width > maxW && line){ out.push(line); line = ch; } else line += ch; }
+    out.push(line);
+  }
+  return out;
+}
+function drawTelop(c, t){
+  const p = c.props, k = W/1080, size = (p.size||80)*k, local = t - c.start, rem = c.start + c.dur - t;
+  let text = p.text || '';
+  if (p.style==='type') text = [...text].slice(0, Math.floor(local/0.05)).join('');
+  let sc = 1;
+  if (p.style!=='sub' && p.style!=='type'){ const x = local/0.18; sc = x<1 ? 0.6+0.48*Math.sin(x*Math.PI/2) - (x>0.8?0:0) : 1; if (x>=1 && x<1.6) sc = 1.08 - 0.08*((x-1)/0.6); }
+  const alpha = clamp(rem/0.1, 0, 1) * clamp(local/0.06, 0, 1);
+  ctx.save(); ctx.globalAlpha = alpha;
+  ctx.font = `900 ${size}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+  const lines = wrapLines(ctx, text, W*0.86), lh = size*1.22, cx = W/2, cy = (p.y ?? 0.7)*H;
+  ctx.translate(cx, cy); ctx.scale(sc, sc);
+  const top = -lh*(lines.length-1)/2, col = p.color || '#ffe14d';
+  lines.forEach((ln, i) => {
+    const y = top + i*lh, w = ctx.measureText(ln).width;
+    if (!ln) return;
+    switch (p.style){
+      case 'pink':
+        ctx.fillStyle = col==='#ffffff'?'#ff3d8b':col; ctx.fillRect(-w/2-size*0.35, y-lh/2+size*0.04, w+size*0.7, lh-size*0.08);
+        ctx.fillStyle = '#fff'; ctx.fillText(ln, 0, y); break;
+      case 'blackred':
+        ctx.fillStyle = '#000000e6'; ctx.fillRect(-w/2-size*0.4, y-lh/2, w+size*0.8, lh);
+        ctx.fillStyle = col==='#ffe14d'?'#ff2d2d':col; ctx.fillRect(-w/2-size*0.4, y-lh/2, size*0.14, lh);
+        ctx.fillStyle = '#fff'; ctx.fillText(ln, size*0.05, y); break;
+      case 'neon':
+        ctx.shadowColor = col; ctx.shadowBlur = size*0.5; ctx.lineWidth = size*0.08; ctx.strokeStyle = col; ctx.strokeText(ln, 0, y);
+        ctx.shadowBlur = size*0.2; ctx.fillStyle = '#fff'; ctx.fillText(ln, 0, y); ctx.shadowBlur = 0; break;
+      case 'sub':
+        ctx.font = `700 ${size*0.8}px ${FONT}`; const w2 = ctx.measureText(ln).width;
+        ctx.fillStyle = '#000000a0'; ctx.fillRect(-w2/2-size*0.25, y-lh*0.42, w2+size*0.5, lh*0.84);
+        ctx.fillStyle = '#fff'; ctx.fillText(ln, 0, y); ctx.font = `900 ${size}px ${FONT}`; break;
+      case 'type':
+        ctx.lineWidth = size*0.16; ctx.strokeStyle = '#000'; ctx.strokeText(ln, 0, y); ctx.fillStyle = '#fff'; ctx.fillText(ln, 0, y); break;
+      default: // yellow
+        ctx.lineWidth = size*0.26; ctx.strokeStyle = '#000'; ctx.strokeText(ln, 0, y);
+        ctx.lineWidth = size*0.1; ctx.strokeStyle = '#fff'; ctx.strokeText(ln, 0, y);
+        ctx.fillStyle = col; ctx.fillText(ln, 0, y);
+    }
+  });
+  ctx.restore();
+}
+
+async function renderFrameAsync(t){
+  ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
+  drawVideoLayer('main', t);
+  drawVideoLayer('broll', t);
+  await applyGradeParallel(effectiveGrade(t));
+  const tl = T('telop'); if (!tl.mute) for (const c of activeClips(tl, t)) drawTelop(c, t);
+}
+function renderFrame(t){
+  ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
+  if (!exporting && !fastExporting && projectEnd() === 0){
+    ctx.fillStyle = '#ffffff99'; ctx.font = `700 ${W*0.045}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('ここにできあがりが映ります', W/2, H*0.46);
+    ctx.fillStyle = '#ffffff66'; ctx.font = `500 ${W*0.033}px ${FONT}`;
+    ctx.fillText('素材を入れて「おまかせ編集」を押してください', W/2, H*0.52);
+    return;
+  }
+  drawVideoLayer('main', t);
+  drawVideoLayer('broll', t);
+  applyGrade(effectiveGrade(t));
+  const tl = T('telop'); if (!tl.mute) for (const c of activeClips(tl, t)) drawTelop(c, t);
+}
+
+/* =========================================================
+   再生
+   ========================================================= */
+function projectEnd(){ let e = 0; for (const tr of tracks) for (const c of tr.clips) e = Math.max(e, c.start + c.dur); return e; }
+function scheduleAudio(from){
+  stopAudio();
+  const now = AC.currentTime + 0.03;
+  for (const tr of tracks){
+    if (tr.mute) continue;
+    if (!(tr.type==='audio' || tr.id==='main' || tr.id==='broll')) continue;
+    for (const c of tr.clips){
+      const m = M(c.media); if (!m || !m.buffer) continue;
+      if (tr.id==='broll' && !c.props.audio) continue;
+      const end = c.start + c.dur; if (end <= from) continue;
+      const off = Math.max(0, from - c.start), when = now + Math.max(0, c.start - from);
+      const srcOff = c.in + off, len = c.dur - off;
+      if (srcOff >= m.buffer.duration) continue;
+      const s = AC.createBufferSource(); s.buffer = m.buffer;
+      const g = AC.createGain(); const v = tr.vol * (c.props.vol ?? 1);
+      g.gain.setValueAtTime(v, now);
+      s.connect(g); g.connect(master);
+      s.start(when, srcOff, Math.min(len, m.buffer.duration - srcOff));
+      liveSources.push(s);
+    }
+  }
+  playStartCtx = now; playStartT = from;
+}
+function stopAudio(){ for (const s of liveSources){ try{s.stop();}catch(e){} } liveSources = []; }
+function play(){
+  audioCtxFor();
+  if (curT >= projectEnd() - 0.01) curT = 0;
+  playing = true; scheduleAudio(curT); updatePlayBtn();
+}
+function pause(){ playing = false; stopAudio(); updatePlayBtn(); syncVideos(curT); }
+function togglePlay(){ playing ? pause() : play(); }
+function seek(t){ curT = Math.max(0, t); if (playing) scheduleAudio(curT); syncVideos(curT); }
+function restartIfPlaying(){ if (playing) scheduleAudio(curT); }
+function updatePlayBtn(){ for (const id of ['tPlay','tlPlay']){ $(id).textContent = playing ? '❚❚' : '▶'; $(id).setAttribute('aria-label', playing ? '一時停止' : '再生'); } }
+
+let frameN = 0;
+function loop(){
+  if (fastExporting){ requestAnimationFrame(loop); return; }
+  if (playing){
+    curT = playStartT + Math.max(0, AC.currentTime - playStartCtx);
+    const end = projectEnd();
+    if (curT >= end){ curT = end; if (exporting) finishExport(); pause(); }
+  }
+  syncVideos(curT);
+  renderFrame(curT);
+  updateTimeUI();
+  if (!exporting || frameN % 4 === 0){ if (frameN % 3 === 0) drawScopes(); updateMeters(); }
+  frameN++;
+  requestAnimationFrame(loop);
+}
+
+/* =========================================================
+   スコープ・メーター
+   ========================================================= */
+const scCv = document.createElement('canvas'); scCv.width = 72; scCv.height = 128;
+const scCtx = scCv.getContext('2d', {willReadFrequently:true});
+function drawScopes(){
+  if (!$('scWave').offsetParent) return;
+  scCtx.drawImage(view, 0, 0, 72, 128);
+  const d = scCtx.getImageData(0,0,72,128).data;
+  const wv = $('scWave').getContext('2d'), WW = 256, WH = 128;
+  wv.fillStyle = '#050607'; wv.fillRect(0,0,WW,WH);
+  wv.strokeStyle = '#1b2228'; wv.lineWidth = 1;
+  for (let i=1;i<4;i++){ wv.beginPath(); wv.moveTo(0,WH*i/4); wv.lineTo(WW,WH*i/4); wv.stroke(); }
+  wv.fillStyle = 'rgba(120,255,140,0.22)';
+  const vc = $('scVec').getContext('2d'), V = 180;
+  vc.fillStyle = '#050607'; vc.fillRect(0,0,V,V);
+  vc.strokeStyle = '#1f2830'; vc.beginPath(); vc.arc(V/2,V/2,V*0.45,0,7); vc.moveTo(V/2,0); vc.lineTo(V/2,V); vc.moveTo(0,V/2); vc.lineTo(V,V/2); vc.stroke();
+  vc.strokeStyle = '#e8ff3a44'; vc.beginPath(); vc.moveTo(V/2,V/2); vc.lineTo(V/2 - V*0.33, V/2 - V*0.28); vc.stroke(); // 肌色ライン（目安）
+  vc.fillStyle = 'rgba(255,255,255,0.35)';
+  for (let y=0;y<128;y++) for (let x=0;x<72;x++){
+    const i = (y*72+x)*4, r = d[i], g = d[i+1], b = d[i+2];
+    const l = 0.2126*r + 0.7152*g + 0.0722*b;
+    wv.fillRect(x*WW/72, WH - l/255*WH, 3.5, 1.2);
+    const cb = -0.1146*r - 0.3854*g + 0.5*b, cr = 0.5*r - 0.4542*g - 0.0458*b;
+    vc.fillRect(V/2 + cb/255*V*0.85, V/2 - cr/255*V*0.85, 1.5, 1.5);
+  }
+}
+const tdBuf = new Float32Array(2048); let stHist = [], peakHold = -99, peakTime = 0;
+function toDb(v){ return v > 1e-6 ? 20*Math.log10(v) : -99; }
+function updateMeters(){
+  analyser.getFloatTimeDomainData(tdBuf);
+  let s = 0, pk = 0; for (const v of tdBuf){ s += v*v; const a = Math.abs(v); if (a>pk) pk = a; }
+  const rms = Math.sqrt(s/tdBuf.length), now = performance.now();
+  stHist.push([now, rms*rms]); stHist = stHist.filter(h => now - h[0] < 3000);
+  const st = Math.sqrt(stHist.reduce((a,h)=>a+h[1],0)/stHist.length);
+  const pdb = toDb(pk); if (pdb > peakHold || now - peakTime > 2000){ peakHold = pdb; peakTime = now; }
+  const set = (id, db) => { const p = clamp((db+60)/60, 0, 1); $(id).style.width = (p*100)+'%'; $(id+'v').textContent = db <= -98 ? '-∞' : db.toFixed(1); };
+  set('mM', toDb(rms)); set('mS', toDb(st)); set('mP', peakHold);
+}
+
+/* =========================================================
+   時間表示
+   ========================================================= */
+function fmtTC(t){ const f = Math.floor((t%1)*FPS), s = Math.floor(t)%60, m = Math.floor(t/60)%60, h = Math.floor(t/3600); return [h,m,s,f].map(v=>String(v).padStart(2,'0')).join(':'); }
+function fmtS(t){ return isFinite(t) ? (t<60 ? t.toFixed(1)+'秒' : Math.floor(t/60)+'分'+Math.round(t%60)+'秒') : '—'; }
+function updateTimeUI(){
+  $('tc').textContent = $('tc2').textContent = fmtTC(curT);
+  $('playhead').style.left = (curT*pps) + 'px';
+  if (playing){ const sc = $('tlScroll'), x = curT*pps; if (x > sc.scrollLeft + sc.clientWidth - 40 || x < sc.scrollLeft) sc.scrollLeft = x - 60; }
+}
+
+/* =========================================================
+   タイムライン
+   ========================================================= */
+function findClip(id){ for (const tr of tracks){ const c = tr.clips.find(c => c.id === id); if (c) return [tr, c]; } return [null, null]; }
+function renderHeads(){
+  const h = $('heads'); h.innerHTML = '<div class="rsp"></div>';
+  for (const tr of tracks){
+    const d = document.createElement('div'); d.className = 'hd';
+    d.innerHTML = `<span class="cb" style="background:${tr.color}"></span><span class="n">${tr.name}</span>`;
+    const mb = document.createElement('button'); mb.textContent = tr.type==='audio' || tr.id==='main' ? '消音' : '隠す'; mb.title = tr.type==='audio' ? 'このトラックの音を消す' : 'このトラックを一時的に隠す'; if (tr.mute) mb.classList.add('on');
+    mb.onclick = () => { tr.mute = !tr.mute; renderHeads(); restartIfPlaying(); commit(); };
+    d.appendChild(mb);
+    h.appendChild(d);
+  }
+  renderMixer();
+}
+const MIX = [['main','話し声（メイン動画）'],['voice','ナレーション'],['bgm','BGM'],['sfx','効果音'],['broll','Bロールの音']];
+function renderMixer(){
+  const box = $('mixer'); if (!box) return; box.innerHTML = '';
+  for (const [id, label] of MIX){
+    const tr = T(id); if (id==='broll' && !tr.clips.some(c => c.props.audio)) continue;
+    const row = document.createElement('div'); row.className = 'mixrow';
+    row.innerHTML = `<i style="background:${tr.color}"></i><span>${label}</span>`;
+    const r = document.createElement('input'); r.type = 'range'; r.min = 0; r.max = 1.5; r.step = 0.01; r.value = tr.vol; r.setAttribute('aria-label', label+'の音量');
+    const v = document.createElement('span'); v.className = 'v'; v.textContent = Math.round(tr.vol*100) + '%';
+    r.oninput = () => { tr.vol = +r.value; v.textContent = Math.round(tr.vol*100) + '%'; restartIfPlaying(); }; r.onchange = commit;
+    const mb = document.createElement('button'); mb.textContent = tr.mute ? '消音中' : '消音'; if (tr.mute) mb.classList.add('on');
+    mb.onclick = () => { tr.mute = !tr.mute; renderHeads(); restartIfPlaying(); commit(); };
+    row.append(r, v, mb); box.appendChild(row);
+  }
+}
+function renderTimeline(){
+  const end = Math.max(projectEnd() + 10, 30);
+  const inner = $('tlInner'); inner.style.width = (end*pps) + 'px';
+  // ruler
+  const r = $('ruler'); r.innerHTML = '';
+  const step = pps > 90 ? 1 : pps > 40 ? 2 : pps > 18 ? 5 : 10;
+  for (let s=0; s<=end; s+=step){
+    const i = document.createElement('i'); i.style.left = (s*pps)+'px'; i.style.height = '8px'; r.appendChild(i);
+    const sp = document.createElement('span'); sp.style.left = (s*pps)+'px'; sp.textContent = fmtTC(s).slice(3,8); r.appendChild(sp);
+    for (let k=1;k<5;k++){ const j = document.createElement('i'); j.style.left = ((s+k*step/5)*pps)+'px'; j.style.height='4px'; r.appendChild(j); }
+  }
+  // lanes
+  const lanes = $('lanes'); lanes.innerHTML = '';
+  for (const tr of tracks){
+    const lane = document.createElement('div'); lane.className = 'lane'; lane.dataset.track = tr.id;
+    lane.ondragover = e => { if (e.dataTransfer.types.includes('text/media')){ e.preventDefault(); lane.classList.add('dragover'); } };
+    lane.ondragleave = () => lane.classList.remove('dragover');
+    lane.ondrop = e => {
+      e.preventDefault(); lane.classList.remove('dragover');
+      const m = M(e.dataTransfer.getData('text/media')); if (!m) return;
+      const x = e.clientX - lane.getBoundingClientRect().left;
+      addMediaClip(m, tr.id, x/pps);
+    };
+    for (const c of tr.clips) lane.appendChild(clipEl(tr, c));
+    lanes.appendChild(lane);
+  }
+  $('tdur').textContent = fmtTC(projectEnd()).slice(0,8);
+  renderTelopList(); renderLooks(); updateSteps();
+}
+function clipLabel(tr, c){
+  if (tr.type==='text') return c.props.text.replace(/\n/g,' ');
+  if (tr.type==='grade') return 'LUT: ' + c.props.lut;
+  const m = M(c.media); return m ? m.name : '（素材なし）';
+}
+function clipEl(tr, c){
+  const d = document.createElement('div'); d.className = 'clip' + (c.id===selId?' sel':'') + (tr.type==='grade'?' grade':'');
+  d.style.left = (c.start*pps)+'px'; d.style.width = Math.max(4, c.dur*pps)+'px';
+  if (tr.type!=='grade') d.style.background = tr.color;
+  if (tr.type==='text') d.style.color = '#111';
+  const lb = document.createElement('span'); lb.className = 'lb'; lb.textContent = clipLabel(tr, c); d.appendChild(lb);
+  const m = M(c.media);
+  if (m && m.peaks){
+    const w = Math.min(4000, Math.max(4, Math.floor(c.dur*pps))), cv = document.createElement('canvas');
+    cv.width = w; cv.height = 22; cv.style.width = w+'px';
+    const g = cv.getContext('2d'); g.fillStyle = '#ffffffaa';
+    const per = 100/pps;
+    for (let x=0;x<w;x++){
+      const i0 = Math.floor((c.in + x/pps)*100); let mx = 0;
+      for (let k=0;k<Math.max(1,per);k++){ const v = m.peaks[i0+k]||0; if (v>mx) mx=v; }
+      const hh = Math.min(11, mx*22); g.fillRect(x, 11-hh, 1, hh*2);
+    }
+    d.appendChild(cv);
+  }
+  const hl = document.createElement('div'); hl.className = 'h l'; const hr = document.createElement('div'); hr.className = 'h r';
+  d.appendChild(hl); d.appendChild(hr);
+  d.onpointerdown = e => {
+    e.stopPropagation(); selId = c.id; document.querySelectorAll('.clip.sel').forEach(x=>x.classList.remove('sel')); d.classList.add('sel'); renderInspectors();
+    startDrag(e, tr, c, d, e.target===hl ? 'l' : e.target===hr ? 'r' : 'move');
+  };
+  return d;
+}
+function snapPoints(exceptId){
+  const pts = [0, curT]; for (const tr of tracks) for (const c of tr.clips) if (c.id !== exceptId) pts.push(c.start, c.start+c.dur); return pts;
+}
+function doSnap(t, pts){
+  if (!snap) return t; const th = 8/pps; let best = t, bd = th;
+  for (const p of pts){ const dd = Math.abs(p-t); if (dd < bd){ bd = dd; best = p; } } return best;
+}
+function startDrag(e, tr, c, el, mode){
+  const x0 = e.clientX, o = {start:c.start, in:c.in, dur:c.dur}, pts = snapPoints(c.id), m = M(c.media);
+  const maxSrc = m && isFinite(m.duration) ? m.duration : Infinity;
+  let moved = false;
+  el.setPointerCapture(e.pointerId);
+  el.onpointermove = ev => {
+    const dx = (ev.clientX - x0)/pps; if (Math.abs(ev.clientX-x0) > 2) moved = true; if (!moved) return;
+    if (mode==='move'){
+      let ns = Math.max(0, o.start + dx);
+      const s1 = doSnap(ns, pts), s2 = doSnap(ns + o.dur, pts) - o.dur;
+      ns = Math.abs(s1-ns) <= Math.abs(s2-ns) ? s1 : s2; c.start = Math.max(0, ns);
+    } else if (mode==='l'){
+      let ns = doSnap(o.start + dx, pts);
+      ns = clamp(ns, Math.max(0, o.start - (m ? o.in : Infinity)), o.start + o.dur - 0.1);
+      c.in = o.in + (ns - o.start); c.dur = o.dur - (ns - o.start); c.start = ns;
+      if (!m) c.in = 0;
+    } else {
+      let ne = doSnap(o.start + o.dur + dx, pts);
+      c.dur = clamp(ne - o.start, 0.1, maxSrc - c.in);
+    }
+    el.style.left = (c.start*pps)+'px'; el.style.width = Math.max(4,c.dur*pps)+'px';
+  };
+  el.onpointerup = () => { el.onpointermove = null; el.onpointerup = null; if (moved){ afterEdit(); } };
+}
+function scrubFrom(e){
+  const r = $('ruler').getBoundingClientRect();
+  const go = ev => seek(Math.max(0, (ev.clientX - r.left)/pps));
+  go(e);
+  const mv = ev => go(ev), up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); };
+  window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+}
+$('ruler').onpointerdown = scrubFrom;
+$('lanes').onpointerdown = e => {
+  if (e.target.closest('.clip')) return;
+  selId = null; renderTimeline(); renderInspectors();
+  if (e.pointerType === 'mouse') scrubFrom(e);   // 指の場合は横スクロールを優先し、タップした位置へ移動
+  else { const r = $('ruler').getBoundingClientRect(), x0 = e.clientX, y0 = e.clientY;
+    const up = ev => { window.removeEventListener('pointerup', up); if (Math.hypot(ev.clientX-x0, ev.clientY-y0) < 8) seek(Math.max(0,(ev.clientX - r.left)/pps)); };
+    window.addEventListener('pointerup', up); }
+};
+
+/* ---- 編集操作 ---- */
+function splitAt(t){
+  const targets = [];
+  const [str, sc] = findClip(selId);
+  if (sc && t > sc.start + 0.02 && t < sc.start + sc.dur - 0.02) targets.push([str, sc]);
+  else for (const tr of tracks) for (const c of tr.clips) if (t > c.start+0.02 && t < c.start+c.dur-0.02) targets.push([tr, c]);
+  if (!targets.length){ toast('再生ヘッドの位置にクリップがありません'); return 0; }
+  for (const [tr, c] of targets){
+    const d = t - c.start, nc = JSON.parse(JSON.stringify(c));
+    nc.id = newId('c'); nc.start = t; nc.in = c.media ? c.in + d : 0; nc.dur = c.dur - d; c.dur = d;
+    tr.clips.push(nc);
+  }
+  afterEdit(); return targets.length;
+}
+function deleteSel(ripple){
+  const [tr, c] = findClip(selId); if (!c) { toast('クリップを選択してください'); return; }
+  tr.clips = tr.clips.filter(x => x !== c);
+  if (ripple) for (const x of tr.clips) if (x.start >= c.start) x.start -= c.dur;
+  selId = null; afterEdit();
+}
+function afterEdit(){ renderTimeline(); renderInspectors(); restartIfPlaying(); commit(); }
+
+/* ---- 元に戻す ---- */
+let hist = [], redo = [];
+function snapshot(){ return JSON.stringify({tracks: tracks.map(t => ({id:t.id, vol:t.vol, mute:t.mute, clips:t.clips})), grade}); }
+function restore(s){
+  const o = JSON.parse(s);
+  for (const t of o.tracks){ const tr = T(t.id); if (tr){ tr.clips = t.clips; tr.vol = t.vol; tr.mute = t.mute; } }
+  grade = o.grade; syncGradeUI(); renderHeads(); renderTimeline(); renderInspectors(); restartIfPlaying();
+}
+function commit(){ const s = snapshot(); if (hist[hist.length-1] === s) return; hist.push(s); if (hist.length > 80) hist.shift(); redo = []; autosave(); }
+function undo(){ if (hist.length < 2) return; redo.push(hist.pop()); restore(hist[hist.length-1]); autosave(); }
+function redoFn(){ if (!redo.length) return; const s = redo.pop(); hist.push(s); restore(s); autosave(); }
+
+/* =========================================================
+   インスペクター
+   ========================================================= */
+function renderInspectors(){
+  const [tr, c] = findClip(selId);
+  document.querySelectorAll('.trow').forEach(r => r.classList.toggle('sel', r.dataset.id === selId));
+  // テロップ
+  const ti = $('telopInsp');
+  if (tr && tr.type === 'text'){
+    const p = c.props;
+    ti.innerHTML = '';
+    const ta = document.createElement('textarea'); ta.value = p.text; ta.oninput = () => { p.text = ta.value; const lb = document.querySelector('.clip.sel .lb'); if (lb) lb.textContent = ta.value.replace(/\n/g,' '); }; ta.onchange = commit;
+    ti.appendChild(ta);
+    const g = document.createElement('div'); g.className = 'grid3';
+    for (const [k, s] of Object.entries(TELOP_STYLES)){ const b = document.createElement('button'); b.textContent = s.name; if (p.style===k) b.classList.add('on'); b.onclick = () => { p.style = k; renderInspectors(); renderTimeline(); commit(); }; g.appendChild(b); }
+    ti.appendChild(g);
+    const sw = document.createElement('div'); sw.className = 'sw'; sw.innerHTML = 'カラー';
+    for (const col of TELOP_COLORS){ const i = document.createElement('i'); i.style.background = col; if (p.color===col) i.classList.add('on'); i.onclick = () => { p.color = col; renderInspectors(); commit(); }; sw.appendChild(i); }
+    ti.appendChild(sw);
+    ti.appendChild(slider('サイズ', 30, 180, 1, p.size, v => p.size = v));
+    ti.appendChild(slider('高さ位置', 0.05, 0.95, 0.01, p.y, v => p.y = v));
+  } else {
+    ti.innerHTML = '<div class="empty">上の一覧からテロップを選ぶと、ここで見た目（スタイル・色・大きさ・高さ）を変えられます。</div>';
+  }
+  // クリップ
+  const ci = $('clipInsp'); ci.innerHTML = '';
+  $('clipKind').textContent = tr ? tr.name : '';
+  if (!c){ ci.innerHTML = '<div class="empty">クリップを選ぶと詳細が出ます。</div>'; return; }
+  const info = document.createElement('div'); info.className = 'empty';
+  info.innerHTML = `開始 ${fmtTC(c.start)}<br>長さ ${c.dur.toFixed(2)} 秒` + (c.media ? `<br>素材 ${M(c.media)?.name||''}（${c.in.toFixed(2)}秒から）` : '');
+  ci.appendChild(info);
+  if (tr.type === 'grade'){
+    const s = document.createElement('div'); s.className = 'sl'; s.innerHTML = '<span>LUT</span>';
+    const sel = document.createElement('select'); for (const k of Object.keys(LUTS)){ const o = document.createElement('option'); o.textContent = k; if (k===c.props.lut) o.selected = true; sel.appendChild(o); }
+    sel.onchange = () => { c.props.lut = sel.value; renderTimeline(); commit(); }; s.appendChild(sel); s.appendChild(document.createElement('span'));
+    ci.appendChild(s);
+    ci.appendChild(slider('強さ', 0, 1.5, 0.01, c.props.amt ?? 1, v => c.props.amt = v));
+  }
+  if (c.media && M(c.media)?.buffer && (tr.type==='audio' || tr.id==='main' || tr.id==='broll')){
+    ci.appendChild(slider('音量', 0, 2, 0.01, c.props.vol ?? 1, v => { c.props.vol = v; restartIfPlaying(); }));
+    if (tr.id==='broll'){ const l = document.createElement('label'); l.className='sl'; l.innerHTML = '<span>Bロール音</span>'; const cb = document.createElement('input'); cb.type='checkbox'; cb.checked = !!c.props.audio; cb.onchange = () => { c.props.audio = cb.checked; restartIfPlaying(); commit(); }; l.appendChild(cb); ci.appendChild(l); }
+  }
+  if (tr.type==='video') ci.appendChild(slider('ズーム', 0, 0.4, 0.01, c.props.zoom||0, v => c.props.zoom = v));
+}
+function slider(label, min, max, step, val, set){
+  const d = document.createElement('div'); d.className = 'sl';
+  const sp = document.createElement('span'); sp.textContent = label;
+  const r = document.createElement('input'); r.type = 'range'; r.min = min; r.max = max; r.step = step; r.value = val;
+  const v = document.createElement('span'); v.textContent = (+val).toFixed(step<1?2:0);
+  r.oninput = () => { set(+r.value); v.textContent = (+r.value).toFixed(step<1?2:0); };
+  r.onchange = commit;
+  d.append(sp, r, v); return d;
+}
+function addTelopAt(t, text='テキストを入力', style='yellow', opts={}){
+  const c = {id:newId('c'), media:null, start:t, in:0, dur:opts.dur||2.5, props:{text, style, color:opts.color||'#ffe14d', size:opts.size||84, y:opts.y ?? 0.7}};
+  T('telop').clips.push(c); return c;
+}
+
+/* =========================================================
+   カラーUI（ホイール）
+   ========================================================= */
+const WHEELS = [['wLift','lift'],['wGamma','gamma'],['wGain','gain']];
+function drawWheel(cv, w){
+  const g = cv.getContext('2d'), S = cv.width, r = S/2 - 6;
+  g.clearRect(0,0,S,S);
+  const cg = g.createConicGradient(0, S/2, S/2);
+  for (let i=0;i<=360;i+=30) cg.addColorStop(i/360, `hsl(${i},80%,50%)`);
+  g.fillStyle = cg; g.beginPath(); g.arc(S/2,S/2,r,0,7); g.fill();
+  const rg = g.createRadialGradient(S/2,S/2,0,S/2,S/2,r); const sc = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#ffffff'; rg.addColorStop(0,sc); rg.addColorStop(0.7,sc+'aa'); rg.addColorStop(1,sc+'00');
+  g.fillStyle = rg; g.beginPath(); g.arc(S/2,S/2,r,0,7); g.fill();
+  g.strokeStyle = '#ffffff22'; g.beginPath(); g.moveTo(S/2,8); g.lineTo(S/2,S-8); g.moveTo(8,S/2); g.lineTo(S-8,S/2); g.stroke();
+  const px = S/2 + w.x*r, py = S/2 + w.y*r;
+  g.strokeStyle = '#fff'; g.lineWidth = 3; g.beginPath(); g.arc(px,py,8,0,7); g.stroke(); g.strokeStyle = '#000'; g.lineWidth = 1; g.beginPath(); g.arc(px,py,9.5,0,7); g.stroke();
+  g.fillStyle = '#e0245e'; g.beginPath(); g.arc(px,py,3,0,7); g.fill();
+}
+for (const [cid, key] of WHEELS){
+  const cv = $(cid);
+  const setFrom = e => {
+    const r = cv.getBoundingClientRect(), x = (e.clientX - r.left)/r.width*2 - 1, y = (e.clientY - r.top)/r.height*2 - 1;
+    const rr = Math.hypot(x,y), k = rr > 0.94 ? 0.94/rr : 1;
+    grade[key].x = x*k/0.94*0.94; grade[key].y = y*k/0.94*0.94; drawWheel(cv, grade[key]);
+  };
+  cv.onpointerdown = e => { cv.setPointerCapture(e.pointerId); setFrom(e); cv.onpointermove = setFrom; };
+  cv.onpointerup = () => { cv.onpointermove = null; commit(); };
+  cv.ondblclick = () => { grade[key].x = 0; grade[key].y = 0; drawWheel(cv, grade[key]); commit(); };
+  const m = $(cid+'M'); m.oninput = () => { grade[key].m = +m.value; }; m.onchange = commit;
+}
+const GSL = [['gExp','exp'],['gCon','con'],['gSat','sat'],['gTemp','temp'],['gTint','tint'],['gVig','vig'],['gGrain','grain']];
+for (const [id, key] of GSL){
+  const r = $(id); r.oninput = () => { grade[key] = +r.value; r.nextElementSibling.textContent = (+r.value).toFixed(2); }; r.onchange = commit;
+}
+function syncGradeUI(){
+  for (const [cid, key] of WHEELS){ drawWheel($(cid), grade[key]); $(cid+'M').value = grade[key].m; }
+  for (const [id, key] of GSL){ $(id).value = grade[key]; $(id).nextElementSibling.textContent = (+grade[key]).toFixed(2); }
+}
+$('gradeReset').onclick = () => { grade = DEFAULT_GRADE(); syncGradeUI(); commit(); };
+/* 色の雰囲気：動画全体に1つのグレードクリップを敷く。見本は今の場面に色を当てて作る */
+function currentLook(){ const g = T('grade').clips; return g.length ? g[0].props.lut : 'なし'; }
+let lookThumbsAt = -1;
+function renderLooks(){
+  const box = $('lutBtns'); if (!box) return;
+  const cur = currentLook();
+  if (box.childElementCount !== Object.keys(LUTS).length){
+    box.innerHTML = '';
+    for (const k of Object.keys(LUTS)){
+      const b = document.createElement('button'); b.className = 'look'; b.dataset.lut = k;
+      const cv = document.createElement('canvas'); cv.width = 80; cv.height = 100; b.appendChild(cv);
+      b.append(k === 'なし' ? 'そのまま' : k);
+      b.onclick = () => setLook(k);
+      box.appendChild(b);
+    }
+  }
+  for (const b of box.children) b.classList.toggle('on', b.dataset.lut === cur);
+  const g = T('grade').clips[0]; $('lookAmt').value = g ? (g.props.amt ?? 1) : $('lookAmt').value; $('lookAmtV').textContent = (+$('lookAmt').value).toFixed(2);
+}
+function setLook(k){
+  const end = projectEnd();
+  if (k === 'なし') T('grade').clips = [];
+  else T('grade').clips = [{id:newId('c'), media:null, start:0, in:0, dur:Math.max(end, 1), props:{lut:k, amt:+$('lookAmt').value}}];
+  afterEdit();
+}
+function drawLookThumbs(){
+  if (lookThumbsAt === curT) return; lookThumbsAt = curT;
+  // 色を当てる前の今の場面を小さく取る
+  const save = grade, gt = T('grade'), mute = gt.mute; grade = DEFAULT_GRADE(); gt.mute = true;
+  renderFrame(curT); const sm = document.createElement('canvas'); sm.width = 80; sm.height = 100;
+  const sg = sm.getContext('2d', {willReadFrequently:true}); sg.drawImage(view, 0, H*0.15, W, W*1.25, 0, 0, 80, 100);
+  grade = save; gt.mute = mute; renderFrame(curT);
+  const base = sg.getImageData(0,0,80,100);
+  for (const b of $('lutBtns').children){
+    const g = mergeGrade(DEFAULT_GRADE(), LUTS[b.dataset.lut] || {}, 1), [lr,lg,lb] = buildLUT(g); lutCacheKey = '';
+    const img = new ImageData(new Uint8ClampedArray(base.data), 80, 100), d = img.data;
+    for (let i=0;i<d.length;i+=4){ let r = lr[d[i]], gg = lg[d[i+1]], bb = lb[d[i+2]]; const l = 0.2126*r+0.7152*gg+0.0722*bb; d[i] = l+(r-l)*g.sat; d[i+1] = l+(gg-l)*g.sat; d[i+2] = l+(bb-l)*g.sat; }
+    b.querySelector('canvas').getContext('2d').putImageData(img, 0, 0);
+  }
+}
+$('lookAmt').oninput = () => { $('lookAmtV').textContent = (+$('lookAmt').value).toFixed(2); const g = T('grade').clips; for (const c of g) c.props.amt = +$('lookAmt').value; };
+$('lookAmt').onchange = commit;
+
+/* テロップ一覧：文字をその場で直せる */
+function renderTelopList(){
+  const box = $('telopList'); if (!box) return;
+  if (box.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return;   // 入力中は作り直さない
+  const list = T('telop').clips.slice().sort((a,b) => a.start - b.start);
+  box.innerHTML = '';
+  if (!list.length){ box.innerHTML = '<div class="empty">テロップはまだありません。「おまかせ編集」を使うか、下のボタンで追加します。</div>'; return; }
+  for (const c of list){
+    const row = document.createElement('div'); row.className = 'trow' + (c.id === selId ? ' sel' : ''); row.dataset.id = c.id;
+    const tb = document.createElement('button'); tb.className = 'time ghost'; tb.textContent = fmtTC(c.start).slice(3,8); tb.title = 'この場面へ移動';
+    tb.onclick = () => { selId = c.id; seek(c.start + Math.min(0.3, c.dur/2)); renderTimeline(); renderInspectors(); };
+    const inp = document.createElement('input'); inp.type = 'text'; inp.value = c.props.text; inp.setAttribute('aria-label', 'テロップの文字');
+    inp.onfocus = () => { if (selId !== c.id){ selId = c.id; seek(c.start + Math.min(0.3, c.dur/2)); renderInspectors(); document.querySelectorAll('.clip').forEach(x => x.classList.remove('sel')); } };
+    inp.oninput = () => { c.props.text = inp.value; };
+    inp.onchange = () => { commit(); renderTimeline(); };
+    const x = document.createElement('button'); x.className = 'x ghost'; x.textContent = '✕'; x.title = 'このテロップを削除';
+    x.onclick = () => { T('telop').clips = T('telop').clips.filter(k => k !== c); if (selId === c.id) selId = null; afterEdit(); };
+    row.append(tb, inp, x); box.appendChild(row);
+  }
+}
+
+const AGENTS = [
+  {id:'cut',   name:'無音カット',   color:'#4c7dff', desc:'話していない間を見つけて切り、詰める'},
+  {id:'telop', name:'テロップ',     color:'#d4a91a', desc:'台本の文字を、話す区間ごとに置く'},
+  {id:'broll', name:'Bロール',      color:'#2fb4d8', desc:'話の合間に差し込み映像や写真を入れる'},
+  {id:'color', name:'色補正',       color:'#e0245e', desc:'明るさを測って整え、雰囲気を付ける'},
+  {id:'sfx',   name:'効果音',       color:'#e07a2b', desc:'テロップや場面の切り替わりに音を付ける'},
+  {id:'bgm',   name:'BGM',          color:'#7b4fd0', desc:'BGMを敷き、声が聞こえる音量にする'},
+  {id:'qc',    name:'投稿前チェック', color:'#15885a', desc:'長さ・黒い画面・テロップの位置を確かめる'},
+];
+const agentEnabled = Object.fromEntries(AGENTS.map(a => [a.id, true]));
+const agentResult = {};
+let qcMessages = [];
+const agentState = {};
+function renderAgents(){
+  const box = $('agents'); box.innerHTML = '';
+  for (const a of AGENTS){
+    const st = agentState[a.id] || '待機';
+    const d = document.createElement('div'); d.className = 'ag';
+    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = agentEnabled[a.id]; cb.setAttribute('aria-label', a.name + 'を行う');
+    cb.onchange = () => { agentEnabled[a.id] = cb.checked; };
+    const dot = document.createElement('span'); dot.className = 'd'; dot.style.background = a.color;
+    const nm = document.createElement('div'); nm.className = 'nm';
+    nm.innerHTML = `<b></b><small></small><span class="res"></span>`;
+    nm.querySelector('b').textContent = a.name; nm.querySelector('small').textContent = a.desc;
+    nm.querySelector('.res').textContent = agentResult[a.id] || '';
+    const pill = document.createElement('span'); pill.className = 'pill' + (st==='実行中' ? ' run' : st==='完了' ? ' done' : st==='エラー' ? ' err' : '');
+    pill.textContent = st==='待機' ? 'まだ' : st;
+    const b = document.createElement('button'); b.textContent = 'これだけ実行'; b.disabled = st==='実行中'; b.onclick = () => runAgent(a.id);
+    d.append(cb, dot, nm, pill, b); box.appendChild(d);
+  }
+}
+function log(who, msg, color){
+  const l = $('log'), d = document.createElement('div'), now = new Date();
+  const a = AGENTS.find(x => x.name === who);
+  d.innerHTML = `<span class="t">${now.toTimeString().slice(0,8)}</span><span class="who"><i style="background:${a ? a.color : 'var(--faint)'}"></i></span><span></span>`;
+  d.querySelector('.who').append(who);
+  d.lastChild.textContent = msg; l.appendChild(d); l.scrollTop = l.scrollHeight;
+}
+const wait = ms => new Promise(r => setTimeout(r, ms));
+function mainSegments(){ return T('main').clips.slice().sort((a,b)=>a.start-b.start); }
+
+async function runAgent(id){
+  const a = AGENTS.find(x => x.id === id);
+  if (agentState[id]==='実行中') return;
+  agentState[id] = '実行中'; agentResult[id] = ''; if (id === 'qc') qcMessages = []; renderAgents();
+  const L = msg => { log(a.name, msg, a.color); agentResult[id] = msg; if (id === 'qc') qcMessages.push(msg); };
+  try {
+    await wait(350);
+    await AGENT_FN[id](L, a);
+    agentState[id] = '完了';
+  } catch(e){ L('エラー: ' + e.message); agentState[id] = 'エラー'; console.error(e); }
+  renderAgents(); afterEdit(); if (id === 'qc') renderQC();
+}
+const AGENT_FN = {
+  async cut(L){
+    const tr = T('main'); const clips = mainSegments();
+    if (!clips.length){ L('メイントラックが空です。素材を置いてください'); return; }
+    const th = +$('silTh').value, minSil = +$('silMin').value, pad = 0.08;
+    L(`無音検出を開始（基準 ${th}dB / ${minSil}秒以上）`);
+    const out = []; let removed = 0;
+    for (const c of clips){
+      const m = M(c.media);
+      if (!m || !m.buffer){ out.push({...c, props:{...c.props}}); continue; }
+      const d = m.buffer.getChannelData(0), sr = m.buffer.sampleRate, win = 0.02, n = Math.floor(c.dur/win);
+      const voiced = [];
+      for (let i=0;i<n;i++){
+        const s0 = Math.floor((c.in + i*win)*sr), s1 = Math.min(d.length, s0 + Math.floor(win*sr));
+        let s = 0; for (let j=s0;j<s1;j++) s += d[j]*d[j];
+        voiced.push(toDb(Math.sqrt(s/Math.max(1,s1-s0))) > th);
+      }
+      // 有声区間を集める（短い無音はつなぐ）
+      const segs = []; let st = -1, lastV = -1;
+      for (let i=0;i<n;i++){
+        if (voiced[i]){ if (st<0) st = i; else if ((i-lastV)*win > minSil){ segs.push([st, lastV+1]); st = i; } lastV = i; }
+      }
+      if (st >= 0) segs.push([st, lastV+1]);
+      if (!segs.length){ removed += c.dur; continue; }
+      for (const [s,e] of segs){
+        const a = Math.max(0, s*win - pad), b = Math.min(c.dur, e*win + pad);
+        out.push({id:newId('c'), media:c.media, start:0, in:c.in + a, dur:b-a, props:{...c.props}});
+      }
+      removed += c.dur - segs.reduce((acc,[s,e]) => acc + Math.min(c.dur, e*win+pad) - Math.max(0, s*win-pad), 0);
+    }
+    let t = clips[0].start; for (const c of out){ c.start = t; t += c.dur; }
+    tr.clips = out;
+    L(`${out.length} 区間に分割、無音 ${removed.toFixed(1)} 秒を削除して詰めました`);
+    renderTimeline(); await wait(300);
+  },
+  async telop(L){
+    const segs = mainSegments();
+    const lines = $('script').value.split('\n').map(s => s.trim()).filter(Boolean);
+    if (!segs.length){ L('メイントラックが空です'); return; }
+    const end = segs[segs.length-1].start + segs[segs.length-1].dur;
+    T('telop').clips = [];
+    let caps = lines.slice(1);
+    if (!lines.length){ caps = segs.map((_,i) => `（ここに文字 ${i+1}）`); L('台本が空なので仮の文字を入れました。「台本・設定」に1行ずつ書くか「AIで台本を作る」を使うと、その文字が入ります'); }
+    else {
+      addTelopAt(0, lines[0], 'blackred', {dur:end, y:0.13, size:62, color:'#ff2d2d'});
+      L(`タイトル「${lines[0]}」を全体に配置`);
+    }
+    if (caps.length === segs.length){
+      segs.forEach((s,i) => addTelopAt(s.start, caps[i], i===0?'yellow':'yellow', {dur:s.dur, y:0.68, size:i===0?96:84}));
+      L(`発話区間 ${segs.length} 個に台本 ${caps.length} 行を1対1で配置`);
+    } else if (caps.length){
+      const per = end / caps.length;
+      caps.forEach((txt,i) => addTelopAt(i*per, txt, 'yellow', {dur:per, y:0.68}));
+      L(`区間数(${segs.length})と行数(${caps.length})が違うため、等間隔で配置しました。必要なら手で調整してください`);
+    }
+    renderTimeline(); await wait(300);
+  },
+  async broll(L){
+    const segs = mainSegments();
+    const used = new Set(T('main').clips.map(c => c.media));
+    const cands = media.filter(m => hasVideo(m) && (m.role==='broll' || !used.has(m.id)));
+    if (!cands.length){ L('Bロール素材がありません（ファイル名に「Bロール」と付けると自動で見分けます）'); return; }
+    if (!segs.length){ L('メイントラックが空です'); return; }
+    T('broll').clips = [];
+    // 差し込む時刻を決める：カットが多いときは1つおきの区間、長いカットは約5秒おき（最初の2秒は顔を見せる）
+    const spots = [];
+    segs.forEach((s, i) => {
+      if (s.dur >= 7){ for (let t = s.start + (i===0 ? 2.5 : 1.5); t + 2 <= s.start + s.dur - 0.5; t += 5) spots.push([t, 1.8]); }
+      else if (i % 2 === 1 && s.dur >= 1.2) spots.push([s.start + 0.25, Math.min(1.8, s.dur - 0.5)]);
+    });
+    let k = 0;
+    for (const [st, d0] of spots){
+      const m = cands[k++ % cands.length], dur = Math.min(d0, isFinite(m.duration) ? m.duration : d0);
+      T('broll').clips.push({id:newId('c'), media:m.id, start:st, in:0, dur, props:{vol:1, zoom:0.1}});
+      L(`${fmtTC(st).slice(3)} に ${m.name} を差し込み`);
+    }
+    if (!k) L('差し込める長さの区間がありませんでした');
+    renderTimeline(); await wait(300);
+  },
+  async color(L){
+    const segs = mainSegments(); if (!segs.length){ L('メイントラックが空です'); return; }
+    const save = grade; grade = DEFAULT_GRADE();
+    const samples = [0.25, 0.5, 0.75].map(f => { const s = segs[Math.floor(f*(segs.length-1))]; return s.start + s.dur/2; });
+    let lum = 0, sat = 0;
+    const gradeTrack = T('grade'), prevMute = gradeTrack.mute; gradeTrack.mute = true;
+    for (const t of samples){
+      syncVideos(t); await wait(120); renderFrame(t);
+      const sm = document.createElement('canvas'); sm.width = 36; sm.height = 64; const g = sm.getContext('2d'); g.drawImage(view,0,0,36,64);
+      const d = g.getImageData(0,0,36,64).data; let l=0, s=0;
+      for (let i=0;i<d.length;i+=4){ const mx=Math.max(d[i],d[i+1],d[i+2]), mn=Math.min(d[i],d[i+1],d[i+2]); l += (0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2])/255; s += mx? (mx-mn)/mx : 0; }
+      lum += l/(d.length/4); sat += s/(d.length/4);
+    }
+    gradeTrack.mute = prevMute; grade = save;
+    lum /= samples.length; sat /= samples.length;
+    L(`平均の明るさ ${(lum*100).toFixed(0)}% / 彩度 ${(sat*100).toFixed(0)}%`);
+    grade.exp = +clamp((0.46 - lum)*1.6, -0.5, 0.6).toFixed(2);
+    grade.sat = +clamp(1 + (0.38 - sat)*0.8, 0.85, 1.35).toFixed(2);
+    grade.con = 0.08; grade.vig = 0.25;
+    L(`露出 ${grade.exp>=0?'+':''}${grade.exp} / 彩度 ×${grade.sat} / コントラスト +0.08 / ビネット 0.25`);
+    const end = projectEnd();
+    gradeTrack.clips = [{id:newId('c'), media:null, start:0, in:0, dur:end, props:{lut:'ウォーム', amt:0.8}}];
+    L('全体に「ウォーム」LUT（強さ0.8）を適用');
+    syncGradeUI(); await wait(300);
+  },
+  async sfx(L){
+    if (!media.some(m => m.role==='sfx')){ addBuiltinSfx(); L('効果音素材がないので、内蔵の効果音4種類を追加しました'); }
+    const pick = k => media.find(m => m.sfx === k) || media.find(m => m.role==='sfx');
+    const tr = T('sfx'); tr.clips = [];
+    const caps = T('telop').clips.filter(c => c.props.y > 0.3).sort((a,b)=>a.start-b.start);
+    caps.forEach((c,i) => { const m = pick(i===0?'ding':'pop'); if (m) tr.clips.push({id:newId('c'), media:m.id, start:c.start, in:0, dur:m.duration, props:{vol:i===0?0.6:0.45}}); });
+    for (const b of T('broll').clips){ const m = pick('whoosh'); if (m) tr.clips.push({id:newId('c'), media:m.id, start:Math.max(0,b.start-0.15), in:0, dur:m.duration, props:{vol:0.5}}); }
+    L(`テロップに ${caps.length} 個、場面転換に ${T('broll').clips.length} 個の効果音を配置`);
+    renderTimeline(); await wait(300);
+  },
+  async bgm(L){
+    let m = media.find(x => x.role==='bgm');
+    if (!m){ m = addBuiltinBgm(); L('BGM素材がないので、内蔵のBGMを使います（自分の曲はファイル名に「BGM」と入れて読み込むと優先されます）'); }
+    const end = projectEnd(); if (!end){ L('タイムラインが空です'); return; }
+    const tr = T('bgm'); tr.clips = [];
+    for (let t=0; t<end; t+=m.duration) tr.clips.push({id:newId('c'), media:m.id, start:t, in:0, dur:Math.min(m.duration, end-t), props:{vol:1}});
+    const hasVoice = T('main').clips.some(c => M(c.media)?.buffer) || T('voice').clips.length;
+    tr.vol = hasVoice ? 0.22 : 0.7;
+    L(`${m.name} を ${fmtS(end)} 分敷き、声が聞こえるよう音量を ${Math.round(tr.vol*100)}% に設定`);
+    renderHeads(); renderTimeline(); await wait(300);
+  },
+  async qc(L){
+    const end = projectEnd(); let ok = true;
+    if (!end){ L('タイムラインが空です'); return; }
+    L(`長さ ${fmtS(end)}`);
+    if (end > 180){ ok = false; L('⚠ 3分を超えています。リールとして投稿できない可能性があります（上限は変わることがあるので投稿前に確認を）'); }
+    else if (end > 90) L('メモ：90秒を超えています。短い方が最後まで見られやすい傾向があります');
+    const mainC = mainSegments(); let gaps = 0;
+    for (let i=1;i<mainC.length;i++) if (mainC[i].start - (mainC[i-1].start+mainC[i-1].dur) > 0.05) gaps++;
+    if (mainC.length && mainC[0].start > 0.05) gaps++;
+    if (gaps){ ok = false; L(`⚠ メイン映像に ${gaps} か所のすき間（黒画面）があります`); }
+    const out = T('telop').clips.filter(c => c.props.y < 0.1 || c.props.y > 0.8);
+    if (out.length){ ok = false; L(`⚠ ${out.length} 個のテロップがセーフエリア外（画面端）にあり、アプリの表示で隠れるかもしれません`); }
+    const long = T('telop').clips.filter(c => c.props.y > 0.3 && c.dur > 0 && c.props.text.length / c.dur > 9);
+    if (long.length) L(`メモ：${long.length} 個のテロップは文字数に対して表示時間が短めです（1秒9文字超）`);
+    if (ok) L('✓ 問題は見つかりませんでした。右上の「書き出し」で動画を保存できます');
+    await wait(200);
+  },
+};
+let autoEdited = false;
+function renderQC(){
+  const box = $('qcList'); box.innerHTML = '';
+  for (const m of qcMessages){ const d = document.createElement('div'); d.className = m.startsWith('⚠') ? 'warn' : m.startsWith('✓') ? 'ok' : ''; d.textContent = m; box.appendChild(d); }
+}
+async function runAll(){
+  audioCtxFor();
+  if (!T('main').clips.length){
+    if (!media.length) addDemoMedia();
+    const m = media.find(x => x.role==='main' && hasVideo(x)) || media.find(hasVideo);
+    if (!m){ toast('メイン映像がありません。動画を読み込んでください'); return; }
+    T('main').clips.push({id:newId('c'), media:m.id, start:0, in:0, dur:isFinite(m.duration)?m.duration:5, props:{vol:1}});
+    log('システム', `${m.name} をメインに配置`, '#888'); renderTimeline();
+  }
+  $('runAll').disabled = true; $('runAll').textContent = '編集しています…';
+  log('システム', 'おまかせ編集を開始');
+  for (const a of AGENTS) if (agentEnabled[a.id]) await runAgent(a.id);
+  log('システム', 'おまかせ編集が終わりました。左のプレビューで確認してください');
+  autoEdited = true;
+  $('runAll').disabled = false; $('runAll').textContent = '▶ もう一度おまかせ編集する'; seek(0); updateSteps();
+}
+
+/* =========================================================
+   書き出し
+   ========================================================= */
+let recorder = null, recChunks = [];
+function setRes(w){ W = w; H = Math.round(w*16/9); view.width = W; view.height = H; ctx = view.getContext('2d', CTX_OPTS); lutCacheKey = ''; }
+function pickMime(){
+  const list = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4;codecs=avc1,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+  return list.find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || '';
+}
+function showModal(html){ $('modalBox').innerHTML = html; $('modal').classList.add('show'); }
+function hideModal(){ $('modal').classList.remove('show'); }
+/* ---- 書き出し完了後の表示（共通） ---- */
+function showExportResult(blob, ext, secs, mode){
+  const url = URL.createObjectURL(blob), fname = `${$('projName').textContent}.${ext}`;
+  const end = projectEnd(); exportedOnce = true; updateSteps();
+  log('書き出し', `${mode}で書き出しました（${(blob.size/1e6).toFixed(1)}MB / ${ext.toUpperCase()} / ${secs.toFixed(1)}秒、動画の長さの ${(end/Math.max(0.1,secs)).toFixed(1)} 倍速）`, '#7dff6b');
+  const h = $('exportArea').querySelector('h3'); if (h) h.textContent = '書き出しが終わりました';
+  const st = $('exStat'); if (st) st.textContent = `かかった時間 ${secs.toFixed(1)} 秒（${mode}）`;
+  const p = $('exProg'); if (p) p.style.width = '100%';
+  const box = document.createElement('div');
+  box.style.cssText = 'display:flex;flex-direction:column;gap:10px';
+  box.innerHTML = `<video controls playsinline style="width:min(100%,280px);aspect-ratio:9/16;background:#000;border-radius:10px"></video>
+    <div class="row"><button class="primary" id="exSave">動画を保存</button><span class="hint" id="exSaveMsg"></span></div>`;
+  box.querySelector('video').src = url;
+  $('exStat').after(box); const eg = $('exGo'); if (eg){ eg.disabled = false; eg.textContent = 'もう一度書き出す'; }
+  $('exSave').onclick = async () => { $('exSaveMsg').textContent = await saveFile(fname, blob); };
+}
+
+/* ---- 高速書き出し（WebCodecs）：再生を待たずに1コマずつ作ってMP4にまとめる ---- */
+const VIDEO_CODECS = [
+  ['avc1.640028','avc'], ['avc1.4d0028','avc'], ['avc1.42e028','avc'], ['avc1.640033','avc'],
+  ['vp09.00.40.08','vp9'],
+];
+async function pickVideoCodec(w, h){
+  if (!window.VideoEncoder) return null;
+  for (const [codec, mux] of VIDEO_CODECS){
+    const cfg = {codec, width:w, height:h, bitrate: w>=1080 ? 10_000_000 : 5_000_000, framerate:FPS, latencyMode:'quality'};
+    if (mux==='avc') cfg.avc = {format:'avc'};
+    try { const r = await VideoEncoder.isConfigSupported(cfg); if (r.supported) return {cfg, mux}; } catch(e){}
+  }
+  return null;
+}
+async function pickAudioCodec(sr){
+  if (!window.AudioEncoder) return null;
+  for (const [codec, mux] of [['mp4a.40.2','aac'],['opus','opus']]){
+    const cfg = {codec, sampleRate:sr, numberOfChannels:2, bitrate:192_000};
+    try { const r = await AudioEncoder.isConfigSupported(cfg); if (r.supported) return {cfg, mux}; } catch(e){}
+  }
+  return null;
+}
+function fastExportAvailable(){ return !!(window.VideoEncoder && window.VideoFrame && window.Mp4Muxer && window.OfflineAudioContext); }
+
+// 音声：全トラックを一度にミックス（再生しないので一瞬で終わる）
+async function renderMixOffline(end, sr){
+  const oc = new OfflineAudioContext(2, Math.ceil(end*sr), sr);
+  for (const tr of tracks){
+    if (tr.mute) continue;
+    if (!(tr.type==='audio' || tr.id==='main' || tr.id==='broll')) continue;
+    for (const c of tr.clips){
+      const m = M(c.media); if (!m || !m.buffer) continue;
+      if (tr.id==='broll' && !c.props.audio) continue;
+      if (c.in >= m.buffer.duration) continue;
+      const s = oc.createBufferSource(); s.buffer = m.buffer;
+      const g = oc.createGain(); g.gain.value = tr.vol * (c.props.vol ?? 1);
+      s.connect(g); g.connect(oc.destination);
+      s.start(c.start, c.in, Math.min(c.dur, m.buffer.duration - c.in));
+    }
+  }
+  return oc.startRendering();
+}
+
+// 映像の素材：MP4/MOV は中身を直接デコード（速い）。それ以外はシークで1コマずつ取り出す
+async function demuxMp4(file){
+  if (!window.MP4Box || !window.VideoDecoder) return null;
+  const ab = await file.arrayBuffer();
+  return new Promise((resolve) => {
+    const mp4 = MP4Box.createFile(); let track = null; const samples = [];
+    mp4.onError = () => resolve(null);
+    mp4.onReady = info => {
+      track = info.videoTracks[0]; if (!track) return;
+      mp4.setExtractionOptions(track.id, null, {nbSamples: 1e9}); mp4.start();
+    };
+    mp4.onSamples = (id, user, list) => { for (const x of list) samples.push({data:x.data, ts:x.cts*1e6/x.timescale, dur:x.duration*1e6/x.timescale, key:x.is_sync}); };
+    ab.fileStart = 0;
+    try { mp4.appendBuffer(ab); mp4.flush(); } catch(e){ return resolve(null); }
+    if (!track || !samples.length) return resolve(null);
+    let desc;
+    for (const e of mp4.getTrackById(track.id).mdia.minf.stbl.stsd.entries){
+      const box = e.avcC || e.hvcC || e.vpcC || e.av1C;
+      if (box){ const ds = new DataStream(undefined, 0, DataStream.BIG_ENDIAN); box.write(ds); desc = new Uint8Array(ds.buffer, 8); break; }
+    }
+    const t0 = Math.min(...samples.slice(0, 32).map(s => s.ts));
+    for (const s of samples) s.ts -= t0;
+    resolve({config:{codec:track.codec, codedWidth:track.video.width, codedHeight:track.video.height, description:desc}, samples});
+  });
+}
+class DecodedSource {
+  constructor(d){ this.d = d; this.queue = []; this.cur = null; this.wake = null; this.open(0); }
+  open(idx){
+    if (this.dec && this.dec.state !== 'closed') this.dec.close();
+    for (const f of this.queue) f.close(); this.queue = [];
+    if (this.cur){ this.cur.close(); this.cur = null; }
+    this.dec = new VideoDecoder({output: f => { this.queue.push(f); this.queue.sort((a,b)=>a.timestamp-b.timestamp); if (this.wake){ const w = this.wake; this.wake = null; w(); } }, error: e => { this.err = e; if (this.wake){ const w = this.wake; this.wake = null; w(); } }});
+    this.dec.configure(this.d.config); this.next = idx; this.flushed = false;
+  }
+  keyBefore(us){ const s = this.d.samples; let k = 0; for (let i=0;i<s.length;i++) if (s[i].key && s[i].ts <= us) k = i; return k; }
+  async frameAt(t){
+    const us = t*1e6 + 500, s = this.d.samples;
+    const curTs = this.cur ? this.cur.timestamp : (this.queue[0] ? this.queue[0].timestamp : -1);
+    if ((this.cur && this.cur.timestamp > us + 1000) || (curTs >= 0 && us - curTs > 3e6) ){
+      const k = this.keyBefore(us); if (k > this.next || us < curTs) this.open(k);
+    }
+    for (let guard=0; guard<100000; guard++){
+      if (this.err) throw this.err;
+      while (this.queue.length && this.queue[0].timestamp <= us){ if (this.cur) this.cur.close(); this.cur = this.queue.shift(); }
+      if (this.queue.length) return this.cur || this.queue[0];
+      if (this.next < s.length){
+        const n = Math.min(s.length, this.next + 4);
+        for (; this.next < n; this.next++){ const x = s[this.next]; this.dec.decode(new EncodedVideoChunk({type:x.key?'key':'delta', timestamp:x.ts, duration:x.dur, data:x.data})); }
+        if (this.dec.decodeQueueSize > 8 || this.queue.length === 0) await new Promise(r => { this.wake = r; setTimeout(r, 30); });
+      } else if (!this.flushed){ this.flushed = true; await this.dec.flush(); }
+      else return this.cur;
+    }
+    return this.cur;
+  }
+  close(){ try{ this.dec.close(); }catch(e){} for (const f of this.queue) f.close(); if (this.cur) this.cur.close(); }
+}
+class SeekSource {
+  constructor(m){ this.m = m; }
+  async frameAt(t){
+    const el = this.m.el; if (Math.abs(el.currentTime - t) < 0.001 && el.readyState >= 2) return el;
+    await new Promise(r => { const to = setTimeout(r, 1500); el.addEventListener('seeked', () => { clearTimeout(to); r(); }, {once:true}); el.currentTime = t; });
+    return el;
+  }
+  close(){}
+}
+let exportSrc = null;   // 書き出し中だけ：素材 → 今のコマ
+let fastExporting = false, exportAbort = false;
+
+async function fastExport(res, allowFallback = true){
+  const end = projectEnd(), started = performance.now();
+  const vcodec = await pickVideoCodec(res, Math.round(res*16/9));
+  if (!vcodec) throw new Error('映像エンコーダーが使えません');
+  const sr = 48000, acodec = await pickAudioCodec(sr);
+  pause(); fastExporting = true; exportAbort = false; setRes(res);
+  const stat = t => { const s = $('exStat'); if (s) s.textContent = t; };
+  const sources = new Map();
+  try {
+    stat('音声をミックス中…');
+    const mix = acodec ? await renderMixOffline(end, sr) : null;
+    stat('素材を準備中…');
+    for (const tr of [T('main'), T('broll')]) for (const c of tr.clips){
+      const m = M(c.media); if (!m || m.kind !== 'video' || sources.has(m)) continue;
+      const d = m.file && /\.(mp4|m4v|mov)$/i.test(m.name) ? await demuxMp4(m.file).catch(() => null) : null;
+      let src = null;
+      if (d){ try { const r = await VideoDecoder.isConfigSupported(d.config); if (r.supported) src = new DecodedSource(d); } catch(e){} }
+      sources.set(m, src || new SeekSource(m));
+    }
+    const muxer = new Mp4Muxer.Muxer({
+      target: new Mp4Muxer.ArrayBufferTarget(),
+      video: {codec: vcodec.mux, width: W, height: H, frameRate: FPS},
+      audio: acodec ? {codec: acodec.mux, sampleRate: sr, numberOfChannels: 2} : undefined,
+      fastStart: 'in-memory', firstTimestampBehavior: 'offset',
+    });
+    let encErr = null;
+    const venc = new VideoEncoder({output: (ch, meta) => muxer.addVideoChunk(ch, meta), error: e => encErr = e});
+    venc.configure({...vcodec.cfg, width: W, height: H});
+    let aenc = null;
+    if (acodec){
+      aenc = new AudioEncoder({output: (ch, meta) => muxer.addAudioChunk(ch, meta), error: e => encErr = e});
+      aenc.configure(acodec.cfg);
+      const L = mix.getChannelData(0), R = mix.getChannelData(1), N = 4096;
+      for (let i=0; i<L.length; i+=N){
+        const n = Math.min(N, L.length - i), buf = new Float32Array(n*2);
+        buf.set(L.subarray(i, i+n), 0); buf.set(R.subarray(i, i+n), n);
+        const ad = new AudioData({format:'f32-planar', sampleRate:sr, numberOfFrames:n, numberOfChannels:2, timestamp:Math.round(i/sr*1e6), data:buf});
+        aenc.encode(ad); ad.close();
+      }
+    }
+    const total = Math.ceil(end*FPS);
+    exportSrc = new Map();
+    // GPUが無いときは「複数コアで分担」と「1コアで処理」を最初の数コマで測り、速い方を使う
+    const tryBoth = !GL && getGradeWorkers().length > 0 && total > 40;
+    let tA = 0, tB = 0; useParallelGrade = true; const loopStart = performance.now();
+    for (let i=0; i<total; i++){
+      if (tryBoth && i === 10) useParallelGrade = false;
+      if (tryBoth && i === 20){ useParallelGrade = tA <= tB; log('書き出し', `色処理：${useParallelGrade ? '複数コアで分担' : '1コアで処理'}（1コマあたり ${(Math.min(tA,tB)/10).toFixed(0)}ms）`, '#7dff6b'); }
+      const fs = performance.now();
+      if (exportAbort) throw new Error('中止しました');
+      if (encErr) throw encErr;
+      const t = i/FPS;
+      exportSrc.clear();
+      for (const id of ['main','broll']){
+        const c = topClip(T(id), t); if (!c) continue;
+        const m = M(c.media), src = m && sources.get(m);
+        if (src) exportSrc.set(m, await src.frameAt(c.in + (t - c.start)));
+      }
+      await renderFrameAsync(t);
+      const vf = new VideoFrame(view, {timestamp: Math.round(t*1e6), duration: Math.round(1e6/FPS)});
+      venc.encode(vf, {keyFrame: i % (FPS*2) === 0}); vf.close();
+      while (venc.encodeQueueSize > 6) await new Promise(r => setTimeout(r, 1));
+      if (tryBoth && i < 10) tA += performance.now() - fs; else if (tryBoth && i < 20) tB += performance.now() - fs;
+      // 40コマ作った時点で、このまま続けるとリアルタイムより遅いと分かったら切り替える
+      if (i === 40 && allowFallback && window.MediaRecorder){
+        const per = (performance.now() - loopStart)/(i+1), remain = per*(total-i-1)/1000;
+        if (remain > (end - t)*1.15 + 1) { const e = new Error('SLOW'); e.slow = true; throw e; }
+      }
+      if (i % 6 === 0){
+        const p = $('exProg'); if (p) p.style.width = (i/total*100) + '%';
+        const el = (performance.now()-started)/1000, eta = el/(i+1)*(total-i-1);
+        stat(`映像を作成中 ${i+1} / ${total} コマ ・ 経過 ${el.toFixed(1)}秒 ・ 残り約 ${Math.ceil(eta)}秒`);
+        curT = t; updateTimeUI();
+        await new Promise(r => setTimeout(r, 0));
+      }
+    }
+    stat('仕上げ中…');
+    await venc.flush(); if (aenc) await aenc.flush();
+    muxer.finalize();
+    const blob = new Blob([muxer.target.buffer], {type:'video/mp4'});
+    showExportResult(blob, 'mp4', (performance.now()-started)/1000, '高速書き出し');
+    if (vcodec.mux !== 'avc') log('書き出し', 'このブラウザではH.264が使えずVP9で保存しました。インスタで読めない場合は Chrome / Edge で書き出してください', '#ffa24c');
+    if (!acodec) log('書き出し', 'このブラウザでは音声エンコードが使えず、音なしで保存しました', '#ffa24c');
+    else if (acodec.mux !== 'aac') log('書き出し', 'このブラウザではAAC音声が使えずOpus音声で保存しました。インスタで音が出ない場合は Windows / Mac の Chrome か Edge で書き出してください', '#ffa24c');
+  } finally {
+    exportSrc = null; for (const s of sources.values()) s.close();
+    fastExporting = false; setRes(+$('quality').value); seek(0);
+  }
+}
+
+/* ---- リアルタイム書き出し（高速書き出しが使えないブラウザ用） ---- */
+function realtimeExport(res, mime){
+  const end = projectEnd(), started = performance.now();
+  setRes(res); pause(); seek(0);
+  const vs = view.captureStream(FPS);
+  const stream = new MediaStream([...vs.getVideoTracks(), ...exportDest.stream.getAudioTracks()]);
+  recChunks = [];
+  recorder = new MediaRecorder(stream, {mimeType: mime || undefined, videoBitsPerSecond: W>=1080 ? 10_000_000 : 5_000_000, audioBitsPerSecond: 192_000});
+  recorder.ondataavailable = e => { if (e.data.size) recChunks.push(e.data); };
+  recorder.onstop = () => {
+    if (!recChunks.length) return;
+    const blob = new Blob(recChunks, {type: recorder.mimeType || mime || 'video/webm'});
+    const ext = (recorder.mimeType||mime).includes('mp4') ? 'mp4' : 'webm';
+    showExportResult(blob, ext, (performance.now()-started)/1000, 'リアルタイム書き出し');
+  };
+  exporting = true; recorder.start(500);
+  setTimeout(() => play(), 150);
+  const tick = () => { if (!exporting) return; const p = $('exProg'); if (p) p.style.width = (curT/end*100)+'%'; requestAnimationFrame(tick); }; tick();
+}
+
+function startExport(){ goStep(5); }
+function renderExportArea(){
+  const end = projectEnd(), fast = fastExportAvailable(), mime = pickMime();
+  const box = $('exportArea');
+  if (!fast && !window.MediaRecorder){ box.innerHTML = '<h3>動画ファイルを作る</h3><div class="hint">このブラウザは書き出しに対応していません。Chrome か Edge で開いてください。</div>'; return; }
+  box.innerHTML = `<h3>動画ファイルを作る</h3>
+  <div class="row"><label class="row" style="gap:6px">画質 <select id="exRes"><option value="1080">きれい 1080×1920（おすすめ）</option><option value="720">軽い 720×1280</option></select></label>
+    <span class="hint">長さ ${end ? fmtS(end) : '—'}・${fast ? 'MP4で作成' : 'リアルタイム（再生と同じ時間がかかります）'}</span></div>
+  <div class="row"><button class="primary" id="exGo" ${end ? '' : 'disabled'}>書き出しを始める</button><button class="ghost" id="exCancel" hidden>中止</button></div>
+  <div class="prog"><i id="exProg"></i></div>
+  <div class="hint" id="exStat">${end ? '' : 'タイムラインが空です。先に「おまかせ編集」をしてください。'}</div>`;
+  $('exCancel').onclick = () => { if (fastExporting) exportAbort = true; if (exporting) abortExport(); renderExportArea(); };
+  $('exGo').onclick = async () => {
+    $('exGo').disabled = true; $('exCancel').hidden = false; audioCtxFor();
+    const old = $('exportArea').querySelector('video'); if (old) old.parentElement.remove();
+    const res = +$('exRes').value;
+    if (fast){
+      try { await fastExport(res); $('exCancel').hidden = true; return; }
+      catch(e){
+        if (exportAbort){ log('書き出し', '書き出しを中止しました'); return; }
+        if (e.slow) log('書き出し', 'このパソコンでは高速書き出しが再生より遅くなるため、リアルタイム書き出しに切り替えます');
+        else log('書き出し', `高速書き出しに失敗（${e.message}）。リアルタイム書き出しに切り替えます`);
+        if (!window.MediaRecorder) return;
+      }
+    }
+    $('exStat').textContent = 'リアルタイムで書き出し中…（このタブを前に出したままにしてください）';
+    realtimeExport(res, mime);
+  };
+}
+function finishExport(){ exporting = false; const cb = $('exCancel'); if (cb) cb.hidden = true; setTimeout(() => { if (recorder && recorder.state !== 'inactive') recorder.stop(); setRes(+$('quality').value); const p = $('exProg'); if (p) p.style.width = '100%'; }, 300); }
+function abortExport(){ exporting = false; recChunks = []; if (recorder && recorder.state !== 'inactive'){ recorder.ondataavailable = null; recorder.onstop = null; recorder.stop(); } pause(); setRes(+$('quality').value); }
+
+/* =========================================================
+   保存・読み込み
+   ========================================================= */
+function projectJSON(){
+  return JSON.stringify({app:'reelstudio', v:1, name:$('projName').textContent, script:$('script').value, grade,
+    tracks: tracks.map(t => ({id:t.id, vol:t.vol, mute:t.mute, clips:t.clips})),
+    media: media.map(m => ({id:m.id, name:m.name, demo:!!m.demo}))}, null, 1);
+}
+function autosave(){ try { localStorage.setItem('reelstudio_autosave', projectJSON()); } catch(e){} }
+function loadProject(o){
+  const hasDemo = o.media.some(m => m.demo);
+  if (hasDemo) addDemoMedia();
+  const idMap = {};
+  for (const pm of o.media){ const m = media.find(x => x.name === pm.name); if (m) idMap[pm.id] = m.id; }
+  const missing = o.media.filter(pm => !idMap[pm.id]).map(pm => pm.name);
+  for (const t of o.tracks){ const tr = T(t.id); if (!tr) continue; tr.vol = t.vol; tr.mute = t.mute; tr.clips = t.clips.map(c => ({...c, media: c.media ? (idMap[c.media] || c.media) : null})); }
+  grade = Object.assign(DEFAULT_GRADE(), o.grade); $('script').value = o.script || ''; $('projName').textContent = o.name || 'ショート';
+  for (const tr of tracks) for (const c of tr.clips){ const n = parseInt(String(c.id).slice(1)); if (n >= uid) uid = n+1; }
+  syncGradeUI(); renderHeads(); renderTimeline(); renderInspectors(); hist = []; commit();
+  if (missing.length) log('システム', `素材が足りません：${missing.join('、')}。同じ名前のファイルを読み込むと復元されます`, '#ff9b9b');
+  pendingMissing = o.media.filter(pm => !idMap[pm.id]);
+}
+let pendingMissing = [];
+function relinkMissing(){
+  if (!pendingMissing.length) return;
+  for (const pm of pendingMissing.slice()){
+    const m = media.find(x => x.name === pm.name); if (!m) continue;
+    for (const tr of tracks) for (const c of tr.clips) if (c.media === pm.id) c.media = m.id;
+    pendingMissing = pendingMissing.filter(x => x !== pm);
+    log('システム', `${pm.name} を再リンクしました`, '#888');
+  }
+  renderTimeline();
+}
+
+/* =========================================================
+   UI 配線
+   ========================================================= */
+/* ファイル保存：claude.ai のアーティファクト内では downloads 機能、それ以外は通常のダウンロード */
+let dlCap; const dlReady = (window.claude && window.claude.use) ? window.claude.use('downloads').then(d => dlCap = d).catch(() => dlCap = null) : Promise.resolve(dlCap = null);
+async function saveFile(filename, blob){
+  if (window.claude && window.claude.use){
+    await dlReady;
+    if (!dlCap) return 'この表示では保存できません。ダウンロードしたローカル版をお使いください';
+    try { await dlCap.save({filename, data: blob}); return '保存しました'; }
+    catch(e){ return e && e.code === 'declined' ? '保存をキャンセルしました' : e && e.code === 'rate_limited' ? '少し待ってからもう一度押してください' : '保存できませんでした（' + (e && e.code || '不明') + '）'; }
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+  return '保存しました';
+}
+/* AI（claude.ai のアーティファクト内だけで使える）：台本づくり・投稿文づくり */
+let aiSample = null;
+if (window.claude && window.claude.use) window.claude.use('sample').then(sm => { aiSample = sm; if (sm){ $('aiBox').hidden = false; $('capBox').hidden = false; } }).catch(() => {});
+function aiErr(e){
+  const c = e && e.code;
+  if (c === 'not_granted' || c === 'sampling_disabled' || c === 'capability_disabled' || c === 'not_declared'){ $('aiBox').hidden = true; $('capBox').hidden = true; return 'AIの利用が許可されていません'; }
+  if (c === 'rate_limited') return '回数が多すぎます。少し待ってからもう一度押してください';
+  if (c === 'refused') return 'このテーマでは作れませんでした。言い方を変えてください';
+  if (c === 'invalid_json') return 'うまく作れませんでした。もう一度押してください';
+  if (c === 'session_expired') return 'ログインし直してください';
+  if (c === 'cancelled') return '';
+  return '作れませんでした。もう一度押してください';
+}
+$('aiScript').onclick = async () => {
+  const theme = $('aiTheme').value.trim();
+  if (!theme){ $('aiMsg').textContent = 'テーマを入れてください'; $('aiTheme').focus(); return; }
+  const segs = mainSegments(), n = segs.length >= 2 ? segs.length : 0;
+  $('aiScript').disabled = true; $('aiMsg').textContent = 'AIが台本を書いています…';
+  try {
+    const r = await aiSample.json(
+`あなたはInstagramリール（縦型ショート動画）の台本作家です。次のテーマで、話し手が読み上げる台本を日本語で作ってください。
+
+テーマ：${theme}
+
+条件：
+- タイトルは画面上部に出す短い見出し（20文字以内）。思わず止まって見たくなる言い方に。
+- 本文は画面に出すテロップでもあります。1行は18文字以内、話し言葉で、言い切る。
+- 1行目でつかみ（結論や意外な事実）、最後の行で保存やフォローをうながす。
+- ${n ? `本文はちょうど ${n} 行（動画の話す区間が ${n} 個あるため）。` : '本文は5〜7行。'}
+- 誇大な表現や効果の断定（「必ず」「絶対」など）は使わない。
+
+次のJSONだけを返してください：{"title": "タイトル", "lines": ["本文1", "本文2", ...]}`, {modelTier:'default', cache:false});
+    const lines = Array.isArray(r && r.lines) ? r.lines.map(x => String(x).trim()).filter(Boolean) : [];
+    if (!r || !r.title || !lines.length) throw {code:'invalid_json'};
+    $('script').value = [String(r.title).trim(), ...lines].join('\n'); autosave();
+    $('aiMsg').textContent = `台本を作りました（本文 ${lines.length} 行）。手順3の「おまかせ編集」でテロップになります`; updateScriptInfo();
+    log('テロップ', `AIで台本を作成：「${r.title}」`, '#e8d44d');
+  } catch(e){ $('aiMsg').textContent = aiErr(e); }
+  finally { $('aiScript').disabled = false; }
+};
+$('aiCaption').onclick = async () => {
+  const sc = $('script').value.trim();
+  if (!sc){ $('capAiMsg').textContent = '先に手順2で台本を入れてください'; return; }
+  $('aiCaption').disabled = true; $('capAiMsg').textContent = 'AIが投稿文を書いています…';
+  try {
+    const r = await aiSample.json(
+`次のInstagramリールの台本をもとに、投稿に付けるキャプション（説明文）とハッシュタグを日本語で作ってください。
+
+台本：
+${sc.slice(0, 4000)}
+
+条件：
+- キャプションは3〜6行。1行目は続きを読みたくなる一文。最後に保存・コメントをうながす一文。
+- 絵文字は控えめに（全体で3個まで）。
+- ハッシュタグは関連性の高いものを8〜12個。大きすぎる一般語ばかりにしない。
+- 誇大な表現や効果の断定は使わない。
+
+次のJSONだけを返してください：{"caption": "キャプション本文", "hashtags": ["#タグ1", "#タグ2"]}`, {modelTier:'default', cache:false});
+    if (!r || !r.caption) throw {code:'invalid_json'};
+    const tags = (Array.isArray(r.hashtags) ? r.hashtags : []).map(t => String(t).trim()).filter(Boolean).map(t => t.startsWith('#') ? t : '#'+t);
+    const full = String(r.caption).trim() + (tags.length ? '\n\n' + tags.join(' ') : '');
+    showModal(`<h3>投稿文</h3><textarea id="capOut" style="width:100%;height:220px;resize:vertical"></textarea>
+      <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;margin-top:8px"><span id="capMsg" style="color:var(--dim);font-size:11px"></span><button id="capClose">閉じる</button><button class="primary" id="capCopy">コピー</button></div>`);
+    $('capOut').value = full;
+    $('capClose').onclick = hideModal;
+    $('capCopy').onclick = () => {
+      navigator.clipboard.writeText($('capOut').value).then(() => $('capMsg').textContent = 'コピーしました')
+        .catch(() => { $('capOut').select(); $('capMsg').textContent = '選択しました。長押しまたは Ctrl+C でコピーしてください'; });
+    };
+    $('capAiMsg').textContent = '';
+  } catch(e){ $('capAiMsg').textContent = aiErr(e); }
+  finally { $('aiCaption').disabled = false; }
+};
+function toast(msg){ log('システム', msg, '#ff9b9b'); }
+$('mImport').onclick = $('bImport').onclick = () => $('fileIn').click();
+$('fileIn').onchange = async e => { await importFiles([...e.target.files]); relinkMissing(); e.target.value = ''; };
+$('mNew').onclick = () => {
+  showModal(`<h3>新しいプロジェクト</h3><div>タイムラインを空にします。読み込んだ素材は残ります。今の作業が必要なら、先に「保存」してください。</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button id="nwNo">やめる</button><button class="primary" id="nwYes">空にする</button></div>`);
+  $('nwNo').onclick = hideModal;
+  $('nwYes').onclick = () => { for (const t of tracks){ t.clips = []; t.vol = 1; t.mute = false; } grade = DEFAULT_GRADE(); $('script').value = ''; $('projName').textContent = 'ショート_新規プロジェクト';
+    for (const a of AGENTS){ delete agentState[a.id]; delete agentResult[a.id]; } autoEdited = false; exportedOnce = false; qcMessages = []; $('qcList').innerHTML = ''; selId = null; updateScriptInfo(); goStep(1); syncGradeUI(); renderHeads(); renderAgents(); seek(0); afterEdit(); hideModal(); log('システム', '新しいプロジェクトを始めました', '#888'); };
+};
+$('mDemo').onclick = $('mDemo2').onclick = () => { audioCtxFor(); addDemoMedia(); updateScriptInfo(); log('システム', 'デモ素材を追加しました'); };
+$('mSave').onclick = async () => {
+  const name = $('projName').textContent.trim() || 'ショート';
+  autosave();
+  const msg = await saveFile(name + '.reel.json', new Blob([projectJSON()], {type:'application/json'}));
+  log('システム', msg + '（プロジェクトには動画ファイル本体は含みません）', '#888');
+};
+$('mLoad').onclick = () => $('projIn').click();
+$('projIn').onchange = async e => { const f = e.target.files[0]; if (!f) return; try { loadProject(JSON.parse(await f.text())); } catch(err){ toast('プロジェクトを開けませんでした'); } e.target.value = ''; };
+$('mHelp').onclick = () => showModal(`<h3>使い方</h3>
+<p>上の <b>1〜5の手順</b> を順に進めれば、1本のリール動画ができます。</p>
+<ol style="padding-left:1.3em;margin:8px 0">
+<li><b>素材</b>：話している動画、差し込み映像・写真、BGMを入れます。</li>
+<li><b>台本</b>：1行目がタイトル、2行目からがテロップ。AIに書いてもらうこともできます（claude.ai で開いたとき）。</li>
+<li><b>おまかせ編集</b>：無音カット・テロップ・Bロール・色・効果音・BGMを自動で行います。</li>
+<li><b>仕上げ</b>：テロップの文字、色の雰囲気、音のバランスを直します。</li>
+<li><b>書き出し</b>：チェックしてMP4を作り、保存します。投稿文も作れます。</li>
+</ol>
+<p class="hint">下のタイムラインでは、クリップをドラッグで移動、端で長さ調整ができます。<kbd>Space</kbd> 再生、<kbd>S</kbd> 分割、<kbd>Delete</kbd> 削除、<kbd>Ctrl</kbd>+<kbd>Z</kbd> 元に戻す。</p>
+<p class="hint">動画や音声はこのブラウザの中だけで処理され、外に送られません。AI機能を使ったときだけ、テーマや台本の文章がClaudeに送られます。</p>
+<div style="text-align:right;margin-top:10px"><button class="primary" onclick="hideModal()">閉じる</button></div>`);
+$('modal').onclick = e => { if (e.target === $('modal') && !exporting) hideModal(); };
+$('btnExport').onclick = startExport;
+$('tPlay').onclick = $('tlPlay').onclick = togglePlay;
+$('tStart').onclick = () => seek(0);
+$('tBack').onclick = () => seek(curT - 1/FPS);
+$('tFwd').onclick = () => seek(curT + 1/FPS);
+$('tlSplit').onclick = () => splitAt(curT);
+$('tlDel').onclick = () => deleteSel(false);
+$('tlRipple').onclick = () => deleteSel(true);
+$('tlUndo').onclick = undo; $('tlRedo').onclick = redoFn;
+$('tlSnap').onclick = () => { snap = !snap; $('tlSnap').classList.toggle('on', snap); };
+$('tlZoom').oninput = () => { pps = +$('tlZoom').value; renderTimeline(); };
+$('safeT').onchange = () => $('safe').classList.toggle('show', $('safeT').checked);
+$('quality').onchange = () => setRes(+$('quality').value);
+$('runAll').onclick = runAll;
+$('clearLog').onclick = () => $('log').innerHTML = '';
+$('addTelop').onclick = () => { const c = addTelopAt(curT); selId = c.id; afterEdit(); };
+$('silTh').oninput = () => $('silThV').textContent = $('silTh').value;
+$('silMin').oninput = () => $('silMinV').textContent = $('silMin').value;
+$('projName').title = 'ダブルクリックで名前を変更';
+$('projName').ondblclick = () => { const el = $('projName'); el.contentEditable = 'true'; el.focus(); document.getSelection().selectAllChildren(el); };
+$('projName').onblur = () => { const el = $('projName'); el.contentEditable = 'false'; el.textContent = el.textContent.trim() || 'ショート'; autosave(); };
+$('projName').onkeydown = e => { if (e.key === 'Enter'){ e.preventDefault(); $('projName').blur(); } };
+$('script').onchange = autosave;
+
+window.addEventListener('keydown', e => {
+  const tg = e.target;
+  if (tg.isContentEditable || tg.closest && tg.closest('input,textarea,select,[contenteditable="true"]')) return;
+  if (exporting || fastExporting) return;
+  if (e.code === 'Space' && tg.tagName === 'BUTTON') tg.blur();   // ボタンのSpace押下と二重に反応しないように
+  if (e.code === 'Space'){ e.preventDefault(); togglePlay(); }
+  else if (e.key === 's' || e.key === 'S'){ if (!e.ctrlKey && !e.metaKey) splitAt(curT); }
+  else if (e.key === 'Delete' || e.key === 'Backspace'){ deleteSel(e.shiftKey); }
+  else if (e.key === 'ArrowLeft'){ seek(curT - (e.shiftKey?1:1/FPS)); }
+  else if (e.key === 'ArrowRight'){ seek(curT + (e.shiftKey?1:1/FPS)); }
+  else if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase() === 'z'){ e.preventDefault(); e.shiftKey ? redoFn() : undo(); }
+  else if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase() === 'y'){ e.preventDefault(); redoFn(); }
+});
+let dragDepth = 0;
+window.addEventListener('dragenter', e => { if (e.dataTransfer.types.includes('Files')){ dragDepth++; $('dropnote').style.display = 'flex'; } });
+window.addEventListener('dragleave', e => { if (e.dataTransfer.types.includes('Files')){ dragDepth--; if (dragDepth<=0) $('dropnote').style.display = 'none'; } });
+window.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); });
+window.addEventListener('drop', async e => { if (!e.dataTransfer.files.length) return; e.preventDefault(); dragDepth = 0; $('dropnote').style.display = 'none'; await importFiles([...e.dataTransfer.files]); relinkMissing(); });
+
+
+/* ---- 起動 ---- */
+/* ---- 手順の切り替え ---- */
+let curStep = 1, curTab = 'telop', exportedOnce = false;
+function goStep(n){
+  curStep = n;
+  document.querySelectorAll('.pane').forEach(p => p.hidden = +p.dataset.pane !== n);
+  if (n === 5) renderExportArea();
+  if (n === 4 && curTab === 'color') drawLookThumbs();
+  updateSteps();
+  try { localStorage.setItem('reelstudio_step', n); } catch(e){}
+}
+function updateSteps(){
+  const done = {
+    1: media.some(m => hasVideo(m) && m.role === 'main') ,
+    2: !!$('script').value.trim(),
+    3: autoEdited || T('main').clips.length > 0,
+    4: autoEdited && curStep >= 5,
+    5: exportedOnce,
+  };
+  document.querySelectorAll('.step').forEach(b => { const n = +b.dataset.step; b.classList.toggle('cur', n === curStep); b.classList.toggle('done', !!done[n] && n !== curStep); b.setAttribute('aria-current', n === curStep ? 'step' : 'false'); });
+}
+document.querySelectorAll('.step').forEach(b => b.onclick = () => goStep(+b.dataset.step));
+document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => goStep(+b.dataset.go));
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
+  curTab = b.dataset.tab;
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('[data-tabpane]').forEach(x => x.hidden = x.dataset.tabpane !== curTab);
+  if (curTab === 'color'){ lookThumbsAt = -1; drawLookThumbs(); }
+});
+$('fileMenu').addEventListener('click', e => { if (e.target.tagName === 'BUTTON') $('fileMenu').open = false; });
+document.addEventListener('click', e => { if (!e.target.closest('#fileMenu')) $('fileMenu').open = false; });
+$('dockSize').onclick = () => { const d = $('dock'); const big = d.classList.toggle('big'); $('dockSize').textContent = big ? 'タイムラインを小さく' : 'タイムラインを大きく'; };
+$('qcRun').onclick = () => runAgent('qc');
+function updateScriptInfo(){
+  const lines = $('script').value.split('\n').map(x => x.trim()).filter(Boolean), box = $('scriptInfo');
+  box.innerHTML = '';
+  const chip = (t, cls='') => { const c = document.createElement('span'); c.className = 'chip ' + cls; c.textContent = t; box.appendChild(c); };
+  if (!lines.length){ chip('台本なし（仮の文字が入ります）'); return; }
+  chip('タイトル：' + lines[0].slice(0, 20) + (lines[0].length > 20 ? '…' : ''), lines[0].length <= 20 ? 'ok' : 'warn');
+  chip(`本文 ${lines.length - 1} 行`, lines.length > 1 ? 'ok' : 'warn');
+  const segs = mainSegments().length; if (autoEdited && segs && lines.length - 1 !== segs) chip(`話す区間は ${segs} 個（行数が違うと等間隔で並びます）`, 'warn');
+  const long = lines.slice(1).filter(l => l.length > 18).length; if (long) chip(`18文字を超える行 ${long} 行（2行に折り返します）`, 'warn');
+}
+$('script').addEventListener('input', () => { updateScriptInfo(); updateSteps(); });
+renderHeads(); renderBin(); renderAgents(); syncGradeUI(); renderTimeline(); renderInspectors();
+(async function boot(){
+  let saved = null; try { saved = JSON.parse(localStorage.getItem('reelstudio_autosave')); } catch(e){}
+  const stored = await MediaStore.all();
+  if (stored && stored.length){
+    log('システム', `保存してある素材 ${stored.length} 件を読み込み中…`, '#888');
+    await importFiles(stored.map(r => r.blob instanceof File ? r.blob : new File([r.blob], r.name, {type:r.type})), {restoring:true});
+  }
+  if (saved && saved.tracks && saved.tracks.some(t => t.clips.length)){
+    loadProject(saved); log('システム', '前回の作業を復元しました', '#888');
+  } else {
+    addDemoMedia(); commit();
+    log('システム', 'ようこそ。デモ素材を用意しました');
+  }
+  autoEdited = tracks.some(t => t.id !== 'main' && t.clips.length);
+  let st = 1; try { st = +localStorage.getItem('reelstudio_step') || 1; } catch(e){}
+  updateScriptInfo(); goStep(st >= 1 && st <= 5 ? st : 1);
+})();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
