@@ -110,6 +110,12 @@
     }
     .toast.show{opacity:1}
     details summary{cursor:pointer;font-size:.85rem;font-weight:600;margin-bottom:.5rem}
+    .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:.45rem;margin-top:.5rem;max-height:430px;overflow:auto;padding:.2rem}
+    .gallery .gi{border:2px solid transparent;border-radius:10px;background:#0a0f1a;cursor:pointer;padding:3px;text-align:center;position:relative}
+    .gallery .gi.on{border-color:var(--primary)}
+    .gallery .gi canvas{width:100%;height:auto;display:block;border-radius:7px}
+    .gallery .gi span{display:block;font-size:.64rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    details.more>summary{font-size:.95rem;padding:.4rem .2rem}
     .board-ov{position:fixed;inset:0;background:rgba(5,8,16,.88);z-index:60;overflow:auto;padding:1rem}
     .board-ov[hidden]{display:none}
     .board-wrap{display:grid;grid-template-columns:minmax(280px,360px) 1fr;gap:1rem;max-width:1200px;margin:0 auto;align-items:start}
@@ -140,6 +146,22 @@
 
 <div class="layout">
 <div>
+    <div class="card" id="galleryCard">
+        <h2>🎨 デザイン案 <span class="tag" id="galCount"></span></h2>
+        <p class="muted" style="margin:0 0 .6rem">見本のデザインA（高級・ブランド感）の配置から、ロゴ・名前・文言・2色目・配置を変えた案を自動で作ります。気に入った案を押すと編集できます。ロゴもここで作るので、画像を用意する必要はありません。</p>
+        <div class="row">
+            <button class="btn primary" id="btnGen">🎲 案を12個つくる</button>
+            <button class="btn" id="btnDup">⧉ 今の案を複製</button>
+            <button class="btn" id="btnNewLogo">🔄 ロゴだけ作り直す</button>
+            <button class="btn sm danger" id="btnDelDesign">🗑 この案を消す</button>
+        </div>
+        <div class="row" style="gap:.3rem;align-items:center">
+            <span class="muted">規格：</span>
+            <div class="seg" id="sizeSeg"><button data-v="none">1種類</button><button data-v="M5">M・5本入</button><button data-v="L3">L・3本入</button></div>
+            <span class="muted">（同じデザインのまま2色目だけ替わる）</span>
+        </div>
+        <div class="gallery" id="gallery"></div>
+    </div>
         <div class="card" id="editorCard">
         <h2>✏️ デザインAを自由に編集 <span class="tag" id="editState"></span></h2>
         <p class="muted" style="margin:0 0 .6rem">デザインA（高級・ブランド感）を、要素ごとに動かせる形で読み込みます。プレビュー上の文字やロゴを<b>つかんで動かす</b>／矢印キーで0.5mm（Shift で5mm）ずつ動かせます。色は「白」と「2色目」の2色だけです。</p>
@@ -154,6 +176,7 @@
                     <select id="elLogoSel">
                         <option value="sun">朝日と畑（デザインAと同じ形）</option><option value="wave">太平洋の朝日と波</option><option value="mount">土佐の山並みと朝日</option><option value="whale">鯨と波</option>
                         <option value="vg_nasu1">「1」になす</option><option value="vg_crown">ヘタの王冠</option><option value="vg_badge">丸いエンブレム</option><option value="vg_sunwave">海から昇るなす</option><option value="vg_mono">Vと1の組み文字</option><option value="vg_trio">3本でワンチーム</option>
+                        <option value="gen">自動でつくったロゴ</option>
                         <option value="custom">読み込んだ画像</option>
                     </select>
                 </div>
@@ -173,6 +196,8 @@
         </div>
         <p class="muted" style="margin:.3rem 0 0">MとLで同じデザインの色違いを作るときは、⑥袋の「規格」でM・5本入／L・3本入を切り替えます（見分け方の印も一緒に入ります）。</p>
     </div>
+<details class="more">
+<summary>⚙️ 詳しい設定（袋の寸法・裏面・書き出し など今までの機能）</summary>
 <div class="card">
         <h2>① 方向性（プリセット）<span class="tag">押すと設定がまとめて変わります</span></h2>
         <div class="presets" id="presets"></div>
@@ -373,6 +398,7 @@
             </ul>
         </details>
     </div>
+</details>
 </div>
 
 <div class="stage">
@@ -1523,7 +1549,8 @@ function drawLabelA(ctx,W,H){
     if(P.logo==='custom' && LOGO_IMG && LOGO_IMG.complete && LOGO_IMG.naturalWidth){
       const r=LOGO_IMG.naturalWidth/LOGO_IMG.naturalHeight, h=26, w=Math.min(44,h*r), hh=w/r;
       drawSvg(ctx, LOGO_IMG, 100-w/2, 92-hh/2, w, hh, col);
-    }else{ const k=P.logo; if(k==='custom') P.logo='sun'; drawLogo(ctx,100,92,20,col); P.logo=k; }
+    }else if(P.logo==='gen' && P.logoSpec){ drawGenLogo(ctx,100,91,col,secondColor(),P.logoSpec);
+    }else{ const k=P.logo; if(k==='custom'||k==='gen') P.logo='sun'; drawLogo(ctx,100,92,20,col); P.logo=k; }
   });
   drawElA(ctx,'kicker',col=>{ ctx.fillStyle=col; withFont(ctx,5.6,FONT_JA[P.fontJa||'maru'],700); ctx.fillText(P.farmKind||'',100,102.5); });
   drawElA(ctx,'name',col=>{ ctx.fillStyle=col; let fs=15; withFont(ctx,fs,FONT_JA.maru,900); const w=ctx.measureText(P.farmJa).width; if(w>150){ fs=fs*150/w; withFont(ctx,fs,FONT_JA.maru,900);} ctx.fillText(P.farmJa,100,111.5+fs*.1); });
@@ -1598,10 +1625,10 @@ document.querySelectorAll('input[name=elCol]').forEach(r=>r.addEventListener('ch
 document.getElementById('elResetOne').addEventListener('click',()=>{ if(!SEL) return; P.el[SEL]={}; elv(SEL); drawPreview(); syncElPanel(); saveState(true); });
 document.getElementById('elResetAll').addEventListener('click',()=>{ if(!confirm('すべての要素の位置・大きさ・色を元のデザインAに戻します')) return; P.el={}; drawPreview(); syncElPanel(); saveState(true); });
 document.getElementById('btnLoadA').addEventListener('click',()=>{
-  Object.assign(P, DESIGN_A); P.el={}; SEL=null; syncInputs(); buildPresets(); buildNames(); syncElPanel(); drawPreview(); saveState(true);
+  Object.assign(P, DESIGN_A); P.el={}; SEL=null; const id=galAdd(snapshot(),'見本'); GAL.cur=id; galSave(); syncInputs(); buildPresets(); buildNames(); syncElPanel(); buildGallery(); drawPreview(); saveState(true);
   toast('デザインAを読み込みました。プレビューの文字やロゴをつかんで動かせます');
 });
-document.getElementById('elLogoSel').addEventListener('change',e=>{ P.logo=e.target.value; drawPreview(); saveState(true); syncInputs(); });
+document.getElementById('elLogoSel').addEventListener('change',e=>{ P.logo=e.target.value; if(P.logo==='gen'&&!P.logoSpec) P.logoSpec=genLogoSpec(Math.floor(Math.random()*1e6)); drawPreview(); saveState(true); syncInputs(); });
 document.getElementById('elLogoFile').addEventListener('change',e=>{
   const f=e.target.files[0]; if(!f) return; const r=new FileReader();
   r.onload=()=>{ P.logoImg=r.result; P.logo='custom'; loadLogoImg(); document.getElementById('elLogoSel').value='custom'; try{ saveState(true); }catch(_){}
@@ -1615,7 +1642,137 @@ function syncEditorTop(){ document.getElementById('followVar').checked=!!P.follo
 // お手本：同梱のデザインA写真を最初から並べられるように
 (function(){ const box=document.getElementById('refbox'); const img=new Image(); img.onload=()=>{ box.innerHTML=''; box.appendChild(img); }; img.src='nasu-film/デザインA_見本.jpg'; })();
 
-bindInputs(); buildPresets(); buildNames(); loadLogoImg(); syncEditorTop(); syncElPanel(); drawPreview(); readBoardHash();
+// ── ロゴの自動生成（白＋2色目の2色だけ） ─────────────────────────────
+function eggPath(cx,top,w,h,ang){
+  const p=new Path2D(), a=(ang||0)*Math.PI/180, ca=Math.cos(a), sa=Math.sin(a);
+  const T=(x,y)=>[cx+x*ca-y*sa, top+h/2+x*sa+y*ca]; const y0=-h/2;
+  const M=(x,y)=>p.moveTo(...T(x,y)), L=(x,y)=>p.lineTo(...T(x,y)), C=(a,b,c,d,e,f)=>p.bezierCurveTo(...T(a,b),...T(c,d),...T(e,f)), Q=(a,b,c,d)=>p.quadraticCurveTo(...T(a,b),...T(c,d));
+  M(0,y0+h*.24); C(w*.26,y0+h*.25,w*.46,y0+h*.44,w*.5,y0+h*.68); C(w*.56,y0+h*.99,-w*.44,y0+h*1.03,-w*.5,y0+h*.74); C(-w*.54,y0+h*.5,-w*.24,y0+h*.25,0,y0+h*.24); p.closePath();
+  const cw=w*.66; M(-cw/2,y0+h*.12); L(-cw*.42,y0+h*.3); L(-cw*.2,y0+h*.18); L(0,y0+h*.21); L(cw*.2,y0+h*.18); L(cw*.42,y0+h*.3); L(cw/2,y0+h*.12); Q(0,y0+h*.04,-cw/2,y0+h*.12); p.closePath();
+  M(-w*.05,y0+h*.1); L(w*.02,y0-h*.02); L(w*.13,y0-h*.04); L(w*.06,y0+h*.1); p.closePath();
+  return p;
+}
+function leafPath(x,y,L,ang){ const p=new Path2D(), a=ang*Math.PI/180, c=Math.cos(a), s=Math.sin(a); const R=(u,v)=>[x+u*c-v*s,y+u*s+v*c];
+  p.moveTo(...R(0,0)); p.quadraticCurveTo(...R(L*.5,-L*.38),...R(L,0)); p.quadraticCurveTo(...R(L*.5,L*.38),...R(0,0)); p.closePath(); return p; }
+const LOGO_PARTS={ frame:['none','none','ring','ringText','square','kamon'], back:['sun','waves','mount','kochi','arches','none','sunwave'], egg:['one','tilt','leafy','one','tilt','three'], accent:['none','stars','dots','none'],
+  ringText:['KOCHI · AKI','AKI NASU','KOCHI JAPAN','AKI · KOCHI'] };
+function genLogoSpec(seed){ const r=rng(seed*7919+13); const pick=a=>a[Math.floor(r()*a.length)];
+  const s={seed, frame:pick(LOGO_PARTS.frame), back:pick(LOGO_PARTS.back), egg:pick(LOGO_PARTS.egg), accent:pick(LOGO_PARTS.accent), text:pick(LOGO_PARTS.ringText), eggC:r()<.3};
+  if(s.frame!=='none' && !['none','sun','waves'].includes(s.back)) s.back=pick(['none','sun','waves']);
+  if(s.frame==='kamon'){ s.back='none'; s.eggC=false; }
+  if(s.back==='kochi') s.eggC=false;
+  return s; }
+function drawGenLogo(ctx,cx,cy,W,C,s){
+  // 収まる範囲：横 ±22mm、縦 ±12mm（デザインAのロゴ位置）
+  const R=12; ctx.save(); ctx.lineCap='round'; ctx.lineJoin='round';
+  const sun=(y,r)=>{ ctx.fillStyle=C; ctx.beginPath(); ctx.arc(cx,y,r,Math.PI,0); ctx.closePath(); ctx.fill(); ctx.strokeStyle=C; ctx.lineWidth=1.1;
+    for(let k=0;k<7;k++){ const a=Math.PI+Math.PI*(k+1)/8; ctx.beginPath(); ctx.moveTo(cx+Math.cos(a)*r*1.25,y+Math.sin(a)*r*1.25); ctx.lineTo(cx+Math.cos(a)*r*1.7,y+Math.sin(a)*r*1.7); ctx.stroke(); } };
+  const waves=(y,w,col)=>{ ctx.strokeStyle=col; ctx.lineWidth=1.2; for(let i=0;i<3;i++){ const yy=y+i*2.6, ww=w*(1-i*.18); ctx.beginPath(); ctx.moveTo(cx-ww/2,yy);
+    const n=4, sw=ww/n; for(let j=0;j<n;j++){ const x0=cx-ww/2+j*sw; ctx.bezierCurveTo(x0+sw*.25,yy-1.6,x0+sw*.5,yy-1.6,x0+sw*.5,yy); ctx.bezierCurveTo(x0+sw*.5,yy+1,x0+sw*.75,yy+1,x0+sw,yy); } ctx.stroke(); } };
+  const framed = s.frame!=='none';
+  // 枠
+  if(s.frame==='ring'){ ctx.strokeStyle=C; ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.stroke(); ctx.strokeStyle=W; ctx.lineWidth=.5; ctx.beginPath(); ctx.arc(cx,cy,R-2,0,Math.PI*2); ctx.stroke(); }
+  if(s.frame==='square'){ ctx.strokeStyle=C; ctx.lineWidth=1.3; roundRect(ctx,cx-R,cy-R,2*R,2*R,3); ctx.stroke(); }
+  if(s.frame==='ringText'){ ctx.strokeStyle=C; ctx.lineWidth=4.2; ctx.beginPath(); ctx.arc(cx,cy,R-2.1,0,Math.PI*2); ctx.stroke();
+    ctx.fillStyle=W; withFont(ctx,2.6,FONT_EN,800); ctx.textAlign='center'; ctx.textBaseline='middle'; const txt=s.text, n=txt.length, a0=-Math.PI*.82, a1=-Math.PI*.18;
+    for(let i=0;i<n;i++){ const a=a0+(a1-a0)*i/(n-1); ctx.save(); ctx.translate(cx+Math.cos(a)*(R-2.1),cy+Math.sin(a)*(R-2.1)); ctx.rotate(a+Math.PI/2); ctx.fillText(txt[i],0,.1); ctx.restore(); }
+    ctx.fillStyle=W; ctx.beginPath(); ctx.arc(cx-(R-2.1),cy+.5,.6,0,Math.PI*2); ctx.arc(cx+(R-2.1),cy+.5,.6,0,Math.PI*2); ctx.fill(); }
+  if(s.frame==='kamon'){ ctx.fillStyle=C; ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.fill(); ctx.strokeStyle=W; ctx.lineWidth=.8; ctx.beginPath(); ctx.arc(cx,cy,R-1.6,0,Math.PI*2); ctx.stroke(); }
+  const inner = framed ? .74 : 1;
+  if(framed){ ctx.strokeStyle=C; ctx.lineWidth=.6; [-1,1].forEach(sd=>{ ctx.beginPath(); ctx.moveTo(cx+sd*(R+2.5),cy); ctx.lineTo(cx+sd*(R+10),cy); ctx.stroke(); ctx.beginPath(); ctx.arc(cx+sd*(R+11.2),cy,.7,0,Math.PI*2); ctx.fillStyle=C; ctx.fill(); }); }
+  // 背景
+  if(s.back==='sun') sun(cy+3*inner, 6.5*inner);
+  if(s.back==='sunwave'){ sun(cy+1, 6); waves(cy+3.5, 30, C); }
+  if(s.back==='waves') waves(cy+(framed?3.5:5), framed?14:34, C);
+  if(s.back==='mount'){ ctx.strokeStyle=C; ctx.lineWidth=1.3; ctx.beginPath(); ctx.moveTo(cx-21,cy+8); ctx.lineTo(cx-10,cy-4); ctx.lineTo(cx-3,cy+3); ctx.lineTo(cx+7,cy-7); ctx.lineTo(cx+21,cy+8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx-22,cy+10); ctx.lineTo(cx+22,cy+10); ctx.stroke(); }
+  if(s.back==='kochi'){ ctx.fillStyle=C; ctx.beginPath(); KOCHI_PTS.forEach(([px,py],i)=>{ const X=cx+px*21, Y=cy+py*11; i?ctx.lineTo(X,Y):ctx.moveTo(X,Y); }); ctx.closePath(); ctx.fill(); }
+  if(s.back==='arches'){ ctx.strokeStyle=W; ctx.lineWidth=1.1; [-13,0,13].forEach(dx=>{ ctx.beginPath(); ctx.moveTo(cx+dx-6.5,cy+9); ctx.lineTo(cx+dx-6.5,cy); ctx.arc(cx+dx,cy,6.5,Math.PI,0); ctx.lineTo(cx+dx+6.5,cy+9); ctx.stroke(); });
+    ctx.beginPath(); ctx.moveTo(cx-22,cy+9.4); ctx.lineTo(cx+22,cy+9.4); ctx.stroke();
+    ctx.lineWidth=1; for(let k2=0;k2<5;k2++){ const a=Math.PI+Math.PI*(k2+1)/6; ctx.beginPath(); ctx.moveTo(cx+Math.cos(a)*14,cy-6+Math.sin(a)*5); ctx.lineTo(cx+Math.cos(a)*18,cy-6+Math.sin(a)*6.5); ctx.stroke(); } }
+  // ナス
+  const ec = s.eggC ? C : W, k=inner;
+  ctx.fillStyle=ec;
+  if(s.back==='arches'){ ctx.fillStyle=C; [-13,0,13].forEach(dx=>ctx.fill(eggPath(cx+dx,cy-2,4.6,11))); }
+  else if(s.egg==='one') ctx.fill(eggPath(cx,cy-12*k,9*k,24*k,0));
+  else if(s.egg==='tilt') ctx.fill(eggPath(cx+1,cy-11.5*k,9*k,23*k,28));
+  else if(s.egg==='three'){ [[-6,-24],[0,0],[6,24]].forEach(([dx,a])=>ctx.fill(eggPath(cx+dx*k,cy-10*k+Math.abs(dx)*.25*k,5.4*k,18*k,a))); }
+  else { ctx.fill(eggPath(cx,cy-11.5*k,8.5*k,23*k,0)); ctx.fillStyle=s.eggC?W:C; ctx.fill(leafPath(cx-1*k,cy-8.5*k,11*k,205)); ctx.fill(leafPath(cx+1*k,cy-8.5*k,11*k,-25)); }
+  // 飾り
+  if(s.accent==='stars'){ ctx.fillStyle=C; [[-15,-6,2.4],[15,-8,1.8],[16,5,2.1]].forEach(([dx,dy,r])=>{ if(framed) return; const x=cx+dx,y=cy+dy,q=r*.22; ctx.beginPath(); ctx.moveTo(x,y-r); ctx.quadraticCurveTo(x+q,y-q,x+r,y); ctx.quadraticCurveTo(x+q,y+q,x,y+r); ctx.quadraticCurveTo(x-q,y+q,x-r,y); ctx.quadraticCurveTo(x-q,y-q,x,y-r); ctx.fill(); }); }
+  if(s.accent==='dots' && !framed){ ctx.fillStyle=C; [-16,-12,12,16].forEach(dx=>{ ctx.beginPath(); ctx.arc(cx+dx,cy+2,.9,0,Math.PI*2); ctx.fill(); }); }
+  ctx.restore();
+}
+const KOCHI_PTS=[[-1,.15],[-.95,-.15],[-.8,-.35],[-.6,-.45],[-.35,-.5],[-.1,-.62],[.15,-.6],[.4,-.68],[.62,-.6],[.8,-.5],[.95,-.35],[1,-.15],[.93,.15],[.86,.45],[.8,.75],[.7,.5],[.55,.3],[.38,.18],[.15,.15],[-.05,.2],[-.25,.3],[-.45,.45],[-.6,.62],[-.72,.85],[-.8,1],[-.88,.75],[-.95,.45]];
+
+// ── デザイン案の一覧（自動生成・複製・切り替え） ─────────────────────
+const GAL_KEY='nasu-design-film-gallery-v1';
+let GAL=(()=>{ try{ return JSON.parse(localStorage.getItem(GAL_KEY))||{items:[],cur:null}; }catch(e){ return {items:[],cur:null}; } })();
+function galSave(){ try{ localStorage.setItem(GAL_KEY, JSON.stringify(GAL)); }catch(e){ toast('保存の容量がいっぱいです。古い案を消してください'); } }
+const clone=o=>JSON.parse(JSON.stringify(o));
+function snapshot(){ const s=clone(P); return s; }
+function galCurrent(){ return GAL.items.find(i=>i.id===GAL.cur); }
+function galSyncCurrent(){ const it=galCurrent(); if(it){ it.state=snapshot(); it.name=P.farmJa+(it.tag?'（'+it.tag+'）':''); galSave(); renderThumb(it); const s=document.querySelector(`#gallery .gi[data-id="${it.id}"] span`); if(s) s.textContent=it.name; } }
+const PRODUCTS=['こだわりの安芸ナス','こだわりの安芸ナス','高知・安芸のナス','安芸のこだわりナス','とれたて安芸ナス','高知県安芸市のナス'];
+const SCRIPTS=['Fresh & delicious','Fresh & delicious','Sun & Sea','From Aki, Kochi','Sweet & tender','Fresh from Kochi','Grown with care'];
+const SECOND=['#c9a44c','#c9a44c','#4a9a5b','#c8553d','#3f8fc7','#e0902c','#9a7fd1'];
+const LAYOUTS={
+  A:{},                                                                                  // 見本どおり
+  big:{name:{s:118,dy:2}, en:{dy:4}, region:{dy:4}, product:{dy:4}},                      // 名前を大きく
+  logo:{logo:{s:135,dy:-4}, name:{dy:2}},                                               // ロゴを大きく
+  up:{logo:{dy:-10},kicker:{dy:-10},name:{dy:-10},en:{dy:-10},region:{dy:-10},product:{dy:-10},stamp:{dy:-6},script:{dy:-8},illust:{dy:-6}}, // 全体を上に
+  swap:{stamp:{dx:96,dy:16}, illust:{dx:-92,dy:-4}, script:{dx:6}},                      // 高知の形と線画を入れ替え
+  quiet:{script:{hide:true}, illust:{s:85,dx:4,dy:4}},                                  // 筆記体なしで静かに
+};
+function makeProposal(seed){
+  const r=rng(seed*104729+7); const pick=a=>a[Math.floor(r()*a.length)];
+  const nm=pick(NAMES.filter(n=>n.ja)); const lay=pick(Object.keys(LAYOUTS));
+  const s=Object.assign(clone(P), DESIGN_A, {farmJa:nm.ja, farmEn:nm.en, farmKind:'', product:pick(PRODUCTS), script:pick(SCRIPTS), gold:pick(SECOND),
+     logo:'gen', logoSpec:genLogoSpec(seed), el:clone(LAYOUTS[lay]), layout:lay, variant:P.variant||'none', followVar:P.followVar});
+  if(r()<.25){ s.farmKind='安芸なす生産者グループ'; s.el.kicker={hide:false}; s.el.logo=Object.assign({},s.el.logo||{}, {dy:((s.el.logo||{}).dy||0)-4}); }
+  return s;
+}
+function withState(st, fn){ const keep=P; P=st; try{ return fn(); } finally { P=keep; } }
+function proposalOk(st){ return withState(st, ()=>{ const c=mk(50,75); render(c.getContext('2d'), .25, {}); return warnings.length===0; }); }
+function renderThumb(it){
+  const cv=document.querySelector(`#gallery .gi[data-id="${it.id}"] canvas`); if(!cv) return;
+  const k=.55*(window.devicePixelRatio||1); cv.width=Math.round(it.state.bagW*k); cv.height=Math.round(it.state.bagH*k);
+  withState(it.state, ()=>render(cv.getContext('2d'), k, {})); warnings=[]; 
+}
+function buildGallery(){
+  const g=document.getElementById('gallery'); g.innerHTML='';
+  GAL.items.forEach(it=>{ const d=document.createElement('div'); d.className='gi'+(it.id===GAL.cur?' on':''); d.dataset.id=it.id;
+    d.innerHTML=`<canvas></canvas><span>${it.name||''}</span>`; d.addEventListener('click',()=>galOpen(it.id)); g.appendChild(d); renderThumb(it); });
+  document.getElementById('galCount').textContent = GAL.items.length+'案';
+  document.querySelectorAll('#sizeSeg button').forEach(b=>b.classList.toggle('active',b.dataset.v===(P.variant||'none')));
+}
+function galOpen(id){ const it=GAL.items.find(i=>i.id===id); if(!it) return; GAL.cur=id; galSave(); P=Object.assign({},DEFAULT,clone(it.state)); SEL=null;
+  loadLogoImg(); syncInputs(); buildPresets(); buildNames(); syncElPanel(); buildGallery(); drawPreview(); saveState(true); }
+function galAdd(st,tag){ const id='d'+Date.now().toString(36)+Math.floor(Math.random()*1e4); GAL.items.push({id,tag:tag||'',name:st.farmJa+(tag?'（'+tag+'）':''),state:clone(st)}); return id; }
+document.getElementById('btnGen').addEventListener('click',()=>{
+  if(!P.editA){ Object.assign(P,DESIGN_A); P.el={}; }
+  let made=0, seed=(Date.now()%100000), tries=0, first=null;
+  while(made<12 && tries<60){ tries++; const st=makeProposal(seed+tries*31); if(!proposalOk(st)) continue; const id=galAdd(st); if(!first) first=id; made++; }
+  galSave(); buildGallery(); if(first) galOpen(first); toast(made+'案つくりました。押すと編集できます');
+});
+document.getElementById('btnDup').addEventListener('click',()=>{ const id=galAdd(snapshot(), '複製'); galSave(); galOpen(id); toast('複製しました。こちらを編集しても元の案は残ります'); });
+document.getElementById('btnNewLogo').addEventListener('click',()=>{ P.logo='gen'; P.logoSpec=genLogoSpec(Math.floor(Math.random()*1e6)); syncEditorTop(); drawPreview(); saveState(true); });
+document.getElementById('btnDelDesign').addEventListener('click',()=>{ const it=galCurrent(); if(!it) return; if(!confirm('この案を消しますか？')) return;
+  GAL.items=GAL.items.filter(i=>i.id!==it.id); GAL.cur=GAL.items.length?GAL.items[GAL.items.length-1].id:null; galSave(); if(GAL.cur) galOpen(GAL.cur); else buildGallery(); });
+document.querySelectorAll('#sizeSeg button').forEach(b=>b.addEventListener('click',()=>{ P.variant=b.dataset.v; P.followVar=b.dataset.v!=='none';
+  if(b.dataset.v!=='none' && P.varStyle==='frame' && !P._styleChosen) P.varStyle='badge';
+  syncInputs(); buildGallery(); drawPreview(); saveState(true); }));
+// 保存のたびに、開いている案にも書き戻す
+const _saveState=saveState; saveState=function(silent){ _saveState(silent); if(typeof galSyncCurrent==='function') galSyncCurrent(); };
+// 初めて開いたときは、見本のデザインAをそのまま編集できる状態にして一覧に入れる
+function galInit(){
+  if(!GAL.items.length){ if(!P.editA){ Object.assign(P,DESIGN_A); P.el={}; } const id=galAdd(snapshot(),'見本'); GAL.cur=id; galSave(); _saveState(true); }
+  else if(!galCurrent()){ GAL.cur=GAL.items[0].id; galSave(); }
+  buildGallery();
+}
+
+window.__nf={ get P(){return P;}, get GAL(){return GAL;}, galCurrent:()=>galCurrent() };   // 確認用
+bindInputs(); buildPresets(); buildNames(); galInit(); loadLogoImg(); syncEditorTop(); syncElPanel(); drawPreview(); readBoardHash();
 if(document.fonts && document.fonts.ready){ document.fonts.ready.then(drawPreview); }
 setTimeout(drawPreview,1500); setTimeout(drawPreview,4000);
 })();
