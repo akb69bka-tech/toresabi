@@ -596,11 +596,16 @@ function saveHistory(){
 }
 
 /* ---------- 翻訳エンジン ---------- */
+function fetchWithTimeout(url, opts, ms){
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), ms || 4000);
+    return fetch(url, Object.assign({}, opts, {signal: ctrl.signal})).finally(() => clearTimeout(t));
+}
 async function engineGtx(text, from, to){
     const url = 'https://translate.googleapis.com/translate_a/single?client=gtx'
         + '&sl=' + encodeURIComponent(from) + '&tl=' + encodeURIComponent(to)
         + '&dt=t&q=' + encodeURIComponent(text);
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url, {}, 4000);
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     if(!Array.isArray(data) || !Array.isArray(data[0])) throw new Error('形式エラー');
@@ -610,7 +615,7 @@ async function engineMyMemory(text, from, to){
     if(text.length > 500) throw new Error('MyMemoryは500文字までです');
     const url = 'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(text)
         + '&langpair=' + encodeURIComponent(from + '|' + to);
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url, {}, 6000);
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     const out = data && data.responseData && data.responseData.translatedText;
@@ -754,8 +759,12 @@ function renderLangUI(){
     $('micBLabel').textContent = b.name;
     $('subMicALabel').textContent = a.name;
     $('subMicBLabel').textContent = b.name;
-    const d = currentDir();
-    $('pillDirection').textContent = langOf(d.from).name + ' → ' + langOf(d.to).name;
+    if(dualMode){
+        $('pillDirection').textContent = langOf(settings.langA).name + ' ⇄ ' + langOf(effectivePartner()).name + (partnerLang ? '（検出）' : '');
+    }else{
+        const d = currentDir();
+        $('pillDirection').textContent = langOf(d.from).name + ' → ' + langOf(d.to).name;
+    }
     const engineLabel = {auto:'自動', gtx:'Google（無料）', mymemory:'MyMemory', gcloud:'Google Cloud', libre:'LibreTranslate'};
     $('pillEngine').textContent = 'エンジン: ' + (engineLabel[settings.engine] || settings.engine);
     updateTurnUI();
@@ -814,7 +823,7 @@ function transHtml(h){
 function bubbleHtml(h){
     const t = new Date(h.ts);
     const time = ('0'+t.getHours()).slice(-2) + ':' + ('0'+t.getMinutes()).slice(-2);
-    const sideCls = h.side === 'B' ? 'left' : (h.side === 'E' ? 'center' : 'right');
+    const sideCls = h.side === 'A' ? 'right' : (h.tgt2 ? 'center' : 'left');
     return '<div class="bubble ' + sideCls + '" data-id="' + h.id + '" title="タップで読み上げ">' +
         '<div class="orig">' + esc(h.src) + '</div>' +
         '<div class="trans">' + transHtml(h) + '</div>' +
@@ -899,6 +908,7 @@ function handleUtterance(text, side, applyGuess){
     clearTimeout(interimTimer);
     const actual = applyGuess ? guessSide(text, side) : side;
     const ad = dirFor(actual);
+    if(dualMode && actual === 'A') ad.to = effectivePartner();   // 相手の言語へ即変換
     setPane('src', text, false);
     setPane('tgt', '', true);                // 逐次プレビューの残りを消す
     lastPair.srcLang = ad.from; lastPair.tgtLang = ad.to;
@@ -1004,7 +1014,7 @@ function buildRecognition(side){
                         const out = await translate(snapshot, d.from, d.to);
                         if(my === seq) setPane('tgt', out, true);
                     }catch(e){ /* プレビューの失敗は黙って無視 */ }
-                }, 350);
+                }, 250);
             }
         }
         if(finalText.trim()){
@@ -1134,8 +1144,10 @@ function updateTurnUI(){
     if(dualMode){
         const a = langOf(settings.langA), b = langOf(settings.langB);
         const hasE = dualRecs.some(d => d.side === 'E');
+        const pn = langOf(effectivePartner()).name;
         $('turnText').textContent = a.flag + ' ' + b.flag + (hasE ? ' 🇺🇸' : '') + ' どの言語でもそのまま話してください';
-        $('turnHint').textContent = a.name + ' / ' + b.name + (hasE ? ' / English' : '') + ' を自動判別中 — Silakan langsung bicara';
+        $('turnHint').textContent = (partnerLang ? '相手の言語: ' + pn + '（自動検出）・' : '') +
+            a.name + ' / ' + b.name + (hasE ? ' / English' : '') + ' を自動判別中';
         return;
     }
     if(!autoMode) return;
@@ -1150,6 +1162,15 @@ function updateTurnUI(){
    同時併用できない環境では従来の交互モードへ自動フォールバック。 ---------- */
 let dualMode = false;
 let dualRecs = [];
+let partnerLang = null;      // 検出した相手の言語。こちら（日本語）の発話はこの言語へ訳す
+function effectivePartner(){ return partnerLang || settings.langB; }
+function setPartnerLang(code){
+    if(code === settings.langA || partnerLang === code) return;
+    partnerLang = code;
+    renderLangUI();
+    updateTurnUI();
+    toast('相手の言語を検出: ' + langOf(code).name + ' — こちらの発話は ' + langOf(code).name + ' に翻訳します');
+}
 let dualStopping = false;
 let dualStartedAt = 0;
 let utterWindow = null;
@@ -1204,6 +1225,7 @@ function startDual(){
     ttsMuting = false;
     acquireWakeLock();
     activeSide = 'A';
+    partnerLang = null;
     dualInterims.A = ''; dualInterims.B = ''; dualInterims.E = '';
     liveView = null;
     lastResolveAt = 0;
@@ -1264,7 +1286,7 @@ function dualInterim(side, text){
     if(settings.interim){
         clearTimeout(interimTimer);
         const from = bestSide === 'E' ? 'en' : dirFor(bestSide).from;
-        const to = bestSide === 'E' ? settings.langA : dirFor(bestSide).to;
+        const to = bestSide === 'A' ? effectivePartner() : settings.langA;
         const snapshot = bestText;
         interimTimer = setTimeout(async () => {
             const my = ++seq;
@@ -1272,7 +1294,7 @@ function dualInterim(side, text){
                 const out = await translate(snapshot, from, to);
                 if(my === seq) setPane('tgt', out, true);
             }catch(e){ /* プレビュー失敗は無視 */ }
-        }, 350);
+        }, 250);
     }
 }
 
@@ -1284,7 +1306,7 @@ function dualFinal(side, text, conf){
     const cand = {side, text, conf};
     if(!utterWindow){
         if(quickWin(cand)){ finishUtterance(cand); return; }
-        utterWindow = {candidates:[cand], timer: setTimeout(resolveUtterance, 500)};
+        utterWindow = {candidates:[cand], timer: setTimeout(resolveUtterance, 400)};
     }else{
         utterWindow.candidates.push(cand);
         if(utterWindow.candidates.length >= dualRecs.length) resolveUtterance();
@@ -1324,36 +1346,17 @@ function finishUtterance(w){
     dualInterims.A = ''; dualInterims.B = ''; dualInterims.E = '';
     liveView = null;
     if(ttsMuting || !w || !w.text) return;
-    if(w.side === 'E') handleEnglish(w.text);
-    else handleUtterance(w.text, w.side, true);
-}
-
-// 英語の発話：日本語とインドネシア語の両方へ同時に翻訳して1つの吹き出しに表示
-async function handleEnglish(text){
-    clearTimeout(interimTimer);
-    setPane('src', text, false);
-    setPane('tgt', '', true);
-    const my = ++seq;
-    setStatus('翻訳中…', 'busy');
-    const toA = settings.langA, toB = settings.langB;
-    const item = addHistory(text, '', 'en', toB, 'E');
-    item.to2 = toA;
-    let outA, outB;
-    try{
-        [outA, outB] = await Promise.all([translate(text, 'en', toA), translate(text, 'en', toB)]);
-    }catch(e){
-        item.tgt = '（翻訳失敗）'; saveHistory(); refreshBubble(item);
-        if(my === seq) setStatus('翻訳エラー', 'err');
-        toast('翻訳に失敗しました：' + (e && e.message ? e.message : e), true);
-        return;
-    }
-    item.tgt = outB; item.tgt2 = outA;
-    saveHistory(); refreshBubble(item);
-    if(my === seq){
-        setPane('tgt', outA + ' / ' + outB, false);
-        lastPair.srcLang = 'en'; lastPair.tgtLang = toB;
-        setStatus(wantListening ? '認識中' : '待機中', wantListening ? 'on' : '');
-        if(settings.autoSpeak) speak(outB, toB);
+    if(w.side === 'E'){
+        // 英語を検出：相手言語を英語にロックし、発話は日本語へ
+        setPartnerLang('en');
+        clearTimeout(interimTimer);
+        setPane('src', w.text, false);
+        setPane('tgt', '', true);
+        lastPair.srcLang = 'en'; lastPair.tgtLang = settings.langA;
+        runTranslate(w.text, 'en', settings.langA, 'E', true);
+    }else{
+        const actual = handleUtterance(w.text, w.side, true);
+        if(actual === 'B') setPartnerLang(settings.langB);
     }
 }
 
