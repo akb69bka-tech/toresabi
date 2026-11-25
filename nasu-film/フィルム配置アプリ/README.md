@@ -1,0 +1,33 @@
+# 安芸ナス フィルム配置アプリ
+
+200×300mm の実寸フィルムの上で、デザインの部品を動かすためのページです。右上でデザインを切り替えます。
+
+- **D 透明袋＋高知県マーク（新・最初に開く）**：袋はほぼ透明でナス3本がそのまま見える。いちばん下に高知県の形（安芸市にピン）と「高知県産」だけ。サイズ表示は隠してあり、目のマークで出せる。
+- **C 窓あき「高知県産」**：中のナスが見えるよう、印刷を上の帯（高知県産）と下（産地・サイズ）に集めたデザイン。真ん中は透明の窓。サイズ表示は L・3本入 と M・5本入 を部品の目のマークで切り替え。
+- **B 金の筆「安芸ナス」**：元の画像をそのまま部品に分けたもの。
+
+- 公開版：https://claude.ai/artifact/XENXQrATfifRnabucU39hA
+- 手元で使うとき：このフォルダで `python3 -m http.server` を実行し、ブラウザで `index.html` を開きます。
+
+## 中身
+- `index.html`：配置エディタの本体です。
+- `parts.json`：デザインBの8つの部品の線データです。mm単位で、各部品の中心を基準にしています。
+- `parts_d.json`：デザインDの部品です。`make_parts_d.py` で作りました。県の形は dataofjapan/land の japan.geojson（高知県）を使い、ピンは安芸市の中心街（北緯33.5025度・東経133.9072度、市役所付近）に置きました。
+- `parts_c.json`：デザインCの部品です。`make_parts_c.py` で作りました（フォント：Dela Gothic One、Yuji Syuku、Noto Serif JP、Zen Maru Gothic、Inter。いずれも SIL Open Font License）。
+- `ref.jpg`：見比べ用の元画像です。
+
+## Illustratorでの使い方
+1. 「Illustrator 用（SVG）」で書き出したファイルを Illustrator で開きます。
+2. 「別名で保存」で .ai にします。
+
+書き出したファイルは次のようになっています。
+- 大きさは 200mm × 300mm の実寸です。
+- 文字はすべて線のデータに変換済みです（アウトライン化）。
+- グループは「白版」「2色目の版」「ガイド_印刷しない」の3つです。
+
+## 見え方確認用のナスの写真（印刷されません）
+- `nasu3.png` は、ナス3本が袋に入ったときの見え方を確かめるための画像です。印刷にも、SVG・PNGの書き出しにも入りません。
+- 元の写真は Fruits-360 データセット（Mihai Oltean, 2017-）の `Training/eggplant_long_1` から3枚使いました。https://github.com/fruits-360/fruits-360-original-size
+- 元の写真のライセンスは CC BY-SA 4.0 です（https://creativecommons.org/licenses/by-sa/4.0/）。
+- 加えた変更：白い背景を切り抜き、コントラストと色味を少し上げ、大きさ・向き・並びを整え、影を付けました（`make_nasu3.py`）。
+- `nasu3.png` も同じ CC BY-SA 4.0 で扱います。
