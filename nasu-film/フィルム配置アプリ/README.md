@@ -24,3 +24,10 @@
 - 大きさは 200mm × 300mm の実寸です。
 - 文字はすべて線のデータに変換済みです（アウトライン化）。
 - グループは「白版」「2色目の版」「ガイド_印刷しない」の3つです。
+
+## 見え方確認用のナスの写真（印刷されません）
+- `nasu3.png` は、ナス3本が袋に入ったときの見え方を確かめるための画像です。印刷にも、SVG・PNGの書き出しにも入りません。
+- 元の写真は Fruits-360 データセット（Mihai Oltean, 2017-）の `Training/eggplant_long_1` から3枚使いました。https://github.com/fruits-360/fruits-360-original-size
+- 元の写真のライセンスは CC BY-SA 4.0 です（https://creativecommons.org/licenses/by-sa/4.0/）。
+- 加えた変更：白い背景を切り抜き、コントラストと色味を少し上げ、大きさ・向き・並びを整え、影を付けました（`make_nasu3.py`）。
+- `nasu3.png` も同じ CC BY-SA 4.0 で扱います。

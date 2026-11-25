@@ -103,6 +103,7 @@ textarea{width:100%;min-height:80px;font:12px ui-monospace,monospace;background:
         <g id="selLayer"></g>
       </svg>
       <div class="row" style="margin-top:6px">
+        <span class="sub" id="photoCredit" hidden>ナスの写真：Fruits-360（Mihai Oltean, CC BY-SA 4.0）を切り抜いて使用。確認用で印刷されません。</span>
         <span class="sub">つかんで移動 ／ 右下の●で拡大縮小 ／ 上の●で回転 ／ <span class="kbd">←↑→↓</span> 0.5mm（<span class="kbd">Shift</span>で5mm）</span>
       </div>
     </div>
@@ -195,7 +196,7 @@ let DID='d', KEY=DESIGNS.d.key;
 const SRC_IMG={x:26.5,y:5.2,w:1014*0.14,h:2000*0.14};   // 元画像の位置（mm）
 const SWATCHES=[['金（見本）','#d49936'],['濃い金','#b8873a'],['紫','#6b2c91'],['緑','#2e7d4f'],['赤','#c0392b'],['紺','#1f3a6e']];
 let PARTS=[], BASE=null, S=null, SEL=null, hist=[], fut=[], bgMode=0, refOn=false;
-const BG_NAMES=['白','濃い紫','ナスを入れて見る（印刷されません）'];
+const BG_NAMES=['白','濃い紫','ナスの写真を入れて見る（印刷されません）'];
 
 function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toast.t); toast.t=setTimeout(()=>t.classList.remove('show'),2200); }
 const clone=o=>JSON.parse(JSON.stringify(o));
@@ -235,17 +236,12 @@ function drawFrame(){
   el('text',{x:W-37,y:H+9.5,'font-size':3.2,'text-anchor':'middle',fill:'var(--fg)','font-family':'var(--ui)'},R).textContent='50 mm';
   $('filmInfo').textContent=`フィルム ${W} × ${H} mm（1目盛り 5mm）`;
 }
-// 見え方の確認用：袋に入ったナス3本（印刷も書き出しもされない）
+// 見え方の確認用：袋に入ったナス3本の写真（印刷も書き出しもされない）
+// 写真：Fruits-360（Mihai Oltean, CC BY-SA 4.0）の eggplant_long_1 を切り抜き・色調整・並べ替え
 function drawEggs(W,H){
-  const E=$('eggs'); E.innerHTML=''; if(bgMode!==2) return;
-  const k=Math.min(W/200,H/300), L=H*0.78/232;
-  [[W*0.26,-3],[W*0.5,2],[W*0.74,-2]].forEach(([x,r])=>{
-    const g=el('g',{transform:`translate(${x} ${H*0.52}) rotate(${r}) scale(${k*1.0} ${L})`},E);
-    el('path',{d:'M0 -112 C26 -110 30 -60 30 0 C30 70 22 118 0 120 C-22 118 -27 70 -27 0 C-27 -60 -24 -110 0 -112Z',fill:'#3a1f4a'},g);
-    el('path',{d:'M-14 -70 C-16 -20 -15 40 -9 90',stroke:'#7a5a92','stroke-width':5,fill:'none',opacity:.55,'stroke-linecap':'round'},g);
-    el('path',{d:'M-20 -104 Q0 -128 20 -104 L14 -92 Q0 -100 -14 -92Z',fill:'#3f5a2c'},g);
-  });
-  el('rect',{width:W,height:H,fill:'#fff',opacity:.1},E);
+  const E=$('eggs'); E.innerHTML=''; $('photoCredit').hidden=bgMode!==2; if(bgMode!==2) return;
+  el('image',{href:'nasu3.png',x:(W-200)/2,y:(H-300)/2,width:200,height:300,preserveAspectRatio:'xMidYMid meet'},E);
+  el('rect',{width:W,height:H,fill:'#fff',opacity:.08},E);
 }
 function tf(it){ return `translate(${it.x} ${it.y}) rotate(${it.r}) scale(${it.s/100})`; }
 function drawArt(){
