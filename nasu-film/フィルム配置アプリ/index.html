@@ -67,9 +67,13 @@ textarea{width:100%;min-height:80px;font:12px ui-monospace,monospace;background:
   <header>
     <div>
       <h1>安芸ナス フィルム配置</h1>
-      <div class="sub">「食卓に、高知の恵を。」の版をそのまま部品に分けました。実寸（mm）のフィルムの上で動かし、Illustrator 用に書き出せます。</div>
+      <div class="sub" id="designNote"></div>
     </div>
     <div class="row">
+      <select id="design" aria-label="デザインを選ぶ" style="width:auto">
+        <option value="c">C 窓あき「高知県産」（新）</option>
+        <option value="b">B 金の筆「安芸ナス」（元の画像）</option>
+      </select>
       <button id="undo" title="取り消し（Ctrl+Z）">↶ 取り消し</button>
       <button id="redo" title="やり直し（Ctrl+Shift+Z）">↷ やり直し</button>
       <button id="resetAll">元の配置に戻す</button>
@@ -81,7 +85,7 @@ textarea{width:100%;min-height:80px;font:12px ui-monospace,monospace;background:
       <div class="stagebar">
         <span class="sub" id="filmInfo"></span>
         <span class="sp"></span>
-        <button id="bgBtn" title="フィルムの下の色を切り替え">下地：白</button>
+        <button id="bgBtn" title="フィルムの下を切り替え">下地：白</button>
         <button id="refBtn" title="元の画像を重ねて見比べる">元の画像を重ねる</button>
       </div>
       <svg id="svg" xmlns="http://www.w3.org/2000/svg" aria-label="フィルムの配置">
@@ -89,7 +93,9 @@ textarea{width:100%;min-height:80px;font:12px ui-monospace,monospace;background:
           <pattern id="hatch" width="4" height="4" patternUnits="userSpaceOnUse"><path d="M0 4L4 0" stroke="var(--warn)" stroke-width=".35" opacity=".5"/></pattern>
         </defs>
         <g id="rulers"></g>
+        <clipPath id="filmClip"><rect id="clipRect" rx="2"/></clipPath>
         <rect id="filmRect" rx="2"/>
+        <g id="eggs" clip-path="url(#filmClip)" style="pointer-events:none"></g>
         <image id="refImg" href="ref.jpg" preserveAspectRatio="none" opacity="0" style="pointer-events:none"/>
         <g id="guides" style="pointer-events:none"></g>
         <g id="art"></g>
@@ -177,15 +183,21 @@ textarea{width:100%;min-height:80px;font:12px ui-monospace,monospace;background:
 'use strict';
 const NS='http://www.w3.org/2000/svg';
 const $=id=>document.getElementById(id);
-const KEY='akinasu-film-layout-v1';
+const DESIGNS={
+  c:{file:'parts_c.json',key:'akinasu-film-layout-c-v1',ref:false,bg:2,label:'窓あき_高知県産',
+     note:'中のナスがよく見えるように、印刷は上と下に集めました。真ん中は透明の窓です。上の帯「高知県産」でどこのナスか一目で分かります。'},
+  b:{file:'parts.json',key:'akinasu-film-layout-v1',ref:true,bg:0,label:'金の筆',
+     note:'「食卓に、高知の恵を。」の版をそのまま部品に分けました。'}};
+let DID='c', KEY=DESIGNS.c.key;
 const SRC_IMG={x:26.5,y:5.2,w:1014*0.14,h:2000*0.14};   // 元画像の位置（mm）
 const SWATCHES=[['金（見本）','#d49936'],['濃い金','#b8873a'],['紫','#6b2c91'],['緑','#2e7d4f'],['赤','#c0392b'],['紺','#1f3a6e']];
-let PARTS=[], BASE=null, S=null, SEL=null, hist=[], fut=[], bgDark=false, refOn=false;
+let PARTS=[], BASE=null, S=null, SEL=null, hist=[], fut=[], bgMode=0, refOn=false;
+const BG_NAMES=['白','濃い紫','ナスを入れて見る（印刷されません）'];
 
 function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toast.t); toast.t=setTimeout(()=>t.classList.remove('show'),2200); }
 const clone=o=>JSON.parse(JSON.stringify(o));
 function baseState(){ return { film:{w:200,h:300}, color:BASE.gold, order:PARTS.map(p=>p.id),
-  items:Object.fromEntries(PARTS.map(p=>[p.id,{x:p.cx,y:p.cy,s:100,r:0,ink:'color',white:!!p.white,hide:false}])) }; }
+  items:Object.fromEntries(PARTS.map(p=>[p.id,{x:p.cx,y:p.cy,s:100,r:0,ink:'color',white:!!p.white,hide:!!p.hide}])) }; }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
 function load(){ try{ const v=JSON.parse(localStorage.getItem(KEY)); if(v&&v.items&&v.film) return v; }catch(e){} return null; }
 function commit(){ hist.push(JSON.stringify(S)); if(hist.length>80) hist.shift(); fut=[]; save(); syncUndo(); }
@@ -199,7 +211,9 @@ function drawFrame(){
   const {w:W,h:H}=S.film, svg=$('svg');
   svg.setAttribute('viewBox',`-18 -14 ${W+30} ${H+26}`);
   const fr=$('filmRect'); fr.setAttribute('x',0); fr.setAttribute('y',0); fr.setAttribute('width',W); fr.setAttribute('height',H);
-  fr.setAttribute('fill', bgDark?'#3b2a45':'#ece7ee'); fr.setAttribute('stroke','var(--rule)'); fr.setAttribute('stroke-width','.4');
+  fr.setAttribute('fill', bgMode===1?'#3b2a45':bgMode===2?'#dfe6e8':'#ece7ee'); fr.setAttribute('stroke','var(--rule)'); fr.setAttribute('stroke-width','.4');
+  const cr=$('clipRect'); cr.setAttribute('width',W); cr.setAttribute('height',H);
+  drawEggs(W,H);
   const ri=$('refImg'); ri.setAttribute('x',SRC_IMG.x); ri.setAttribute('y',SRC_IMG.y); ri.setAttribute('width',SRC_IMG.w); ri.setAttribute('height',SRC_IMG.h); ri.setAttribute('opacity',refOn?.45:0);
   // 目盛り（mm）
   const R=$('rulers'); R.innerHTML='';
@@ -217,6 +231,18 @@ function drawFrame(){
   const sb=el('g',{},G); el('line',{x1:W-62,y1:H+4.5,x2:W-12,y2:H+4.5,stroke:'var(--fg)','stroke-width':.5},R);
   el('text',{x:W-37,y:H+9.5,'font-size':3.2,'text-anchor':'middle',fill:'var(--fg)','font-family':'var(--ui)'},R).textContent='50 mm';
   $('filmInfo').textContent=`フィルム ${W} × ${H} mm（1目盛り 5mm）`;
+}
+// 見え方の確認用：袋に入ったナス3本（印刷も書き出しもされない）
+function drawEggs(W,H){
+  const E=$('eggs'); E.innerHTML=''; if(bgMode!==2) return;
+  const k=Math.min(W/200,H/300), L=H*0.78/232;
+  [[W*0.26,-3],[W*0.5,2],[W*0.74,-2]].forEach(([x,r])=>{
+    const g=el('g',{transform:`translate(${x} ${H*0.52}) rotate(${r}) scale(${k*1.0} ${L})`},E);
+    el('path',{d:'M0 -112 C26 -110 30 -60 30 0 C30 70 22 118 0 120 C-22 118 -27 70 -27 0 C-27 -60 -24 -110 0 -112Z',fill:'#3a1f4a'},g);
+    el('path',{d:'M-14 -70 C-16 -20 -15 40 -9 90',stroke:'#7a5a92','stroke-width':5,fill:'none',opacity:.55,'stroke-linecap':'round'},g);
+    el('path',{d:'M-20 -104 Q0 -128 20 -104 L14 -92 Q0 -100 -14 -92Z',fill:'#3f5a2c'},g);
+  });
+  el('rect',{width:W,height:H,fill:'#fff',opacity:.1},E);
 }
 function tf(it){ return `translate(${it.x} ${it.y}) rotate(${it.r}) scale(${it.s/100})`; }
 function drawArt(){
@@ -331,7 +357,8 @@ $('filmPreset').addEventListener('change',e=>{ if(e.target.value==='200x300'){ S
 ['filmW','filmH'].forEach(id=>$(id).addEventListener('change',()=>{ const w=+$('filmW').value, h=+$('filmH').value; if(w>=80&&h>=100){ const dx=(w-S.film.w)/2, dy=(h-S.film.h)/2;
   Object.values(S.items).forEach(it=>{ it.x+=dx; it.y+=dy; }); S.film={w,h}; commit(); syncAll(); toast(`フィルムを ${w}×${h}mm にしました（部品は中央を保って移動）`); } }));
 $('showGuides').addEventListener('change',drawFrame);
-$('bgBtn').addEventListener('click',()=>{ bgDark=!bgDark; $('bgBtn').textContent='下地：'+(bgDark?'濃い紫（ナスの上）':'白'); drawFrame(); });
+function syncBg(){ $('bgBtn').textContent='下地：'+BG_NAMES[bgMode]; }
+$('bgBtn').addEventListener('click',()=>{ bgMode=(bgMode+1)%3; syncBg(); drawFrame(); });
 $('refBtn').addEventListener('click',()=>{ refOn=!refOn; $('refBtn').classList.toggle('on',refOn); drawFrame(); });
 
 // ── 書き出し ──────────────────────────────────────────
@@ -349,14 +376,14 @@ async function offer(filename,data){
   if(typeof data==='string'){ $('fallback').hidden=false; $('fallbackTxt').value=data; toast('下の欄からコピーして保存してください'); }
   else toast('この表示では保存できません。claude.ai で開いてください');
 }
-$('expSvg').addEventListener('click',()=>offer(`安芸ナス_フィルム_${S.film.w}x${S.film.h}mm.svg`, exportSvg(true)));
+$('expSvg').addEventListener('click',()=>offer(`安芸ナス_フィルム_${DESIGNS[DID].label}_${S.film.w}x${S.film.h}mm.svg`, exportSvg(true)));
 $('expPng').addEventListener('click',()=>{
   const {w:W,h:H}=S.film, px=300/25.4, svg=exportSvg(false), img=new Image();
   img.onload=()=>{ const c=document.createElement('canvas'); c.width=Math.round(W*px); c.height=Math.round(H*px); c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-    c.toBlob(b=>offer(`安芸ナス_フィルム_${W}x${H}mm_300dpi.png`, b),'image/png'); };
+    c.toBlob(b=>offer(`安芸ナス_フィルム_${DESIGNS[DID].label}_${W}x${H}mm_300dpi.png`, b),'image/png'); };
   img.onerror=()=>toast('PNG を作れませんでした'); img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
 });
-$('expJson').addEventListener('click',()=>offer('安芸ナス_フィルム配置.json', JSON.stringify(S,null,1)));
+$('expJson').addEventListener('click',()=>offer(`安芸ナス_フィルム配置_${DESIGNS[DID].label}.json`, JSON.stringify(S,null,1)));
 $('impJson').addEventListener('change',e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader();
   r.onload=()=>{ try{ const v=JSON.parse(r.result); if(!v.items||!v.film) throw 0; S=Object.assign(baseState(),v); commit(); syncAll(); toast('配置を読み込みました'); }catch(_){ toast('配置ファイルを読めませんでした'); } };
   r.readAsText(f); e.target.value=''; });
@@ -365,12 +392,21 @@ $('copyFallback').addEventListener('click',()=>{ const t=$('fallbackTxt'); navig
 function syncAll(){ syncFilm(); buildSwatches(); $('colorHex').value=S.color; drawFrame(); drawArt(); syncUndo(); }
 
 // ── 読み込み ─────────────────────────────────────────
-fetch('parts.json').then(r=>r.json()).then(d=>{
+function loadDesign(id){
+  DID=DESIGNS[id]?id:'c'; const D=DESIGNS[DID]; KEY=D.key; SEL=null; $('design').value=DID;
+  $('designNote').textContent=D.note+'実寸（mm）のフィルムの上で動かし、Illustrator 用に書き出せます。';
+  $('refBtn').hidden=!D.ref; refOn=false; $('refBtn').classList.remove('on'); bgMode=D.bg; syncBg();
+  try{ localStorage.setItem('akinasu-film-design',DID); }catch(e){}
+  return fetch(D.file).then(r=>r.json()).then(d=>{
   BASE=d; PARTS=d.parts;
   const saved=load(); S=saved?Object.assign(baseState(),saved):baseState();
   PARTS.forEach(p=>{ if(!S.items[p.id]) S.items[p.id]=baseState().items[p.id]; if(!S.order.includes(p.id)) S.order.push(p.id); });
-  hist=[JSON.stringify(S)]; syncAll();
+  hist=[JSON.stringify(S)]; fut=[]; syncAll();
 }).catch(()=>{ $('filmInfo').textContent='部品データを読み込めませんでした。ページを開き直してください。'; });
+}
+$('design').addEventListener('change',e=>loadDesign(e.target.value));
+let startId='c'; try{ startId=localStorage.getItem('akinasu-film-design')||'c'; }catch(e){}
+loadDesign(startId);
 if(window.claude && window.claude.use){ window.claude.use('downloads').then(d=>{ downloads=d; }).catch(()=>{}); }
 })();
 </script>
