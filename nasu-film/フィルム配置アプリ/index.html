@@ -71,7 +71,8 @@ textarea{width:100%;min-height:80px;font:12px ui-monospace,monospace;background:
     </div>
     <div class="row">
       <select id="design" aria-label="デザインを選ぶ" style="width:auto">
-        <option value="c">C 窓あき「高知県産」（新）</option>
+        <option value="d">D 透明袋＋高知県マーク（新）</option>
+        <option value="c">C 窓あき「高知県産」</option>
         <option value="b">B 金の筆「安芸ナス」（元の画像）</option>
       </select>
       <button id="undo" title="取り消し（Ctrl+Z）">↶ 取り消し</button>
@@ -184,11 +185,13 @@ textarea{width:100%;min-height:80px;font:12px ui-monospace,monospace;background:
 const NS='http://www.w3.org/2000/svg';
 const $=id=>document.getElementById(id);
 const DESIGNS={
+  d:{file:'parts_d.json',key:'akinasu-film-layout-d-v1',ref:false,bg:2,label:'透明_高知県マーク',
+     note:'袋はほぼ透明で、ナス3本がそのまま見えます。いちばん下に高知県の形（安芸市にピン）と「高知県産」だけを入れました。サイズ表示（L・M）は部品の目のマークで出せます。'},
   c:{file:'parts_c.json',key:'akinasu-film-layout-c-v1',ref:false,bg:2,label:'窓あき_高知県産',
      note:'中のナスがよく見えるように、印刷は上と下に集めました。真ん中は透明の窓です。上の帯「高知県産」でどこのナスか一目で分かります。'},
   b:{file:'parts.json',key:'akinasu-film-layout-v1',ref:true,bg:0,label:'金の筆',
      note:'「食卓に、高知の恵を。」の版をそのまま部品に分けました。'}};
-let DID='c', KEY=DESIGNS.c.key;
+let DID='d', KEY=DESIGNS.d.key;
 const SRC_IMG={x:26.5,y:5.2,w:1014*0.14,h:2000*0.14};   // 元画像の位置（mm）
 const SWATCHES=[['金（見本）','#d49936'],['濃い金','#b8873a'],['紫','#6b2c91'],['緑','#2e7d4f'],['赤','#c0392b'],['紺','#1f3a6e']];
 let PARTS=[], BASE=null, S=null, SEL=null, hist=[], fut=[], bgMode=0, refOn=false;
@@ -393,10 +396,10 @@ function syncAll(){ syncFilm(); buildSwatches(); $('colorHex').value=S.color; dr
 
 // ── 読み込み ─────────────────────────────────────────
 function loadDesign(id){
-  DID=DESIGNS[id]?id:'c'; const D=DESIGNS[DID]; KEY=D.key; SEL=null; $('design').value=DID;
+  DID=DESIGNS[id]?id:'d'; const D=DESIGNS[DID]; KEY=D.key; SEL=null; $('design').value=DID;
   $('designNote').textContent=D.note+'実寸（mm）のフィルムの上で動かし、Illustrator 用に書き出せます。';
   $('refBtn').hidden=!D.ref; refOn=false; $('refBtn').classList.remove('on'); bgMode=D.bg; syncBg();
-  try{ localStorage.setItem('akinasu-film-design',DID); }catch(e){}
+  try{ localStorage.setItem('akinasu-film-design-v2',DID); }catch(e){}
   return fetch(D.file).then(r=>r.json()).then(d=>{
   BASE=d; PARTS=d.parts;
   const saved=load(); S=saved?Object.assign(baseState(),saved):baseState();
@@ -405,7 +408,7 @@ function loadDesign(id){
 }).catch(()=>{ $('filmInfo').textContent='部品データを読み込めませんでした。ページを開き直してください。'; });
 }
 $('design').addEventListener('change',e=>loadDesign(e.target.value));
-let startId='c'; try{ startId=localStorage.getItem('akinasu-film-design')||'c'; }catch(e){}
+let startId='d'; try{ startId=localStorage.getItem('akinasu-film-design-v2')||'d'; }catch(e){}
 loadDesign(startId);
 if(window.claude && window.claude.use){ window.claude.use('downloads').then(d=>{ downloads=d; }).catch(()=>{}); }
 })();
